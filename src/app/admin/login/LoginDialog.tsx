@@ -21,15 +21,19 @@ export default function LoginDialog({ open }: { open: boolean }) {
     const res = await fetch("/api/admin/login", {
   method: "POST",
   body: new URLSearchParams({ password }),
+  credentials: "include",
+  headers: {
+    "Content-Type": "application/x-www-form-urlencoded",
+  },
 });
 
+if (res.ok) {
+  setPassword("");
+  // redirect hard: elimina qualsiasi problema di stato/refresh
+  window.location.href = "/admin/tournaments";
+  return;
+}
 
-    if (res.ok) {
-      setPassword("");
-      router.replace("/admin/tournaments");
-      router.refresh();
-      return;
-    }
 
     const text = await res.text().catch(() => "");
     // la tua action potrebbe fare redirect con query, ma qui gestiamo anche testo grezzo
