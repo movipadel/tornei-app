@@ -1,0 +1,817 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* shadcn/ui variables (new-york feel) – Tailwind v4 safe */
+:root {
+  --background: 0 0% 100%;
+  --foreground: 222.2 84% 4.9%;
+
+  --card: 0 0% 100%;
+  --card-foreground: 222.2 84% 4.9%;
+
+  --popover: 0 0% 100%;
+  --popover-foreground: 222.2 84% 4.9%;
+
+  --primary: 243 75% 59%;
+  --primary-foreground: 210 40% 98%;
+
+  --secondary: 210 40% 96.1%;
+  --secondary-foreground: 222.2 47.4% 11.2%;
+
+  --muted: 210 40% 96.1%;
+  --muted-foreground: 215.4 16.3% 46.9%;
+
+  --accent: 210 40% 96.1%;
+  --accent-foreground: 222.2 47.4% 11.2%;
+
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 210 40% 98%;
+
+  --border: 214.3 31.8% 91.4%;
+  --input: 214.3 31.8% 91.4%;
+  --ring: 243 75% 59%;
+
+  --radius: 0.75rem;
+}
+
+/* optional dark (se un giorno ti serve) */
+.dark {
+  --background: 222.2 84% 4.9%;
+  --foreground: 210 40% 98%;
+
+  --card: 222.2 84% 4.9%;
+  --card-foreground: 210 40% 98%;
+
+  --popover: 222.2 84% 4.9%;
+  --popover-foreground: 210 40% 98%;
+
+  --primary: 243 75% 59%;
+  --primary-foreground: 210 40% 98%;
+
+  --secondary: 217.2 32.6% 17.5%;
+  --secondary-foreground: 210 40% 98%;
+
+  --muted: 217.2 32.6% 17.5%;
+  --muted-foreground: 215 20.2% 65.1%;
+
+  --accent: 217.2 32.6% 17.5%;
+  --accent-foreground: 210 40% 98%;
+
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 210 40% 98%;
+
+  --border: 217.2 32.6% 17.5%;
+  --input: 217.2 32.6% 17.5%;
+  --ring: 243 75% 59%;
+}
+
+/* Base44 polish */
+html {
+  text-rendering: optimizeLegibility;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial,
+    "Apple Color Emoji", "Segoe UI Emoji";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  /* shadcn variables applied */
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+
+/* Border default color without Tailwind @apply */
+*, ::before, ::after {
+  border-color: hsl(var(--border));
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+::selection {
+  background: rgba(99, 102, 241, 0.18);
+}
+
+:focus-visible {
+  outline: 2px solid rgba(99, 102, 241, 0.6);
+  outline-offset: 2px;
+}
+
+/* =========================
+   Base44 Admin look (CSS puro, anti-Turbopack issues)
+   ========================= */
+
+.base44-bg {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%);
+}
+
+.base44-container {
+  max-width: 72rem; /* ~ max-w-6xl */
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+.base44-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.base44-title {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-weight: 800;
+  font-size: 2rem;
+  color: #0f172a;
+  line-height: 1.1;
+}
+
+.base44-subtitle {
+  margin-top: 0.25rem;
+  color: #64748b;
+}
+
+.base44-primary-btn {
+  background: #4f46e5;
+  color: white;
+  border: 0;
+  border-radius: 0.75rem;
+  padding: 0.65rem 1rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.base44-primary-btn:hover {
+  background: #4338ca;
+}
+
+.base44-card {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 1rem;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+  transition: box-shadow 150ms ease;
+}
+.base44-card:hover {
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+}
+
+.base44-card-inner {
+  padding: 1.25rem 1.5rem;
+}
+
+.base44-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.base44-name {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.base44-meta {
+  margin-top: 0.35rem;
+  color: #64748b;
+  font-size: 0.9rem;
+}
+
+.base44-info {
+  margin-top: 0.9rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  color: #64748b;
+  font-size: 0.9rem;
+}
+
+.base44-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.base44-chip-cat-maschile { background:#dbeafe; color:#1d4ed8; border-color:#bfdbfe; }
+.base44-chip-cat-femminile{ background:#fce7f3; color:#be185d; border-color:#fbcfe8; }
+.base44-chip-cat-misto    { background:#dcfce7; color:#15803d; border-color:#bbf7d0; }
+.base44-chip-cat-libero   { background:#f1f5f9; color:#334155; border-color:#e2e8f0; }
+
+.base44-chip-lvl-principiante { background:#dcfce7; color:#15803d; border-color:#bbf7d0; }
+.base44-chip-lvl-intermedio   { background:#cffafe; color:#0e7490; border-color:#a5f3fc; }
+.base44-chip-lvl-avanzato     { background:#fef3c7; color:#b45309; border-color:#fde68a; }
+
+.base44-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.base44-icon-btn {
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 0.75rem;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.base44-icon-btn:hover {
+  background: #f8fafc;
+}
+
+.base44-csv-btn {
+  border-radius: 0.75rem;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  padding: 0.45rem 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.base44-csv-btn:hover { background:#f8fafc; }
+
+.base44-divider {
+  height: 1px;
+  background: #eef2f7;
+  margin: 0.9rem 0;
+}
+
+.base44-collapsible {
+  border-top: 1px solid #eef2f7;
+  padding: 1rem 1.5rem 1.25rem;
+}
+/* =========================
+   Radix Dialog / AlertDialog overlay (fix backdrop)
+   ========================= */
+
+/* Backdrop scuro */
+[data-radix-portal] [data-state][data-radix-dialog-overlay],
+[data-radix-portal] [data-state][data-radix-alert-dialog-overlay],
+[data-state][data-radix-dialog-overlay],
+[data-state][data-radix-alert-dialog-overlay] {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55); /* slate-900 */
+  backdrop-filter: blur(2px);
+  z-index: 1000;
+}
+
+/* Contenitore della finestra */
+[data-radix-portal] [data-state][data-radix-dialog-content],
+[data-radix-portal] [data-state][data-radix-alert-dialog-content],
+[data-state][data-radix-dialog-content],
+[data-state][data-radix-alert-dialog-content] {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1001;
+}
+@keyframes base44-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+[data-radix-portal] [data-state][data-radix-dialog-overlay],
+[data-radix-portal] [data-state][data-radix-alert-dialog-overlay] {
+  animation: base44-fade 140ms ease-out;
+}
+/* =========================
+   FIX overlay Radix (Dialog / AlertDialog)
+   Perché: in questo progetto le classi Tailwind del dialog overlay
+   non vengono applicate in modo affidabile -> overlay trasparente.
+   ========================= */
+
+/* Radix monta i dialog dentro <div data-radix-portal> */
+[data-radix-portal] {
+  position: relative;
+  z-index: 9999;
+}
+
+/* Overlay: di solito è un div con class "fixed inset-0 ..." dentro il portal */
+[data-radix-portal] .fixed.inset-0 {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55); /* slate-900 */
+  backdrop-filter: blur(2px);
+  z-index: 10000;
+}
+
+/* Content: di solito è un div "fixed left-[50%] top-[50%] ..." */
+[data-radix-portal] .fixed.left-\[50\%\].top-\[50\%\] {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 10001;
+}
+
+/* Fallback extra: se l'overlay usa bg-black/80 come classe */
+.bg-black\/80 {
+  background: rgba(0, 0, 0, 0.8) !important;
+}
+/* =========================
+   Base44 overlay for Radix dialogs
+   ========================= */
+.base44-overlay {
+  background: rgba(15, 23, 42, 0.55) !important; /* slate-900 */
+  backdrop-filter: blur(2px);
+}
+/* =========================
+   HARD FIX overlay per Radix Dialog/AlertDialog
+   Funziona anche se l'overlay Radix è "rotto" o senza bg.
+   Richiede browser moderni (Chrome/Edge ok).
+   ========================= */
+
+/* Quando c’è un portal Radix, metto un overlay sopra tutto */
+body:has([data-radix-portal])::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55); /* slate-900 */
+  backdrop-filter: blur(2px);
+  z-index: 9998;
+}
+
+/* Il portal deve stare sopra l’overlay */
+[data-radix-portal] {
+  position: relative;
+  z-index: 9999;
+}
+/* =========================
+   Base44 Public Home (CSS puro)
+   ========================= */
+
+.base44-home-wrap {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%);
+}
+
+.base44-home-container {
+  max-width: 64rem; /* ~max-w-5xl */
+  margin: 0 auto;
+  padding: 3rem 1rem;
+}
+
+.base44-hero {
+  text-align: center;
+  margin-bottom: 2.5rem;
+}
+
+.base44-hero-logo {
+  width: 64px;
+  height: 64px;
+  border-radius: 18px;
+  margin: 0 auto 14px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.base44-hero-logo--fallback {
+  background: #4f46e5;
+  color: white;
+}
+
+.base44-hero-title {
+  font-size: 2.25rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0;
+}
+
+.base44-hero-subtitle {
+  margin-top: 8px;
+  color: #64748b;
+}
+
+.base44-phone-box {
+  max-width: 420px;
+  margin: 1.25rem auto 0;
+}
+
+.base44-input {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  outline: none;
+}
+
+.base44-input:focus {
+  border-color: #c7d2fe;
+  box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.12);
+}
+
+.base44-help {
+  font-size: 12px;
+  color: #94a3b8;
+  margin-top: 8px;
+}
+
+.base44-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  max-width: 420px;
+  margin: 24px auto 0;
+  padding: 6px;
+  background: rgba(255,255,255,0.55);
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  backdrop-filter: blur(8px);
+}
+
+.base44-tab {
+  border: 0;
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: transparent;
+  font-weight: 700;
+  color: #475569;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.base44-tab.active {
+  background: white;
+  color: #0f172a;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+}
+
+.base44-search {
+  max-width: 420px;
+  margin: 18px auto 0;
+}
+
+.base44-grid {
+  margin-top: 20px;
+  display: grid;
+  gap: 16px;
+}
+
+@media (min-width: 768px) {
+  .base44-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* =========================
+   Base44 Tournament Card (public)
+   ========================= */
+
+.base44-tcard {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+  overflow: hidden;
+  transition: box-shadow 150ms ease, transform 150ms ease;
+}
+
+.base44-tcard:hover {
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.10);
+  transform: translateY(-1px);
+}
+
+.base44-tcard-img {
+  width: 100%;
+  height: 190px;
+  object-fit: cover;
+  display: block;
+}
+
+.base44-tcard-body {
+  padding: 18px 18px 16px;
+}
+
+.base44-tcard-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.base44-tcard-name {
+  font-size: 18px;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1.2;
+}
+
+.base44-tcard-type {
+  margin-top: 4px;
+  font-size: 13px;
+  color: #64748b;
+}
+
+.base44-tcard-badges {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.base44-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  border: 1px solid transparent;
+}
+
+.base44-pill-cat-maschile { background:#dbeafe; color:#1d4ed8; border-color:#bfdbfe; }
+.base44-pill-cat-femminile{ background:#fce7f3; color:#be185d; border-color:#fbcfe8; }
+.base44-pill-cat-misto    { background:#dcfce7; color:#15803d; border-color:#bbf7d0; }
+.base44-pill-cat-libero   { background:#f1f5f9; color:#334155; border-color:#e2e8f0; }
+
+.base44-pill-lvl-principiante { background:#fee2e2; color:#991b1b; border-color:#fecaca; }
+.base44-pill-lvl-intermedio   { background:#cffafe; color:#0e7490; border-color:#a5f3fc; }
+.base44-pill-lvl-avanzato     { background:#fef3c7; color:#b45309; border-color:#fde68a; }
+/* =========================
+   Base44 Tournament Card – LIVE badge
+   ========================= */
+
+.base44-pill-live {
+  background: #ecfeff;      /* cyan-50 */
+  color: #155e75;           /* cyan-800 */
+  border-color: #a5f3fc;    /* cyan-200 */
+}
+
+.base44-live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #06b6d4;      /* cyan-500 */
+  box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.18);
+}
+
+
+.base44-tcard-info {
+  margin-top: 14px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 14px;
+  font-size: 13px;
+  color: #475569;
+}
+
+.base44-info-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.base44-tcard-info .full {
+  grid-column: 1 / -1;
+}
+
+.base44-tcard-bottom {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid #eef2f7;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.base44-counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  align-items: center;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.base44-cta {
+  border: 0;
+  border-radius: 12px;
+  padding: 9px 12px;
+  font-weight: 800;
+  font-size: 13px;
+  color: white;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.base44-cta-indigo { background: #4f46e5; }
+.base44-cta-indigo:hover { background: #4338ca; }
+
+.base44-cta-amber { background: #d97706; }
+.base44-cta-amber:hover { background: #b45309; }
+
+.base44-cta-disabled {
+  background: #e2e8f0;
+  color: #64748b;
+  cursor: not-allowed;
+}
+
+/* =========================
+   Public font scope (only home)
+   ========================= */
+.base44-public {
+  font-family: var(--font-inter), ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial,
+    "Apple Color Emoji", "Segoe UI Emoji";
+}
+
+/* refine public card typography */
+.base44-tcard-name {
+  font-size: 1.05rem;        /* ~16.8px */
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: #0f172a;
+  line-height: 1.35;
+}
+
+/* refine CTA */
+.base44-cta {
+  border: 0;
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-weight: 600;
+  font-size: 0.875rem; /* 14px */
+  letter-spacing: 0;
+  color: white;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+}
+
+.base44-cta-indigo { background: #4f46e5; }
+.base44-cta-indigo:hover { background: #4338ca; }
+
+.base44-cta-amber { background: #f59e0b; color: #1f2937; }
+.base44-cta-amber:hover { background: #d97706; color: #111827; }
+
+.base44-cta-disabled {
+  background: #e2e8f0;
+  color: #64748b;
+  cursor: not-allowed;
+}
+/* ========== Base44 – Gender icons ========= */
+
+.base44-gender {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  color: #475569; /* slate-600 */
+}
+
+.base44-gender-icon {
+  font-size: 18px;
+  font-weight: 800;
+  text-shadow: 0 0 0.6px currentColor;
+}
+
+
+.base44-gender-icon.male {
+  color: #2563eb; /* blue-600 */
+}
+
+.base44-gender-icon.female {
+  color: #db2777; /* pink-600 */
+}
+
+/* =========================
+   Base44 – LIVE pill
+   ========================= */
+
+.base44-pill-live {
+  background: #fee2e2;      /* red-100 */
+  border-color: #fecaca;     /* red-200 */
+  color: #b91c1c;            /* red-700 */
+}
+
+.base44-live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #ef4444;       /* red-500 */
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.18);
+  display: inline-block;
+}
+
+/* animazione “pulse” molto leggera */
+@keyframes base44-live-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.12); opacity: 0.85; }
+}
+
+.base44-pill-live .base44-live-dot {
+  animation: base44-live-pulse 1.4s ease-in-out infinite;
+}
+
+/* =========================================
+   Base44 — MOBILE DENSITY (Tournament Live)
+   Riduce dimensioni SOLO su mobile
+   ========================================= */
+@media (max-width: 640px) {
+  /* card più compatte */
+  .base44-card {
+    border-radius: 12px;
+  }
+  .base44-card-inner {
+    padding: 0.75rem 0.85rem; /* era 1.25rem 1.5rem */
+  }
+
+  /* chip più bassi e piccoli */
+  .base44-chip {
+    font-size: 0.72rem;   /* era 0.8rem */
+    padding: 0.15rem 0.5rem;
+    gap: 0.3rem;
+  }
+
+  /* bottoni tipo "Chiudi" più compatti */
+  .base44-csv-btn {
+    padding: 0.35rem 0.6rem;
+    border-radius: 999px;
+    font-weight: 600;
+  }
+
+  /* riduci spazi verticali generici nelle card */
+  .base44-divider {
+    margin: 0.6rem 0;
+  }
+
+  /* tabelle: header/righe molto più strette */
+  table th,
+  table td {
+    padding-top: 8px !important;
+    padding-bottom: 8px !important;
+  }
+  table th {
+    font-size: 12px;
+  }
+  table td {
+    font-size: 12.5px;
+  }
+
+  /* testo "nomi" un filo più piccolo (senza rompere altrove) */
+  .base44-name {
+    font-size: 1rem;
+  }
+
+  /* Tournament card già ok, ma se vuoi più denso anche lì: */
+  .base44-tcard-body {
+    padding: 14px 14px 12px;
+  }
+  .base44-tcard-bottom {
+    margin-top: 12px;
+    padding-top: 10px;
+  }
+}
+
+@media (max-width: 640px) {
+  /* Tabelle dentro dialog "Sviluppi" */
+  [data-radix-dialog-content] table th {
+    font-size: 11.5px;
+    padding: 6px 8px !important;
+  }
+
+  [data-radix-dialog-content] table td {
+    font-size: 12px;
+    padding: 6px 8px !important;
+  }
+
+  /* colonna indice (#) più stretta */
+  [data-radix-dialog-content] table th:first-child,
+  [data-radix-dialog-content] table td:first-child {
+    width: 28px;
+    padding-left: 6px !important;
+    padding-right: 6px !important;
+  }
+}
