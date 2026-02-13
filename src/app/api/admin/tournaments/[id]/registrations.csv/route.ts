@@ -29,7 +29,7 @@ function formatStart(date: string | null, time: string | null) {
 }
 
 export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }) {
-  const denied = guardAdmin(req);
+  const denied = await guardAdmin(req);
   if (denied) return denied;
 
 

@@ -16,7 +16,7 @@ export async function POST(
   req: Request,
   ctx: { params: Promise<{ id: string }> }
 ) {
-  const denied = guardAdmin(req);
+  const denied = await guardAdmin(req);
 if (denied) return denied;
   const ok = await isAdminAuthed();
   if (!ok) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

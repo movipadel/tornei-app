@@ -7,7 +7,7 @@ import { guardAdmin } from "@/lib/adminGuard";
 export const runtime = "nodejs";
 
 export async function GET(req: Request) {
-  const denied = guardAdmin(req);
+  const denied = await guardAdmin(req);
   if (denied) return denied;
 
   const ok = await isAdminAuthed();
@@ -35,7 +35,7 @@ export async function GET(req: Request) {
 }
 
 export async function PUT(req: Request) {
-  const denied = guardAdmin(req);
+  const denied = await guardAdmin(req);
 if (denied) return denied;
   const ok = await isAdminAuthed();
   if (!ok) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

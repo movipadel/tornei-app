@@ -5,7 +5,7 @@ import { guardAdmin } from "@/lib/adminGuard";
 export const runtime = "nodejs";
 
 export async function POST(req: Request) {
-  const denied = guardAdmin(req);
+  const denied = await guardAdmin(req);
   if (denied) return denied;
 
   const res = NextResponse.json({ ok: true });

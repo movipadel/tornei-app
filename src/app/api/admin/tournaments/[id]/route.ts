@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { isAdminAuthed } from "@/lib/adminAuth";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { guardAdmin } from "@/lib/adminGuard";
 
 export const runtime = "nodejs";
 
@@ -58,7 +59,9 @@ function parseMaxParticipants(body: any): number {
   return 0;
 }
 
-export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> }) {
+export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }) {
+  const denied = await guardAdmin(req);
+  if (denied) return denied;
   const ok = await isAdminAuthed();
   if (!ok) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 

@@ -8,7 +8,7 @@ export const runtime = "nodejs";
 const BUCKET = "public-assets"; // nome bucket (creato al volo se manca)
 
 export async function POST(req: Request) {
-  const denied = guardAdmin(req);
+  const denied = await guardAdmin(req);
 if (denied) return denied;
   const ok = await isAdminAuthed();
   if (!ok) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

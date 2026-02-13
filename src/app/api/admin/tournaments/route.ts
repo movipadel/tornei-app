@@ -66,7 +66,7 @@ function parseMaxParticipants(body: any): number {
 }
 
 export async function GET(req: Request) {
-  const denied = guardAdmin(req);
+  const denied = await guardAdmin(req);
   if (denied) return denied;
   const ok = await isAdminAuthed();
   if (!ok) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -120,7 +120,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const denied = guardAdmin(req);
+  const denied = await guardAdmin(req);
 if (denied) return denied;
   const ok = await isAdminAuthed();
   if (!ok) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

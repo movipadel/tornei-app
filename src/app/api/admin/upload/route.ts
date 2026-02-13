@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { randomUUID } from "crypto";
-import { requireAdminFromRequest } from "@/lib/adminSession";
 import { guardAdmin } from "@/lib/adminGuard";
 
 
@@ -9,12 +8,10 @@ import { guardAdmin } from "@/lib/adminGuard";
 export const runtime = "nodejs";
 
 export async function POST(req: Request) {
-  const denied = guardAdmin(req);
+  const denied = await guardAdmin(req);
 if (denied) return denied;
   try {
-    if (!requireAdminFromRequest(req)) {
-  return NextResponse.json({ error: "Non autorizzato" }, { status: 403 });
-}
+    
     const supabase = supabaseAdmin();
     const form = await req.formData();
     const file = form.get("file");

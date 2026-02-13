@@ -1,57 +1,37 @@
-import crypto from "crypto";
+// src/lib/adminSession.ts
+import { SignJWT, jwtVerify } from "jose";
 
 export const ADMIN_COOKIE_NAME =
-  process.env.ADMIN_COOKIE_NAME ?? "admin_session";
+  process.env.ADMIN_COOKIE_NAME?.trim() || "admin_session";
 
-const SECRET = process.env.ADMIN_COOKIE_SECRET;
+const encoder = new TextEncoder();
 
-function sign(payload: string, secret: string) {
-  return crypto.createHmac("sha256", secret).update(payload).digest("hex");
-}
-
-export function createAdminSessionToken() {
-  if (!SECRET) throw new Error("Missing ADMIN_COOKIE_SECRET");
-  const payload = `1.${Date.now()}`;
-  const sig = sign(payload, SECRET);
-  return `${payload}.${sig}`;
-}
-
-export function verifyAdminSessionToken(token?: string | null) {
-  if (!SECRET || !token) return false;
-
-  const parts = token.split(".");
-  if (parts.length < 3) return false;
-
-  const payload = `${parts[0]}.${parts[1]}`;
-  const sig = parts.slice(2).join(".");
-  return sign(payload, SECRET) === sig;
+function getSecret() {
+  const s = (process.env.ADMIN_COOKIE_SECRET || "").trim();
+  if (!s) throw new Error("Missing ADMIN_COOKIE_SECRET");
+  return encoder.encode(s);
 }
 
 export function adminCookieOptions() {
   return {
-    httpOnly: true as const,
-    sameSite: "lax" as const,
+    httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    path: "/",
-    maxAge: 60 * 60 * 24 * 7,
+    sameSite: "lax" as const,
+    path: "/", // IMPORTANTISSIMO
+    maxAge: 60 * 60 * 24 * 7, // 7 giorni
   };
 }
 
-export function getAdminTokenFromRequest(req: Request) {
-  const cookieHeader = req.headers.get("cookie") ?? "";
-  const cookies = cookieHeader
-    .split(";")
-    .map((c) => c.trim())
-    .filter(Boolean);
-
-  const name = ADMIN_COOKIE_NAME;
-  const hit = cookies.find((c) => c.startsWith(`${name}=`));
-  if (!hit) return null;
-
-  return decodeURIComponent(hit.slice(name.length + 1));
+export async function createAdminSessionToken(payload: Record<string, any> = {}) {
+  // JWT valido 7 giorni
+  return await new SignJWT({ ...payload, role: "admin" })
+    .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
+    .setExpirationTime("7d")
+    .sign(getSecret());
 }
 
-export function requireAdminFromRequest(req: Request) {
-  const token = getAdminTokenFromRequest(req);
-  return verifyAdminSessionToken(token);
+export async function verifyAdminSessionToken(token: string) {
+  const { payload } = await jwtVerify(token, getSecret());
+  return payload;
 }

@@ -46,7 +46,7 @@ async function getNextMainPosition(sb: ReturnType<typeof supabaseAdmin>, tournam
  * PATCH: sposta manualmente tra principale/riserva (admin)
  */
 export async function PATCH(req: Request, ctx: { params: Promise<{ regId: string }> }) {
-  const denied = guardAdmin(req);
+  const denied = await guardAdmin(req);
 if (denied) return denied;
   const ok = await isAdminAuthed();
   if (!ok) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -117,7 +117,7 @@ if (denied) return denied;
  * - Altrimenti -> promuove prima riserva (position più bassa)
  */
 export async function DELETE(req: Request, ctx: { params: Promise<{ regId: string }> }) {
-  const denied = guardAdmin(req);
+  const denied = await guardAdmin(req);
 if (denied) return denied;
   const ok = await isAdminAuthed();
   if (!ok) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

@@ -33,7 +33,7 @@ async function compactPositions(
 }
 
 export async function PATCH(req: Request, ctx: { params: Promise<{ regId: string }> }) {
-  const denied = guardAdmin(req);
+  const denied = await guardAdmin(req);
 if (denied) return denied;
   const ok = await isAdminAuthed();
   if (!ok) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -87,7 +87,7 @@ if (denied) return denied;
 }
 
 export async function DELETE(req: Request, ctx: { params: Promise<{ regId: string }> }) {
-  const denied = guardAdmin(req);
+  const denied = await guardAdmin(req);
 if (denied) return denied;
   const ok = await isAdminAuthed();
   if (!ok) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

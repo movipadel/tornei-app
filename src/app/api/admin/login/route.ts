@@ -15,7 +15,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Password errata" }, { status: 401 });
   }
 
-  const token = createAdminSessionToken();
+  const token = await createAdminSessionToken();
+
 
   const res = NextResponse.json({ ok: true });
   res.cookies.set(ADMIN_COOKIE_NAME, token, adminCookieOptions());
