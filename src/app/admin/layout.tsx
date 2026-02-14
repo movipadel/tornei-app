@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Trophy, LogOut } from "lucide-react";
+import { AdminLogoutButton } from "@/components/AdminLogoutButton";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -48,21 +49,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 Iscrizioni
               </Link>
 
-              <Link
-                href="/admin/logout"
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 8,
-                  fontWeight: 700,
-                  color: "#64748b",
-                  textDecoration: "none",
-                }}
-                title="Esci"
-              >
-                <LogOut className="w-4 h-4" />
-                Esci
-              </Link>
+            <AdminLogoutButton />
+
             </div>
           </div>
         </div>
