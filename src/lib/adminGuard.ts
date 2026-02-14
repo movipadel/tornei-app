@@ -1,29 +1,23 @@
-// src/lib/adminGuard.ts
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import { ADMIN_COOKIE_NAME, verifyAdminSessionToken } from "@/lib/adminSession";
 
-export async function guardAdmin(req: Request) {
-  const cookieHeader = req.headers.get("cookie") || "";
-  const match = cookieHeader.match(
-    new RegExp(`(?:^|; )${ADMIN_COOKIE_NAME}=([^;]*)`)
-  );
+export async function guardAdmin(_req: Request) {
+  const c = await cookies();
+  const token = c.get(ADMIN_COOKIE_NAME)?.value;
 
-  if (!match) {
+  if (!token) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
-
-  const token = decodeURIComponent(match[1]);
 
   try {
     const payload = await verifyAdminSessionToken(token);
     if ((payload as any).role !== "admin") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
-    return null; // OK
+    return null;
   } catch {
-    // token invalido/scaduto
-    const res = NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    res.cookies.set(ADMIN_COOKIE_NAME, "", { path: "/", maxAge: 0 });
-    return res;
+    // Non cancelliamo il cookie qui: evitiamo logout “a cascata” per un singolo errore
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 }
