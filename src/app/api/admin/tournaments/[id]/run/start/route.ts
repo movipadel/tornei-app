@@ -35,7 +35,7 @@ function mapCategory(raw: string | null | undefined) {
 
 function computeTurns(players: number) {
   // preset turni
-  if (players === 10) return 5;
+  if (players === 10) return 10; // ✅ FULL equo: 8 match/player con 2 campi
   if (players === 9) return 9;
   if (players === 8) return 7;
   if (players === 7) return 7;
@@ -200,6 +200,11 @@ if (denied) return denied;
     // ✅ turni preset (poi eventualmente clamp per misto)
     let turns = computeTurns(players);
 
+    // ✅ Regola EQUITÀ: 10 player + 2 campi => 10 turni (8 match a testa)
+    if (players === 10 && matchesPerTurn === 2) {
+       turns = 10;
+     }
+
     // ✅ REGOLA MISTO: M/F uguali + clamp turni per coppie M-F uniche
     if (category === "misto") {
       const males = main.filter((r) => r.p1_gender === "M").length;
@@ -237,7 +242,7 @@ if (denied) return denied;
       matchesPerTurn,
       turns,
       matchesPerPlayer,
-      durationPreset: players === 10 ? "short" : "standard",
+      durationPreset: "standard",
       tieWinValue: 0.5,
       category,
     };
