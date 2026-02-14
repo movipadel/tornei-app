@@ -15,12 +15,13 @@ function getSecret() {
 export function adminCookieOptions() {
   return {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: true,          // sempre true in produzione Vercel
     sameSite: "lax" as const,
-    path: "/", // IMPORTANTISSIMO
-    maxAge: 60 * 60 * 24 * 7, // 7 giorni
+    path: "/",             // fondamentale
+    maxAge: 60 * 60 * 24 * 7,
   };
 }
+
 
 export async function createAdminSessionToken(payload: Record<string, any> = {}) {
   // JWT valido 7 giorni

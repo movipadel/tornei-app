@@ -6,17 +6,12 @@ const COOKIE_NAME = process.env.ADMIN_COOKIE_NAME ?? "admin_session";
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // Solo area admin UI
   if (!pathname.startsWith("/admin")) return NextResponse.next();
+  if (pathname.startsWith("/admin/login")) return NextResponse.next();
 
-  // Lascia libero login/logout
-  if (pathname === "/admin/login" || pathname === "/admin/logout") {
-    return NextResponse.next();
-  }
+  const token = req.cookies.get(COOKIE_NAME);
 
-  // Se manca cookie -> vai a login
-  const token = req.cookies.get(COOKIE_NAME)?.value;
-  if (!token) {
+  if (!token || !token.value) {
     const url = req.nextUrl.clone();
     url.pathname = "/admin/login";
     url.searchParams.set("next", pathname);
