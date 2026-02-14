@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { isAdminAuthed } from "@/lib/adminAuth";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { guardAdmin } from "@/lib/adminGuard";
 
@@ -34,8 +33,6 @@ export async function PATCH(
 ) {
   const denied = await guardAdmin(req);
 if (denied) return denied;
-  const ok = await isAdminAuthed();
-  if (!ok) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { matchId } = await ctx.params;
   if (!matchId) return NextResponse.json({ error: "Missing matchId" }, { status: 400 });

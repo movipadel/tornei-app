@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { isAdminAuthed } from "@/lib/adminAuth";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { generateBaraondaSchedule } from "@/lib/baraonda/generateSchedule";
 import { guardAdmin } from "@/lib/adminGuard";
@@ -15,8 +14,6 @@ type ParticipantRow = {
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const denied = await guardAdmin(req);
 if (denied) return denied;
-  const ok = await isAdminAuthed();
-  if (!ok) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const sb = supabaseAdmin();
   const { id } = await ctx.params;

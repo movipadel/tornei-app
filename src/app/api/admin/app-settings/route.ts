@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { isAdminAuthed } from "@/lib/adminAuth";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { guardAdmin } from "@/lib/adminGuard";
 
@@ -10,8 +9,6 @@ export async function GET(req: Request) {
   const denied = await guardAdmin(req);
   if (denied) return denied;
 
-  const ok = await isAdminAuthed();
-  if (!ok) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const sb = supabaseAdmin();
   const { data, error } = await sb
@@ -36,9 +33,7 @@ export async function GET(req: Request) {
 
 export async function PUT(req: Request) {
   const denied = await guardAdmin(req);
-if (denied) return denied;
-  const ok = await isAdminAuthed();
-  if (!ok) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (denied) return denied;
 
   const body = await req.json().catch(() => ({}));
 

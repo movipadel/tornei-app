@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { isAdminAuthed } from "@/lib/adminAuth";
 import { guardAdmin } from "@/lib/adminGuard";
 
 export const runtime = "nodejs";
@@ -48,8 +47,7 @@ async function getNextMainPosition(sb: ReturnType<typeof supabaseAdmin>, tournam
 export async function PATCH(req: Request, ctx: { params: Promise<{ regId: string }> }) {
   const denied = await guardAdmin(req);
 if (denied) return denied;
-  const ok = await isAdminAuthed();
-  if (!ok) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
 
   const { regId } = await ctx.params;
   const sb = supabaseAdmin();
@@ -119,8 +117,7 @@ if (denied) return denied;
 export async function DELETE(req: Request, ctx: { params: Promise<{ regId: string }> }) {
   const denied = await guardAdmin(req);
 if (denied) return denied;
-  const ok = await isAdminAuthed();
-  if (!ok) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
 
   const { regId } = await ctx.params;
   const sb = supabaseAdmin();

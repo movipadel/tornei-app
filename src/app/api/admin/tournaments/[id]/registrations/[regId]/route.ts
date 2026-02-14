@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { isAdminAuthed } from "@/lib/adminAuth";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { guardAdmin } from "@/lib/adminGuard";
 
@@ -35,8 +34,6 @@ async function compactPositions(
 export async function PATCH(req: Request, ctx: { params: Promise<{ regId: string }> }) {
   const denied = await guardAdmin(req);
 if (denied) return denied;
-  const ok = await isAdminAuthed();
-  if (!ok) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { regId } = await ctx.params;
   const body = await req.json();
@@ -89,8 +86,6 @@ if (denied) return denied;
 export async function DELETE(req: Request, ctx: { params: Promise<{ regId: string }> }) {
   const denied = await guardAdmin(req);
 if (denied) return denied;
-  const ok = await isAdminAuthed();
-  if (!ok) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { regId } = await ctx.params;
   const sb = supabaseAdmin();

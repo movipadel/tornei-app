@@ -1,6 +1,5 @@
 // src/app/api/admin/tournaments/[id]/run/bracket/route.ts
 import { NextResponse } from "next/server";
-import { isAdminAuthed } from "@/lib/adminAuth";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { guardAdmin } from "@/lib/adminGuard";
 
@@ -107,9 +106,6 @@ function sortSeeds(a: any, b: any) {
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const denied = await guardAdmin(req);
   if (denied) return denied;
-
-  const ok = await isAdminAuthed();
-  if (!ok) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id: tournamentId } = await ctx.params;
   if (!tournamentId) return NextResponse.json({ error: "Missing tournamentId" }, { status: 400 });

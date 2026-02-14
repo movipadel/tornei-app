@@ -1,6 +1,5 @@
 // src/app/api/admin/tournaments/[id]/fixed/run/match/[matchId]/route.ts
 import { NextResponse } from "next/server";
-import { isAdminAuthed } from "@/lib/adminAuth";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { guardAdmin } from "@/lib/adminGuard";
 
@@ -347,9 +346,6 @@ export async function PATCH(
 ) {
   const denied = await guardAdmin(req);
   if (denied) return denied;
-
-  const ok = await isAdminAuthed();
-  if (!ok) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id: tournamentId, matchId } = await ctx.params;
   if (!tournamentId) return NextResponse.json({ error: "Missing tournamentId" }, { status: 400 });

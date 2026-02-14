@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { isAdminAuthed } from "@/lib/adminAuth";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { generateBaraondaSchedule } from "@/lib/baraonda/generateSchedule";
 import { guardAdmin } from "@/lib/adminGuard";
@@ -112,8 +111,6 @@ async function ensureScheduleForRun(sb: ReturnType<typeof supabaseAdmin>, runId:
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const denied = await guardAdmin(req);
 if (denied) return denied;
-  const ok = await isAdminAuthed();
-  if (!ok) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id: tournamentId } = await ctx.params;
   if (!tournamentId) return NextResponse.json({ error: "Missing tournamentId" }, { status: 400 });

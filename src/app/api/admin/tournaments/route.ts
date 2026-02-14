@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { isAdminAuthed } from "@/lib/adminAuth";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { guardAdmin } from "@/lib/adminGuard";
 
@@ -68,8 +67,7 @@ function parseMaxParticipants(body: any): number {
 export async function GET(req: Request) {
   const denied = await guardAdmin(req);
   if (denied) return denied;
-  const ok = await isAdminAuthed();
-  if (!ok) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
 
   const sb = supabaseAdmin();
 
@@ -122,8 +120,6 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const denied = await guardAdmin(req);
 if (denied) return denied;
-  const ok = await isAdminAuthed();
-  if (!ok) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json().catch(() => ({}));
 
