@@ -191,50 +191,45 @@ if (denied) return denied;
     if (main.length < 4) return NextResponse.json({ error: "Minimo 4 partecipanti in lista principale" }, { status: 400 });
     if (main.length > 10) return NextResponse.json({ error: "Baraonda supportata da 4 a 10 partecipanti" }, { status: 400 });
 
-    const players = main.length;
-    const matchesPerTurn = players >= 8 ? 2 : 1;
+   const players = main.length;
+const matchesPerTurn = players >= 8 ? 2 : 1;
 
-    // ✅ categoria normalizzata (DB)
-    const category = mapCategory(tr.category);
+// ✅ categoria normalizzata (DB)
+const category = mapCategory(tr.category);
 
-    // ✅ turni preset (poi eventualmente clamp per misto)
-    let turns = computeTurns(players);
+// ✅ turni preset
+let turns = computeTurns(players);
 
-    // ✅ Regola EQUITÀ: 10 player + 2 campi => 10 turni (8 match a testa)
-    if (players === 10 && matchesPerTurn === 2) {
-       turns = 10;
-     }
+// ✅ Regola EQUITÀ (solo NON misto): 10 player + 2 campi => 10 turni (8 match a testa)
+if (category !== "misto" && players === 10 && matchesPerTurn === 2) {
+  turns = 10;
+}
 
-    // ✅ REGOLA MISTO: M/F uguali + clamp turni per coppie M-F uniche
-    if (category === "misto") {
-      const males = main.filter((r) => r.p1_gender === "M").length;
-      const females = main.filter((r) => r.p1_gender === "F").length;
+// ✅ REGOLA MISTO: M/F uguali (coverage partner gestita dal generator, non qui)
+if (category === "misto") {
+  const males = main.filter((r) => r.p1_gender === "M").length;
+  const females = main.filter((r) => r.p1_gender === "F").length;
 
-      if (males !== females) {
-        return NextResponse.json(
-          { error: `Baraonda misto richiede stesso numero di uomini e donne (M=${males}, F=${females})` },
-          { status: 400 }
-        );
-      }
+  if (males !== females) {
+    return NextResponse.json(
+      { error: `Baraonda misto richiede stesso numero di uomini e donne (M=${males}, F=${females})` },
+      { status: 400 }
+    );
+  }
 
-      // ogni match usa 2 coppie M-F (team1 e team2)
-      const pairsPerTurn = matchesPerTurn * 2;
-      const maxUniquePairs = males * females;
-      const maxTurns = Math.floor(maxUniquePairs / pairsPerTurn);
+  // ✅ PRESET MISTO 10 (5M+5F): coverage partner + equità
+  if (players === 10 && matchesPerTurn === 2) {
+    turns = 8; // 7 turni pieni + 1 turno mezzo = 15 match
+  }
+}
 
-      if (maxTurns < 1) {
-        return NextResponse.json(
-          { error: "Impossibile generare misto con questi parametri (turni massimi < 1)." },
-          { status: 400 }
-        );
-      }
+// ricalcola matchesPerPlayer
+let matchesPerPlayer = (matchesPerTurn * 4 * turns) / players;
 
-      // 🔥 qui evitiamo l'errore che hai visto: riduciamo i turni al massimo possibile
-      turns = Math.min(turns, maxTurns);
-    }
-
-    // ricalcola matchesPerPlayer DOPO il clamp
-    const matchesPerPlayer = (matchesPerTurn * 4 * turns) / players;
+// ✅ override matchesPerPlayer per misto 10 (perché l'ultimo turno è mezzo)
+if (category === "misto" && players === 10 && matchesPerTurn === 2) {
+  matchesPerPlayer = 6;
+}
 
     // 4) crea run
     const rules = {

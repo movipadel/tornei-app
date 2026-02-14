@@ -542,105 +542,130 @@ export default function RunClient({
                           gap: 10,
                         }}
                       >
-                        <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
-                          <div style={{ fontWeight: 800, color: "#334155" }}>Match {m.match_number}</div>
-                          <div className="base44-chip" style={{ padding: "2px 10px" }}>
-                            {(m.team1_games ?? "-")} - {(m.team2_games ?? "-")}
-                          </div>
-                        </div>
-
+                    
                         <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: 10, alignItems: "center" }}>
-                          <div style={{ fontWeight: 700, color: "#0f172a" }}>{(m.team1 ?? []).join(" + ")}</div>
-                          <div style={{ color: "#94a3b8", fontWeight: 900, textAlign: "center" }}>VS</div>
-                          <div style={{ fontWeight: 700, color: "#0f172a", textAlign: "right" }}>{(m.team2 ?? []).join(" + ")}</div>
-                        </div>
+  {/* TEAM 1 */}
+  <div style={{ fontWeight: 800, color: "#0f172a", lineHeight: 1.15 }}>
+    <div>{(m.team1 ?? [])[0] ?? ""}</div>
+    <div>{(m.team1 ?? [])[1] ?? ""}</div>
+  </div>
 
-                        {/* ✅ QUI: tolto "Score:" */}
-                        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                          <input
-                            value={d.a}
-                            onChange={(e) => {
-                              const v = sanitizeScore(e.target.value);
-                              setDraftOne((p) => ({ ...p, [m.id]: { ...(p[m.id] ?? d), a: v } }));
-                            }}
-                            inputMode="numeric"
-                            placeholder=""
-                            style={{ width: 70, padding: "10px 12px", borderRadius: 12, border: "1px solid #e2e8f0", outline: "none" }}
-                          />
+  <div style={{ color: "#94a3b8", fontWeight: 900, textAlign: "center" }}>VS</div>
 
-                          <div style={{ fontWeight: 900, color: "#94a3b8" }}>-</div>
+  {/* TEAM 2 */}
+  <div style={{ fontWeight: 800, color: "#0f172a", textAlign: "right", lineHeight: 1.15 }}>
+    <div>{(m.team2 ?? [])[0] ?? ""}</div>
+    <div>{(m.team2 ?? [])[1] ?? ""}</div>
+  </div>
+</div>
 
-                          <input
-                            value={d.b}
-                            onChange={(e) => {
-                              const v = sanitizeScore(e.target.value);
-                              setDraftOne((p) => ({ ...p, [m.id]: { ...(p[m.id] ?? d), b: v } }));
-                            }}
-                            inputMode="numeric"
-                            placeholder=""
-                            style={{ width: 70, padding: "10px 12px", borderRadius: 12, border: "1px solid #e2e8f0", outline: "none" }}
-                          />
 
-                          <button
-                            className="base44-primary-btn"
-                            disabled={isSaving}
-                            style={{ padding: "10px 14px", borderRadius: 999, opacity: isSaving ? 0.7 : 1 }}
-                            onClick={() => {
-                              const t1 = d.a.trim() === "" ? null : Number(d.a);
-                              const t2 = d.b.trim() === "" ? null : Number(d.b);
-                              if (t1 != null && Number.isNaN(t1)) return toast.error("Score non valido");
-                              if (t2 != null && Number.isNaN(t2)) return toast.error("Score non valido");
+                        {/* Score (centrato) */}
+<div style={{ display: "flex", justifyContent: "center", gap: 10, alignItems: "center" }}>
+  <input
+    value={d.a}
+    onChange={(e) => {
+      const v = sanitizeScore(e.target.value);
+      setDraftOne((p) => ({ ...p, [m.id]: { ...(p[m.id] ?? d), a: v } }));
+    }}
+    inputMode="numeric"
+    placeholder=""
+    style={{
+      width: 78,
+      padding: "10px 12px",
+      borderRadius: 12,
+      border: "1px solid #e2e8f0",
+      outline: "none",
+      textAlign: "center",
+      fontWeight: 800,
+    }}
+  />
 
-                              patchAnyMatch(
-                                m.id,
-                                m.patch_url,
-                                { team1_games: t1, team2_games: t2 },
-                                (prev) => {
-                                  const next = structuredClone(prev) as RunApiOk;
-                                  for (const tt of next.turns ?? []) {
-                                    for (const mm of tt.matches ?? []) {
-                                      if (mm.id === m.id) {
-                                        mm.team1_games = t1;
-                                        mm.team2_games = t2;
-                                      }
-                                    }
-                                  }
-                                  return next;
-                                }
-                              );
-                            }}
-                          >
-                            {isSaving ? "Salvataggio..." : "Salva"}
-                          </button>
+  <div style={{ fontWeight: 900, color: "#94a3b8" }}>-</div>
 
-                          <button
-                            className="base44-csv-btn"
-                            disabled={isSaving}
-                            style={{ padding: "10px 14px", borderRadius: 999 }}
-                            onClick={() => {
-                              setDraftOne((p) => ({ ...p, [m.id]: { a: "", b: "" } }));
-                              patchAnyMatch(
-                                m.id,
-                                m.patch_url,
-                                { team1_games: null, team2_games: null },
-                                (prev) => {
-                                  const next = structuredClone(prev) as RunApiOk;
-                                  for (const tt of next.turns ?? []) {
-                                    for (const mm of tt.matches ?? []) {
-                                      if (mm.id === m.id) {
-                                        mm.team1_games = null;
-                                        mm.team2_games = null;
-                                      }
-                                    }
-                                  }
-                                  return next;
-                                }
-                              );
-                            }}
-                          >
-                            Azzera
-                          </button>
-                        </div>
+  <input
+    value={d.b}
+    onChange={(e) => {
+      const v = sanitizeScore(e.target.value);
+      setDraftOne((p) => ({ ...p, [m.id]: { ...(p[m.id] ?? d), b: v } }));
+    }}
+    inputMode="numeric"
+    placeholder=""
+    style={{
+      width: 78,
+      padding: "10px 12px",
+      borderRadius: 12,
+      border: "1px solid #e2e8f0",
+      outline: "none",
+      textAlign: "center",
+      fontWeight: 800,
+    }}
+  />
+</div>
+
+{/* Bottoni (sotto, centrati) */}
+<div style={{ display: "flex", justifyContent: "center", gap: 10, flexWrap: "wrap" }}>
+  <button
+    className="base44-primary-btn"
+    disabled={isSaving}
+    style={{ padding: "10px 18px", borderRadius: 999, opacity: isSaving ? 0.7 : 1 }}
+    onClick={() => {
+      const t1 = d.a.trim() === "" ? null : Number(d.a);
+      const t2 = d.b.trim() === "" ? null : Number(d.b);
+      if (t1 != null && Number.isNaN(t1)) return toast.error("Score non valido");
+      if (t2 != null && Number.isNaN(t2)) return toast.error("Score non valido");
+
+      patchAnyMatch(
+        m.id,
+        m.patch_url,
+        { team1_games: t1, team2_games: t2 },
+        (prev) => {
+          const next = structuredClone(prev) as RunApiOk;
+          for (const tt of next.turns ?? []) {
+            for (const mm of tt.matches ?? []) {
+              if (mm.id === m.id) {
+                mm.team1_games = t1;
+                mm.team2_games = t2;
+              }
+            }
+          }
+          return next;
+        }
+      );
+    }}
+  >
+    {isSaving ? "Salvataggio..." : "Salva"}
+  </button>
+
+  <button
+    className="base44-csv-btn"
+    disabled={isSaving}
+    style={{ padding: "10px 18px", borderRadius: 999 }}
+    onClick={() => {
+      setDraftOne((p) => ({ ...p, [m.id]: { a: "", b: "" } }));
+      patchAnyMatch(
+        m.id,
+        m.patch_url,
+        { team1_games: null, team2_games: null },
+        (prev) => {
+          const next = structuredClone(prev) as RunApiOk;
+          for (const tt of next.turns ?? []) {
+            for (const mm of tt.matches ?? []) {
+              if (mm.id === m.id) {
+                mm.team1_games = null;
+                mm.team2_games = null;
+              }
+            }
+          }
+          return next;
+        }
+      );
+    }}
+  >
+    Azzera
+  </button>
+</div>
+
                       </div>
                     );
                   })}
