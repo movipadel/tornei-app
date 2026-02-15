@@ -10,10 +10,17 @@ type RegRow = {
   p2_gender: "M" | "F" | null;
 };
 
+function todayRomeISODate() {
+  // "en-CA" => YYYY-MM-DD
+  return new Date().toLocaleDateString("en-CA", { timeZone: "Europe/Rome" });
+}
+
 export async function GET(_req: Request) {
   const sb = supabaseAdmin();
 
-  // 1) Lista tornei
+  const todayRome = todayRomeISODate();
+
+  // 1) Lista tornei (solo oggi+futuro)
   const { data: tournaments, error: tErr } = await sb
     .from("tournaments")
     .select(
@@ -33,15 +40,17 @@ export async function GET(_req: Request) {
       updated_at
     `
     )
+    .gte("date", todayRome)
     .order("date", { ascending: true })
     .order("time", { ascending: true });
 
   if (tErr) return NextResponse.json({ error: tErr.message }, { status: 500 });
 
+  // ... resto invariato
   const list = (tournaments ?? []) as any[];
   const ids = list.map((t) => String(t.id));
 
-  // 2) hasLive (run running/finished)
+  // 2) hasLive ...
   const hasLiveByTournamentId = new Map<string, boolean>();
   if (ids.length) {
     const { data: runs, error: rErr } = await sb
@@ -57,16 +66,9 @@ export async function GET(_req: Request) {
     }
   }
 
-  // 3) Iscrizioni: 1 query sola per tutti i tornei → aggrego in JS
-  const countsByTournamentId = new Map<
-    string,
-    { main: number; reserve: number; male: number; female: number }
-  >();
-
-  // init a 0
-  for (const tid of ids) {
-    countsByTournamentId.set(tid, { main: 0, reserve: 0, male: 0, female: 0 });
-  }
+  // 3) regs...
+  const countsByTournamentId = new Map<string, { main: number; reserve: number; male: number; female: number }>();
+  for (const tid of ids) countsByTournamentId.set(tid, { main: 0, reserve: 0, male: 0, female: 0 });
 
   if (ids.length) {
     const { data: regs, error: regErr } = await sb
@@ -81,28 +83,22 @@ export async function GET(_req: Request) {
       const c = countsByTournamentId.get(tid);
       if (!c) continue;
 
-      if (row.is_reserve) {
-        c.reserve += 1;
-      } else {
+      if (row.is_reserve) c.reserve += 1;
+      else {
         c.main += 1;
-
         const g1 = row.p1_gender;
         const g2 = row.p2_gender;
-
         if (g1 === "M") c.male += 1;
         else if (g1 === "F") c.female += 1;
-
         if (g2 === "M") c.male += 1;
         else if (g2 === "F") c.female += 1;
       }
     }
   }
 
-  // 4) Output: HOME si aspetta { data: [...] }
   const out = list.map((t) => {
     const tid = String(t.id);
     const c = countsByTournamentId.get(tid) ?? { main: 0, reserve: 0, male: 0, female: 0 };
-
     return {
       ...t,
       hasLive: hasLiveByTournamentId.get(tid) ?? false,

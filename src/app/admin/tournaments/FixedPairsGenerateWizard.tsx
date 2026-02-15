@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
@@ -87,7 +87,8 @@ function StepChip({ active, label }: { active: boolean; label: string }) {
       className="base44-chip"
       style={{
         borderRadius: 999,
-        padding: "6px 10px",
+        padding: "4px 8px",
+        fontSize: 12,
         background: active ? "#eef2ff" : "#fff",
         borderColor: active ? "#c7d2fe" : "#e2e8f0",
         color: active ? "#4338ca" : "#334155",
@@ -98,6 +99,83 @@ function StepChip({ active, label }: { active: boolean; label: string }) {
     >
       {label}
     </span>
+  );
+}
+
+/**
+ * Base44Stepper
+ * - evita input manuale (mobile) -> niente bug "sempre stesso valore"
+ * - casella valore ridotta (~2/3 rispetto a input normale)
+ * - stesso stile base44 (usa base44-input + base44-icon-btn)
+ */
+function Base44Stepper({
+  label,
+  value,
+  min,
+  max,
+  help,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  help?: React.ReactNode;
+  onChange: (v: number) => void;
+}) {
+  const canDec = value > min;
+  const canInc = value < max;
+
+  return (
+    <div style={{ display: "grid", gap: 6 }}>
+      <div style={{ fontWeight: 700, marginBottom: 2 }}>{label}</div>
+
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <button
+          type="button"
+          className="base44-icon-btn"
+          onClick={() => canDec && onChange(value - 1)}
+          disabled={!canDec}
+          aria-label="Diminuisci"
+          style={{ opacity: canDec ? 1 : 0.5 }}
+        >
+          –
+        </button>
+
+        {/* Valore centrale: readOnly, no tastiera su mobile */}
+        <input
+          className="base44-input"
+          value={value}
+          readOnly
+          inputMode="none"
+          style={{
+            width: 44, // ✅ ridotta ~2/3
+            padding: "6px 8px",
+            textAlign: "center",
+            fontWeight: 900,
+            fontSize: 14,
+            lineHeight: 1,
+          }}
+        />
+
+        <button
+          type="button"
+          className="base44-icon-btn"
+          onClick={() => canInc && onChange(value + 1)}
+          disabled={!canInc}
+          aria-label="Aumenta"
+          style={{ opacity: canInc ? 1 : 0.5 }}
+        >
+          +
+        </button>
+      </div>
+
+      <div style={{ fontSize: 12, color: "#64748b" }}>
+        Min <b>{min}</b> · Max <b>{max}</b>
+      </div>
+
+      {help ? <div style={{ color: "#64748b", fontSize: 12 }}>{help}</div> : null}
+    </div>
   );
 }
 
@@ -148,14 +226,10 @@ export default function FixedPairsGenerateWizard(props: {
     return s;
   }, [groups]);
 
-  const remainingForGroups = useMemo(
-    () => pairs.filter((p) => !usedPairIdsInGroups.has(p.id)),
-    [pairs, usedPairIdsInGroups]
-  );
+  const remainingForGroups = useMemo(() => pairs.filter((p) => !usedPairIdsInGroups.has(p.id)), [pairs, usedPairIdsInGroups]);
 
-  // ✅ options per seeds: prendiamo da tutte le coppie (il server garantirà che i seed siano inclusi nei partecipanti)
+  // ✅ options per seeds: prendiamo da tutte le coppie
   const seedOptions = useMemo(() => pairs, [pairs]);
-
   const seedSet = useMemo(() => new Set(seedRegistrationIds.filter(Boolean)), [seedRegistrationIds]);
 
   useEffect(() => {
@@ -406,34 +480,133 @@ export default function FixedPairsGenerateWizard(props: {
     [bracketParticipantsCount, pairs.length]
   );
 
+  // -----------------------------
+  // Layout helpers (solo UI)
+  // -----------------------------
+  const cardNoShadow = { boxShadow: "none" as const };
+  const bodyPaddingBottom = 110; // spazio per footer sticky
+
+  function PillPairRow({
+    name,
+    onRemove,
+    disabled,
+  }: {
+    name: string;
+    onRemove: () => void;
+    disabled?: boolean;
+  }) {
+    return (
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          border: "1px solid #e2e8f0",
+          borderRadius: 999,
+          padding: "8px 10px",
+          background: "#fff",
+        }}
+      >
+        <div style={{ flex: 1, fontWeight: 800, color: "#0f172a" }}>{name}</div>
+        <button
+          type="button"
+          className="base44-icon-btn"
+          aria-label="Rimuovi"
+          onClick={onRemove}
+          disabled={!!disabled}
+          style={{
+            width: 34,
+            height: 34,
+            borderRadius: 999,
+            opacity: disabled ? 0.5 : 1,
+          }}
+          title="Rimuovi"
+        >
+          ✕
+        </button>
+      </div>
+    );
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl">
+      <DialogContent
+        className="max-w-4xl"
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          maxHeight: "calc(100vh - 32px)",
+          overflow: "hidden",
+        }}
+      >
         {/* come TournamentDialogForm: nascondiamo la X */}
         <style>{`
           .absolute.right-4.top-4 { display: none !important; }
         `}</style>
 
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-        </DialogHeader>
+        {/* HEADER compatto */}
+<div style={{ display: "grid", gap: 8, paddingBottom: 6 }}>
+  {/* Titolo 1 riga */}
+  <div style={{ display: "flex", alignItems: "baseline", gap: 10, minWidth: 0 }}>
+    <div style={{ fontSize: 18, fontWeight: 900, lineHeight: 1.1, whiteSpace: "nowrap" }}>Genera</div>
 
-        {/* Stepper */}
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 4 }}>
-          <StepChip active={step === 1} label="1) Impostazioni" />
-          <StepChip active={step === 2} label="2) Composizione" />
-          <StepChip active={step === 3} label="3) Calendario" />
-          <StepChip active={step === 4} label="4) Conferma" />
-        </div>
+    <div
+      style={{
+        fontSize: 18,
+        fontWeight: 900,
+        lineHeight: 1.1,
+        color: "#0f172a",
+        whiteSpace: "nowrap",
+        overflow: "hidden",
+        textOverflow: "ellipsis",
+        minWidth: 0,
+        flex: 1,
+      }}
+      title={tournamentName || "Torneo"}
+    >
+      {tournamentName || "Torneo"}
+    </div>
+  </div>
 
-        {/* BODY */}
-        <div style={{ marginTop: 14 }}>
-          {/* STEP 1 */}
+  {/* Stepper 1 riga, mini, read-only */}
+  <div
+    style={{
+      display: "flex",
+      gap: 6,
+      overflowX: "auto",
+      paddingBottom: 4,
+      WebkitOverflowScrolling: "touch",
+    }}
+  >
+    <StepChip active={step === 1} label="1" />
+    <StepChip active={step === 2} label="2" />
+    <StepChip active={step === 3} label="3" />
+    <StepChip active={step === 4} label="4" />
+
+    <div style={{ marginLeft: 6, color: "#64748b", fontSize: 12, fontWeight: 800, whiteSpace: "nowrap" }}>
+      {step === 1 ? "Impostazioni" : step === 2 ? "Composizione" : step === 3 ? "Calendario" : "Conferma"}
+    </div>
+  </div>
+</div>
+
+
+        {/* BODY (scrollabile) */}
+        <div
+          style={{
+            flex: 1,
+            overflow: "auto",
+            marginTop: 14,
+            paddingRight: 6,
+            paddingBottom: bodyPaddingBottom,
+          }}
+        >
+          {/* STEP 1 — mobile-first: sezioni verticali */}
           {step === 1 && (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-              <div className="base44-card" style={{ boxShadow: "none" }}>
+            <div style={{ display: "grid", gap: 14 }}>
+              {/* Formula */}
+              <div className="base44-card" style={cardNoShadow}>
                 <div className="base44-card-inner">
-                  <div style={{ fontWeight: 800, marginBottom: 8 }}>1) Formula torneo</div>
+                  <div style={{ fontWeight: 900, marginBottom: 10 }}>1) Formula torneo</div>
 
                   <div style={{ display: "grid", gap: 10 }}>
                     <label style={{ display: "flex", gap: 10, alignItems: "center" }}>
@@ -454,39 +627,32 @@ export default function FixedPairsGenerateWizard(props: {
 
                   {format === "groups_and_bracket" && (
                     <div style={{ marginTop: 14, display: "grid", gap: 12 }}>
-                      <div>
-                        <div style={{ fontWeight: 700, marginBottom: 6 }}>Quanti gironi?</div>
-                        <input
-                          type="number"
-                          min={1}
-                          max={8}
-                          className="base44-input"
-                          value={groupsCount}
-                          onChange={(e) => setGroupsCount(clamp(Number(e.target.value || 1), 1, 8))}
-                        />
-                      </div>
+                      <Base44Stepper
+                        label="Quanti gironi?"
+                        value={groupsCount}
+                        min={1}
+                        max={8}
+                        onChange={(v) => {
+                          setGroupsCount(v);
+                          setQualifiersCount((q) => clamp(q, 2, pairs.length));
+                        }}
+                      />
 
-                      <div>
-                        <div style={{ fontWeight: 700, marginBottom: 6 }}>Quante coppie qualificate al tabellone finale?</div>
-                        <input
-                          type="number"
-                          min={2}
-                          max={pairs.length}
-                          className="base44-input"
-                          value={qualifiersCount}
-                          onChange={(e) => setQualifiersCount(clamp(Number(e.target.value || 2), 2, pairs.length))}
-                        />
-                        <div style={{ color: "#64748b", fontSize: 12, marginTop: 6 }}>
-                          Il tabellone finale verrà generato automaticamente quando i gironi saranno conclusi.
-                        </div>
-                      </div>
+                      <Base44Stepper
+                        label="Quante coppie qualificate al tabellone finale?"
+                        value={qualifiersCount}
+                        min={2}
+                        max={pairs.length}
+                        help={<>Il tabellone finale verrà generato automaticamente quando i gironi saranno conclusi.</>}
+                        onChange={(v) => setQualifiersCount(v)}
+                      />
                     </div>
                   )}
 
                   {format === "group_only" && (
                     <div style={{ marginTop: 14, display: "grid", gap: 10 }}>
-                      <div style={{ fontWeight: 800 }}>Solo girone</div>
-                      <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                      <div style={{ fontWeight: 900 }}>Solo girone</div>
+                      <div style={{ display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap" }}>
                         <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
                           <input type="radio" name="legs" checked={roundRobinLegs === 1} onChange={() => setRoundRobinLegs(1)} />
                           Solo andata
@@ -501,75 +667,19 @@ export default function FixedPairsGenerateWizard(props: {
 
                   {format === "bracket_only" && (
                     <div style={{ marginTop: 14, display: "grid", gap: 12 }}>
-                      <div>
-                        <div style={{ fontWeight: 700, marginBottom: 6 }}>Quanti partecipanti al tabellone?</div>
-                        <input
-                          type="number"
-                          min={2}
-                          max={pairs.length}
-                          className="base44-input"
-                          value={bracketParticipantsCount}
-                          onChange={(e) => setBracketParticipantsCount(clamp(Number(e.target.value || 2), 2, pairs.length))}
-                        />
-                        <div style={{ color: "#64748b", fontSize: 12, marginTop: 6 }}>
-                          Dimensione tabellone: <b>{bracketSize}</b> (BYE automatici per completare la potenza di 2).
-                        </div>
+                      <Base44Stepper label="Numero partecipanti" value={bracketParticipantsCount} min={2} max={pairs.length} onChange={(v) => setBracketParticipantsCount(v)} />
+                      <div style={{ color: "#64748b", fontSize: 12, marginTop: -4 }}>
+                        Dimensione tabellone: <b>{bracketSize}</b> (BYE automatici per completare la potenza di 2).
                       </div>
-                    </div>
-                  )}
-
-                  {/* ✅ TDS / SEEDS */}
-                  {(format === "bracket_only" || format === "groups_and_bracket") && (
-                    <div style={{ marginTop: 14, display: "grid", gap: 12 }}>
-                      <div style={{ fontWeight: 800 }}>Teste di serie (TDS)</div>
-
-                      <div>
-                        <div style={{ fontWeight: 700, marginBottom: 6 }}>Quante TDS?</div>
-                        <input
-                          type="number"
-                          min={0}
-                          max={pairs.length}
-                          className="base44-input"
-                          value={seedsCount}
-                          onChange={(e) => setSeedsCount(clamp(Number(e.target.value || 0), 0, pairs.length))}
-                        />
-                        <div style={{ color: "#64748b", fontSize: 12, marginTop: 6 }}>
-                          I BYE verranno assegnati automaticamente alle TDS più alte (Seed 1, poi Seed 2, …).
-                        </div>
-                      </div>
-
-                      {seedsCount > 0 && (
-                        <div style={{ display: "grid", gap: 10 }}>
-                          {Array.from({ length: seedsCount }).map((_, i) => {
-                            const current = seedRegistrationIds[i] || "";
-                            return (
-                              <div key={i} style={{ display: "grid", gridTemplateColumns: "120px 1fr", gap: 10, alignItems: "center" }}>
-                                <div style={{ fontWeight: 800 }}>Seed {i + 1}</div>
-
-                                <select className="base44-input" value={current} onChange={(e) => setSeedAt(i, e.target.value)}>
-                                  <option value="">(seleziona coppia)</option>
-                                  {seedOptions.map((p) => {
-                                    const takenByOther = seedSet.has(p.id) && p.id !== current;
-                                    return (
-                                      <option key={p.id} value={p.id} disabled={takenByOther}>
-                                        {p.name}
-                                      </option>
-                                    );
-                                  })}
-                                </select>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
                     </div>
                   )}
                 </div>
               </div>
 
-              <div className="base44-card" style={{ boxShadow: "none" }}>
+              {/* Punteggio */}
+              <div className="base44-card" style={cardNoShadow}>
                 <div className="base44-card-inner">
-                  <div style={{ fontWeight: 800, marginBottom: 8 }}>2) Modalità punteggio</div>
+                  <div style={{ fontWeight: 900, marginBottom: 10 }}>2) Modalità punteggio</div>
 
                   <div style={{ display: "grid", gap: 10 }}>
                     <label style={{ display: "flex", gap: 10, alignItems: "center" }}>
@@ -581,21 +691,72 @@ export default function FixedPairsGenerateWizard(props: {
                       Al meglio dei 3 set
                     </label>
                   </div>
+                </div>
+              </div>
 
-                  <div className="base44-divider" />
+              {/* TDS */}
+              {(format === "bracket_only" || format === "groups_and_bracket") && (
+                <div className="base44-card" style={cardNoShadow}>
+                  <div className="base44-card-inner">
+                    <div style={{ fontWeight: 900, marginBottom: 10 }}>Teste di serie (TDS)</div>
 
-                  <div style={{ fontWeight: 700, marginBottom: 6 }}>Coppie iscritte</div>
-                  <div style={{ color: "#64748b", fontSize: 13 }}>
-                    Totale: <b>{pairs.length}</b>
+                    <Base44Stepper
+                      label="Numero teste di serie"
+                      value={seedsCount}
+                      min={0}
+                      max={pairs.length}
+                      help={<>I BYE verranno assegnati automaticamente alle TDS più alte (Seed 1, poi Seed 2, …).</>}
+                      onChange={(v) => setSeedsCount(v)}
+                    />
+
+                    {seedsCount > 0 && (
+                      <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
+                        {Array.from({ length: seedsCount }).map((_, i) => {
+                          const current = seedRegistrationIds[i] || "";
+                          return (
+                            <div key={i} style={{ display: "grid", gap: 6 }}>
+                              <div style={{ fontWeight: 900 }}>Seed {i + 1}</div>
+                              <select className="base44-input" value={current} onChange={(e) => setSeedAt(i, e.target.value)}>
+                                <option value="">(seleziona coppia)</option>
+                                {seedOptions.map((p) => {
+                                  const takenByOther = seedSet.has(p.id) && p.id !== current;
+                                  return (
+                                    <option key={p.id} value={p.id} disabled={takenByOther}>
+                                      {p.name}
+                                    </option>
+                                  );
+                                })}
+                              </select>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
+                </div>
+              )}
 
-                  <div style={{ marginTop: 10, maxHeight: 160, overflow: "auto", display: "grid", gap: 6 }}>
-                    {pairs.map((p) => (
-                      <span key={p.id} className="base44-chip" style={{ borderColor: "#e2e8f0", background: "#f8fafc" }}>
-                        {p.name}
-                      </span>
-                    ))}
-                  </div>
+              {/* Coppie iscritte (collassabile su mobile) */}
+              <div className="base44-card" style={cardNoShadow}>
+                <div className="base44-card-inner">
+                  <details>
+                    <summary style={{ cursor: "pointer", listStyle: "none" as any }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center" }}>
+                        <div style={{ fontWeight: 900 }}>Coppie iscritte</div>
+                        <div style={{ color: "#64748b", fontSize: 13 }}>
+                          Totale: <b>{pairs.length}</b>
+                        </div>
+                      </div>
+                    </summary>
+
+                    <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
+                      {pairs.map((p) => (
+                        <span key={p.id} className="base44-chip" style={{ borderColor: "#e2e8f0", background: "#f8fafc" }}>
+                          {p.name}
+                        </span>
+                      ))}
+                    </div>
+                  </details>
                 </div>
               </div>
             </div>
@@ -603,11 +764,11 @@ export default function FixedPairsGenerateWizard(props: {
 
           {/* STEP 2 */}
           {step === 2 && (
-            <>
+            <div style={{ display: "grid", gap: 14 }}>
               {format === "group_only" && (
-                <div className="base44-card" style={{ boxShadow: "none" }}>
+                <div className="base44-card" style={cardNoShadow}>
                   <div className="base44-card-inner">
-                    <div style={{ fontWeight: 800 }}>Girone unico creato automaticamente</div>
+                    <div style={{ fontWeight: 900 }}>Girone unico creato automaticamente</div>
                     <div style={{ color: "#64748b", marginTop: 6 }}>
                       Partite generate: <b>{matches.length}</b>
                     </div>
@@ -616,11 +777,74 @@ export default function FixedPairsGenerateWizard(props: {
               )}
 
               {format === "groups_and_bracket" && (
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-                  <div className="base44-card" style={{ boxShadow: "none" }}>
+                <>
+                  {/* Sticky Summary (primario) */}
+                  <div
+                    style={{
+                      position: "sticky",
+                      top: 0,
+                      zIndex: 5,
+                      background: "#fff",
+                      paddingBottom: 10,
+                    }}
+                  >
+                    <div
+                      style={{
+                        border: "1px solid #e2e8f0",
+                        borderRadius: 16,
+                        padding: "10px 12px",
+                        background: "#f8fafc",
+                        display: "flex",
+                        gap: 12,
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        flexWrap: "wrap",
+                      }}
+                    >
+                      <div style={{ fontWeight: 900, color: "#0f172a" }}>Riepilogo</div>
+                      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", color: "#334155", fontSize: 13 }}>
+                        <span>
+                          Assegnate <b>{usedPairIdsInGroups.size}</b>/<b>{pairs.length}</b>
+                        </span>
+                        <span style={{ color: "#64748b" }}>·</span>
+                        <span>
+                          Non assegnate <b>{pairs.length - usedPairIdsInGroups.size}</b>
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Info tabellone (collassabile) */}
+                  <div className="base44-card" style={cardNoShadow}>
                     <div className="base44-card-inner">
-                      <div style={{ fontWeight: 800, marginBottom: 8 }}>Composizione gironi (manuale)</div>
-                      <div style={{ color: "#64748b", fontSize: 13, marginBottom: 10 }}>
+                      <details>
+                        <summary style={{ cursor: "pointer", listStyle: "none" as any }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center" }}>
+                            <div style={{ fontWeight: 900 }}>Tabellone finale</div>
+                            <div style={{ color: "#64748b", fontSize: 13 }}>Info</div>
+                          </div>
+                        </summary>
+                        <div style={{ color: "#64748b", fontSize: 13, marginTop: 10 }}>
+                          Verrà generato automaticamente a fine gironi (prime, poi seconde, ecc.).
+                        </div>
+
+                        {seedsCount > 0 && (
+                          <div style={{ marginTop: 12, padding: 12, borderRadius: 16, border: "1px solid #e2e8f0", background: "#fff" }}>
+                            <div style={{ fontWeight: 900 }}>TDS selezionate</div>
+                            <div style={{ color: "#64748b", fontSize: 13, marginTop: 6 }}>
+                              Seed 1..{seedsCount} salvati nel payload.
+                            </div>
+                          </div>
+                        )}
+                      </details>
+                    </div>
+                  </div>
+
+                  {/* Gironi */}
+                  <div className="base44-card" style={cardNoShadow}>
+                    <div className="base44-card-inner">
+                      <div style={{ fontWeight: 900, marginBottom: 8 }}>Composizione gironi (manuale)</div>
+                      <div style={{ color: "#64748b", fontSize: 13, marginBottom: 12 }}>
                         Aggiungi coppie dai menu: una coppia assegnata sparisce dalle opzioni disponibili.
                       </div>
 
@@ -628,24 +852,54 @@ export default function FixedPairsGenerateWizard(props: {
                         {groups.map((g) => (
                           <div
                             key={g.id}
-                            style={{ border: "1px solid #e2e8f0", borderRadius: 16, padding: 12, background: g.closed ? "#f8fafc" : "#fff" }}
+                            style={{
+                              border: "1px solid #e2e8f0",
+                              borderRadius: 16,
+                              padding: 12,
+                              background: g.closed ? "#f8fafc" : "#fff",
+                            }}
                           >
-                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-                              <div style={{ fontWeight: 800 }}>{g.name}</div>
+                            {/* Header pulito */}
+                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                                <div style={{ fontWeight: 900 }}>{g.name}</div>
+                                {g.closed && (
+                                  <span
+                                    className="base44-chip"
+                                    style={{
+                                      borderColor: "#e2e8f0",
+                                      background: "#eef2ff",
+                                      color: "#4338ca",
+                                      fontWeight: 900,
+                                    }}
+                                  >
+                                    CHIUSO
+                                  </span>
+                                )}
+                              </div>
+
                               {g.closed ? (
                                 <button className="base44-csv-btn" onClick={() => reopenGroup(g.id)}>
                                   Riapri
                                 </button>
                               ) : (
-                                <button className="base44-primary-btn" onClick={() => closeGroup(g.id)} style={{ borderRadius: 999, padding: "8px 12px" }}>
-                                  Chiudi girone
+                                <button className="base44-csv-btn" onClick={() => closeGroup(g.id)} style={{ fontWeight: 900 }}>
+                                  Chiudi
                                 </button>
                               )}
                             </div>
 
+                            {/* Add + remaining */}
                             <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
                               {!g.closed && (
-                                <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                                <div style={{ display: "grid", gap: 8 }}>
+                                  <div style={{ display: "flex", gap: 10, alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" }}>
+                                    <div style={{ fontWeight: 800, color: "#334155" }}>Aggiungi coppia</div>
+                                    <div style={{ color: "#64748b", fontSize: 12 }}>
+                                      Rimaste: <b>{remainingForGroups.length}</b>
+                                    </div>
+                                  </div>
+
                                   <select
                                     className="base44-input"
                                     defaultValue=""
@@ -656,36 +910,28 @@ export default function FixedPairsGenerateWizard(props: {
                                       e.currentTarget.value = "";
                                     }}
                                   >
-                                    <option value="">+ Aggiungi coppia…</option>
+                                    <option value="">+ Seleziona…</option>
                                     {remainingForGroups.map((p) => (
                                       <option key={p.id} value={p.id}>
                                         {p.name}
                                       </option>
                                     ))}
                                   </select>
-
-                                  <div style={{ color: "#64748b", fontSize: 12, whiteSpace: "nowrap" }}>
-                                    Rimaste: <b>{remainingForGroups.length}</b>
-                                  </div>
                                 </div>
                               )}
 
+                              {/* Lista coppie */}
                               {g.pairIds.length === 0 ? (
                                 <div style={{ color: "#64748b" }}>Nessuna coppia inserita</div>
                               ) : (
                                 <div style={{ display: "grid", gap: 8 }}>
                                   {g.pairIds.map((pid) => (
-                                    <div key={pid} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-                                      <span className="base44-chip" style={{ borderColor: "#e2e8f0", background: "#fff" }}>
-                                        {pairsById.get(pid)?.name ?? pid}
-                                      </span>
-
-                                      {!g.closed && (
-                                        <button className="base44-csv-btn" style={{ color: "#dc2626" }} onClick={() => removePairFromGroup(g.id, pid)}>
-                                          Rimuovi
-                                        </button>
-                                      )}
-                                    </div>
+                                    <PillPairRow
+                                      key={pid}
+                                      name={pairsById.get(pid)?.name ?? pid}
+                                      disabled={g.closed}
+                                      onRemove={() => !g.closed && removePairFromGroup(g.id, pid)}
+                                    />
                                   ))}
                                 </div>
                               )}
@@ -701,43 +947,13 @@ export default function FixedPairsGenerateWizard(props: {
                       </div>
                     </div>
                   </div>
-
-                  <div className="base44-card" style={{ boxShadow: "none" }}>
-                    <div className="base44-card-inner">
-                      <div style={{ fontWeight: 800, marginBottom: 8 }}>Riepilogo</div>
-                      <div style={{ display: "grid", gap: 10, color: "#334155" }}>
-                        <div>
-                          Coppie assegnate: <b>{usedPairIdsInGroups.size}</b> / {pairs.length}
-                        </div>
-                        <div>
-                          Non assegnate: <b>{pairs.length - usedPairIdsInGroups.size}</b>
-                        </div>
-
-                        <div style={{ marginTop: 6, padding: 12, borderRadius: 16, border: "1px solid #e2e8f0", background: "#f8fafc" }}>
-                          <div style={{ fontWeight: 800 }}>Tabellone finale</div>
-                          <div style={{ color: "#64748b", fontSize: 13, marginTop: 6 }}>
-                            Verrà generato automaticamente a fine gironi (prime, poi seconde, ecc.).
-                          </div>
-                        </div>
-
-                        {seedsCount > 0 && (
-                          <div style={{ marginTop: 6, padding: 12, borderRadius: 16, border: "1px solid #e2e8f0", background: "#f8fafc" }}>
-                            <div style={{ fontWeight: 800 }}>TDS selezionate</div>
-                            <div style={{ color: "#64748b", fontSize: 13, marginTop: 6 }}>
-                              Seed 1..{seedsCount} salvati nel payload (integrazione completa lato server nel prossimo step).
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                </>
               )}
 
               {format === "bracket_only" && (
-                <div className="base44-card" style={{ boxShadow: "none" }}>
+                <div className="base44-card" style={cardNoShadow}>
                   <div className="base44-card-inner">
-                    <div style={{ fontWeight: 800, marginBottom: 8 }}>Tabellone (automatico)</div>
+                    <div style={{ fontWeight: 900, marginBottom: 8 }}>Tabellone (automatico)</div>
 
                     <div style={{ display: "grid", gap: 10, color: "#334155" }}>
                       <div>
@@ -753,7 +969,7 @@ export default function FixedPairsGenerateWizard(props: {
 
                       {seedsCount > 0 && (
                         <div style={{ marginTop: 8, padding: 12, borderRadius: 16, border: "1px solid #e2e8f0", background: "#f8fafc" }}>
-                          <div style={{ fontWeight: 800 }}>TDS + BYE</div>
+                          <div style={{ fontWeight: 900 }}>TDS + BYE</div>
                           <div style={{ color: "#64748b", fontSize: 13, marginTop: 6 }}>
                             BYE automatici alle TDS più alte (Seed 1, poi Seed 2, …).
                           </div>
@@ -763,37 +979,91 @@ export default function FixedPairsGenerateWizard(props: {
                   </div>
                 </div>
               )}
-            </>
+            </div>
           )}
 
           {/* STEP 3 */}
           {step === 3 && (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 14 }}>
-              <div className="base44-card" style={{ boxShadow: "none" }}>
-                <div className="base44-card-inner">
-                  <div style={{ fontWeight: 800, marginBottom: 8 }}>Calendario di gara</div>
+            <div style={{ display: "grid", gap: 14 }}>
+              {/* Sticky bar: Campi */}
+              <div
+                style={{
+                  position: "sticky",
+                  top: 0,
+                  zIndex: 5,
+                  background: "#fff",
+                  paddingBottom: 10,
+                }}
+              >
+                <div
+                  style={{
+                    border: "1px solid #e2e8f0",
+                    borderRadius: 16,
+                    padding: "10px 12px",
+                    background: "#f8fafc",
+                    display: "flex",
+                    gap: 12,
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <div style={{ fontWeight: 900, color: "#0f172a" }}>Calendario</div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    {/* Stepper compatto: riuso Base44Stepper ma senza help/extra testo */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <div style={{ fontWeight: 800, color: "#334155" }}>Campi</div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <button
+                          type="button"
+                          className="base44-icon-btn"
+                          onClick={() => courtsCount > 1 && setCourtsCount(courtsCount - 1)}
+                          disabled={courtsCount <= 1}
+                          aria-label="Diminuisci campi"
+                          style={{ opacity: courtsCount > 1 ? 1 : 0.5 }}
+                        >
+                          –
+                        </button>
 
-                  <div>
-                    <div style={{ fontWeight: 700, marginBottom: 6 }}>Numero campi</div>
-                    <input
-                      type="number"
-                      min={1}
-                      max={16}
-                      className="base44-input"
-                      value={courtsCount}
-                      onChange={(e) => setCourtsCount(clamp(Number(e.target.value || 1), 1, 16))}
-                    />
-                  </div>
+                        <input
+                          className="base44-input"
+                          value={courtsCount}
+                          readOnly
+                          inputMode="none"
+                          style={{
+                            width: 44,
+                            padding: "6px 8px",
+                            textAlign: "center",
+                            fontWeight: 900,
+                            fontSize: 14,
+                            lineHeight: 1,
+                          }}
+                        />
 
-                  <div style={{ marginTop: 12, color: "#64748b", fontSize: 13 }}>
-                    Inserisci <b>campo</b> e <b>orario</b> per ogni partita (visibile anche lato user).
+                        <button
+                          type="button"
+                          className="base44-icon-btn"
+                          onClick={() => courtsCount < 16 && setCourtsCount(courtsCount + 1)}
+                          disabled={courtsCount >= 16}
+                          aria-label="Aumenta campi"
+                          style={{ opacity: courtsCount < 16 ? 1 : 0.5 }}
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
                   </div>
+                </div>
+
+                <div style={{ color: "#64748b", fontSize: 12, marginTop: 8, paddingLeft: 2 }}>
+                  Inserisci <b>campo</b> e <b>orario</b> per ogni partita (visibile anche lato user).
                 </div>
               </div>
 
-              <div className="base44-card" style={{ boxShadow: "none" }}>
+              {/* Partite */}
+              <div className="base44-card" style={cardNoShadow}>
                 <div className="base44-card-inner">
-                  <div style={{ fontWeight: 800, marginBottom: 8 }}>Partite</div>
+                  <div style={{ fontWeight: 900, marginBottom: 8 }}>Partite</div>
 
                   {format === "bracket_only" ? (
                     <div style={{ color: "#64748b" }}>
@@ -803,25 +1073,56 @@ export default function FixedPairsGenerateWizard(props: {
                   ) : matches.length === 0 ? (
                     <div style={{ color: "#64748b" }}>Nessuna partita generata.</div>
                   ) : (
-                    <div style={{ display: "grid", gap: 14, maxHeight: 420, overflow: "auto", paddingRight: 6 }}>
+                    <div style={{ display: "grid", gap: 14 }}>
                       {groupedMatches.map((g) => (
-                        <div key={g.groupId} style={{ border: "1px solid #e2e8f0", borderRadius: 16, padding: 12, background: "#fff" }}>
-                          <div style={{ fontWeight: 900, marginBottom: 10 }}>{g.name}</div>
+                        <details
+                          key={g.groupId}
+                          open
+                          style={{
+                            border: "1px solid #e2e8f0",
+                            borderRadius: 16,
+                            padding: 12,
+                            background: "#fff",
+                          }}
+                        >
+                          <summary style={{ cursor: "pointer", listStyle: "none" as any }}>
+                            <div style={{ fontWeight: 900 }}>{g.name}</div>
+                          </summary>
 
-                          <div style={{ display: "grid", gap: 10 }}>
+                          <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
                             {g.matches.map((m) => {
                               const home = pairsById.get(m.homePairId)?.name ?? m.homePairId;
                               const away = pairsById.get(m.awayPairId)?.name ?? m.awayPairId;
 
                               return (
-                                <div key={m.id} style={{ border: "1px solid #e2e8f0", borderRadius: 16, padding: 12, background: "#f8fafc" }}>
-                                  <div style={{ fontWeight: 800, marginBottom: 10 }}>
-                                    {home} <span style={{ color: "#64748b" }}>vs</span> {away}
+                                <div
+                                  key={m.id}
+                                  style={{
+                                    border: "1px solid #e2e8f0",
+                                    borderRadius: 16,
+                                    padding: 12,
+                                    background: "#f8fafc",
+                                  }}
+                                >
+                                  {/* Match title (vertical, più leggibile) */}
+                                  <div style={{ fontWeight: 900, lineHeight: 1.2 }}>
+                                    {home}
+                                  </div>
+                                  <div style={{ color: "#64748b", fontWeight: 800, margin: "2px 0" }}>vs</div>
+                                  <div style={{ fontWeight: 900, lineHeight: 1.2 }}>
+                                    {away}
                                   </div>
 
-                                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                                  {/* Controls: stack su mobile */}
+                                  <div
+                                    className="grid grid-cols-1 md:grid-cols-2"
+                                    style={{
+                                      gap: 12,
+                                      marginTop: 12,
+                                    }}
+                                  >
                                     <div>
-                                      <div style={{ fontWeight: 700, marginBottom: 6 }}>Campo</div>
+                                      <div style={{ fontWeight: 800, marginBottom: 6 }}>Campo</div>
                                       <select
                                         className="base44-input"
                                         value={m.court ?? ""}
@@ -840,7 +1141,7 @@ export default function FixedPairsGenerateWizard(props: {
                                     </div>
 
                                     <div>
-                                      <div style={{ fontWeight: 700, marginBottom: 6 }}>Orario</div>
+                                      <div style={{ fontWeight: 800, marginBottom: 6 }}>Orario</div>
                                       <input
                                         type="time"
                                         className="base44-input"
@@ -856,7 +1157,7 @@ export default function FixedPairsGenerateWizard(props: {
                               );
                             })}
                           </div>
-                        </div>
+                        </details>
                       ))}
                     </div>
                   )}
@@ -865,18 +1166,16 @@ export default function FixedPairsGenerateWizard(props: {
             </div>
           )}
 
-          {/* STEP 4 */}
+          {/* STEP 4 (quasi invariato) */}
           {step === 4 && (
-            <div className="base44-card" style={{ boxShadow: "none" }}>
+            <div className="base44-card" style={cardNoShadow}>
               <div className="base44-card-inner">
                 <div style={{ fontWeight: 900, marginBottom: 10 }}>Conferma generazione</div>
 
                 <div style={{ display: "grid", gap: 10, color: "#334155" }}>
                   <div>
                     Formula:{" "}
-                    <b>
-                      {format === "groups_and_bracket" ? "Gironi + tabellone" : format === "bracket_only" ? "Solo tabellone" : "Solo girone"}
-                    </b>
+                    <b>{format === "groups_and_bracket" ? "Gironi + tabellone" : format === "bracket_only" ? "Solo tabellone" : "Solo girone"}</b>
                   </div>
                   <div>
                     Punteggio: <b>{scoring === "one_set" ? "1 set" : "Best of 3"}</b>
@@ -942,14 +1241,54 @@ export default function FixedPairsGenerateWizard(props: {
           )}
         </div>
 
-        {/* Footer controls */}
-        <div style={{ display: "flex", gap: 10, justifyContent: "space-between", marginTop: 6 }}>
-          <button type="button" className="base44-csv-btn" onClick={goBack} disabled={step === 1 || saving}>
-            Indietro
-          </button>
+        {/* Footer controls — sticky (sempre visibile) */}
+        <div
+          style={{
+            position: "sticky",
+            bottom: 0,
+            background: "#fff",
+            marginTop: 10,
+            paddingTop: 10,
+            paddingBottom: 10,
+            borderTop: "1px solid #e2e8f0",
+            display: "flex",
+            gap: 10,
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          {/* SINISTRA: step 1 = Chiudi, altri step = Indietro */}
+          {step === 1 ? (
+            <button
+              type="button"
+              className="base44-csv-btn"
+              disabled={saving}
+              onClick={() => onOpenChange(false)}
+              style={{ borderRadius: 999, padding: "10px 14px" }}
+            >
+              Chiudi
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="base44-csv-btn"
+              disabled={saving}
+              onClick={goBack}
+              style={{ borderRadius: 999, padding: "10px 14px" }}
+            >
+              Indietro
+            </button>
+          )}
 
+          {/* DESTRA: Avanti solo fino allo step 3 */}
           {step < 4 ? (
-            <button type="button" className="base44-primary-btn" onClick={goNext} disabled={saving} style={{ opacity: saving ? 0.75 : 1 }}>
+            <button
+              type="button"
+              className="base44-primary-btn"
+              disabled={saving}
+              onClick={goNext}
+              style={{ borderRadius: 999, padding: "10px 14px", opacity: saving ? 0.75 : 1 }}
+            >
               Avanti
             </button>
           ) : (

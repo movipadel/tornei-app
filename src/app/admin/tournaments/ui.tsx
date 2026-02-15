@@ -633,13 +633,79 @@ export default function AdminTournamentsUI() {
     </button>
 
     <AlertDialog>
-      <AlertDialogTrigger asChild>
-        <button className="base44-icon-btn" title="Elimina" style={{ color: "#dc2626" }}>
-          <Trash2 className="w-4 h-4" />
+  <AlertDialogTrigger asChild>
+    <button
+      type="button"
+      className="base44-icon-btn"
+      title="Elimina"
+      style={{ color: "#dc2626" }}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <Trash2 className="w-4 h-4" />
+    </button>
+  </AlertDialogTrigger>
+
+  <AlertDialogContent
+    onClick={(e) => e.stopPropagation()}
+    style={{
+      borderRadius: 18,
+      padding: 20,
+    }}
+  >
+    <AlertDialogHeader>
+      <AlertDialogTitle style={{ fontWeight: 900, fontSize: 18 }}>
+        Eliminare il torneo?
+      </AlertDialogTitle>
+
+      <AlertDialogDescription style={{ marginTop: 6 }}>
+        Stai per eliminare <b>{t.name}</b>.
+        <br />
+        Questa azione non può essere annullata.
+      </AlertDialogDescription>
+    </AlertDialogHeader>
+
+    <AlertDialogFooter
+      style={{
+        marginTop: 18,
+        display: "flex",
+        gap: 10,
+        justifyContent: "flex-end",
+      }}
+    >
+      <AlertDialogCancel asChild>
+        <button
+          className="base44-csv-btn"
+          style={{
+            padding: "10px 16px",
+            borderRadius: 999,
+          }}
+        >
+          Annulla
         </button>
-      </AlertDialogTrigger>
-      {/* dialog resta invariato */}
-    </AlertDialog>
+      </AlertDialogCancel>
+
+      <AlertDialogAction asChild>
+        <button
+          className="base44-primary-btn"
+          style={{
+            padding: "10px 16px",
+            borderRadius: 999,
+            background: "#dc2626",
+          }}
+          onClick={(e) => {
+            e.stopPropagation();
+            deleteTournament(tid, String(t.name ?? "Torneo"));
+          }}
+        >
+          Elimina torneo
+        </button>
+      </AlertDialogAction>
+    </AlertDialogFooter>
+  </AlertDialogContent>
+</AlertDialog>
+
+
+
 
     <CollapsibleTrigger asChild>
       <button className="base44-csv-btn">
@@ -679,14 +745,82 @@ export default function AdminTournamentsUI() {
       <Pencil className="w-5 h-5" />
     </button>
 
-    <AlertDialog>
-      <AlertDialogTrigger asChild>
-        <button className="base44-icon-btn" title="Elimina" style={{ color: "#dc2626" }}>
-          <Trash2 className="w-5 h-5" />
+   <AlertDialog>
+  <AlertDialogTrigger asChild>
+    <button
+      type="button"
+      className="base44-icon-btn"
+      title="Elimina"
+      style={{ color: "#dc2626" }}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <Trash2 className="w-5 h-5" />
+    </button>
+  </AlertDialogTrigger>
+
+  <AlertDialogContent
+    onClick={(e) => e.stopPropagation()}
+    style={{
+      borderRadius: 18,
+      padding: 20,
+    }}
+  >
+    <AlertDialogHeader>
+      <AlertDialogTitle style={{ fontWeight: 900, fontSize: 18 }}>
+        Eliminare il torneo?
+      </AlertDialogTitle>
+
+      <AlertDialogDescription style={{ marginTop: 6 }}>
+        Stai per eliminare <b>{t.name}</b>.
+        <br />
+        Questa azione non può essere annullata.
+      </AlertDialogDescription>
+    </AlertDialogHeader>
+
+    <AlertDialogFooter
+      style={{
+        marginTop: 18,
+        display: "flex",
+        flexDirection: "column",
+        gap: 10,
+      }}
+    >
+      <AlertDialogCancel asChild>
+        <button
+          className="base44-csv-btn"
+          style={{
+            padding: "12px 16px",
+            borderRadius: 999,
+            width: "100%",
+          }}
+        >
+          Annulla
         </button>
-      </AlertDialogTrigger>
-      {/* dialog resta invariato */}
-    </AlertDialog>
+      </AlertDialogCancel>
+
+      <AlertDialogAction asChild>
+        <button
+          className="base44-primary-btn"
+          style={{
+            padding: "12px 16px",
+            borderRadius: 999,
+            background: "#dc2626",
+            width: "100%",
+          }}
+          onClick={(e) => {
+            e.stopPropagation();
+            deleteTournament(tid, String(t.name ?? "Torneo"));
+          }}
+        >
+          Elimina torneo
+        </button>
+      </AlertDialogAction>
+    </AlertDialogFooter>
+  </AlertDialogContent>
+</AlertDialog>
+
+
+
 
     <CollapsibleTrigger asChild>
       <button className="base44-icon-btn" title="Iscrizioni">
