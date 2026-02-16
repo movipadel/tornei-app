@@ -307,21 +307,26 @@ async function autoAdvanceBracket(
   let slotToFill: "home_pair_id" | "away_pair_id" = preferred;
 
   if (holes.length > 0) {
-    const h = holes[curIdx];
-    if (!h) return;
-    target = h.target;
-    slotToFill = h.slot;
-  } else {
-    // bracket classico potenza di 2
-    const targetIdx = Math.floor(curIdx / 2);
-    target = next.ms[targetIdx] ?? null;
-    if (!target) return;
+  const h =
+    holes[curIdx] ??
+    holes.find((x) => x.slot === preferred) ??
+    holes[0];
 
-    // se c'è già una TDS da un lato e l'altro è vuoto, non sovrascrivo
-    if (target.home_pair_id && !target.away_pair_id) slotToFill = "away_pair_id";
-    else if (!target.home_pair_id && target.away_pair_id) slotToFill = "home_pair_id";
-    else slotToFill = preferred;
-  }
+  if (!h) return;
+  target = h.target;
+  slotToFill = h.slot;
+} else {
+  // bracket classico potenza di 2
+  const targetIdx = Math.floor(curIdx / 2);
+  target = next.ms[targetIdx] ?? null;
+  if (!target) return;
+
+  // se c'è già una TDS da un lato e l'altro è vuoto, non sovrascrivo
+  if (target.home_pair_id && !target.away_pair_id) slotToFill = "away_pair_id";
+  else if (!target.home_pair_id && target.away_pair_id) slotToFill = "home_pair_id";
+  else slotToFill = preferred;
+}
+
 
   // se è già dentro, non fare nulla
   if (target.home_pair_id === winnerPairId || target.away_pair_id === winnerPairId) return;

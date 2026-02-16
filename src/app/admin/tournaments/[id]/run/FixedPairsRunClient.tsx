@@ -161,6 +161,38 @@ function sanitizeScore(v: string) {
   return onlyDigits.slice(0, 2);
 }
 
+function formatDisplayName(full: string | null | undefined): string {
+  const s = String(full ?? "").trim();
+  if (!s) return "";
+
+  const parts = s.split(/\s+/);
+  if (parts.length <= 1) return s; // solo nome -> completo
+
+  const particles = new Set([
+    "de", "del", "della", "dello", "dei", "degli",
+    "di", "da", "dal", "dai",
+    "la", "le", "lo", "li",
+    "van", "von", "der", "den", "ten", "ter",
+  ]);
+
+  const first = parts[0];
+  let last = parts[parts.length - 1];
+
+  // ✅ cognome composto: se penultima parola è una particella, includila
+  if (parts.length >= 3) {
+    const prev = parts[parts.length - 2].toLowerCase();
+    if (particles.has(prev)) {
+      last = `${parts[parts.length - 2]} ${last}`;
+    }
+  }
+
+  // ✅ gestisce D’Angelo / D'Angelo: iniziale "D."
+  const initial = first.charAt(0);
+
+  return `${initial}. ${last}`;
+}
+
+
 function fmtTimeOnly(v?: string | null) {
   if (!v) return "-";
   const d = new Date(v);
@@ -247,11 +279,40 @@ export default function FixedPairsRunClient({
 
   const scoring = (data.rules?.scoring ?? "best_of_3") as "one_set" | "best_of_3";
 
+  const pairsNameById = useMemo(() => {
+  const m = new Map<string, string>();
+  for (const g of data.groups ?? []) {
+    for (const p of g.pairs ?? []) {
+      m.set(String(p.id), String(p.name));
+    }
+  }
+  return m;
+}, [data.groups]);
+
   // ✅ normalizza match (supporta legacy e nuovo)
   const matches: UiMatch[] = useMemo(() => {
-    const raw = (data.matches_fp ?? []) as ApiMatchFpMaybeLegacy[];
-    return raw.map(ensureHomeAway);
-  }, [data.matches_fp]);
+  const raw = (data.matches_fp ?? []) as ApiMatchFpMaybeLegacy[];
+  return raw.map((r) => {
+    const m = ensureHomeAway(r);
+
+    // ✅ FIX: se il server non manda *_name (legacy), lo recupero da data.groups
+    const homeId = String(m.home?.id ?? "");
+    const awayId = String(m.away?.id ?? "");
+
+    const homeName = String(m.home?.name ?? "-");
+    const awayName = String(m.away?.name ?? "-");
+
+    const resolvedHome = homeName === "-" || homeName.trim() === "" ? pairsNameById.get(homeId) : homeName;
+    const resolvedAway = awayName === "-" || awayName.trim() === "" ? pairsNameById.get(awayId) : awayName;
+
+    return {
+      ...m,
+      home: { ...m.home, name: resolvedHome ?? homeName },
+      away: { ...m.away, name: resolvedAway ?? awayName },
+    };
+  });
+}, [data.matches_fp, pairsNameById]);
+
 
   const hasAnyMatch = matches.length > 0;
 
@@ -400,6 +461,8 @@ async function generateBracket() {
   async function patchMatch(matchId: string, patchUrl: string, body: any) {
     setSavingByMatch((p) => ({ ...p, [matchId]: true }));
     try {
+      console.log("PATCH URL:", patchUrl, "BODY:", body);
+
       const res = await fetch(patchUrl, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -523,9 +586,15 @@ requestAnimationFrame(() => {
           justifyItems: "center",
         }}
       >
-        <div style={{ fontWeight: 900, color: "#0f172a" }}>{m.home?.name ?? "-"}</div>
-        <div style={{ color: "#94a3b8", fontWeight: 900 }}>VS</div>
-        <div style={{ fontWeight: 900, color: "#0f172a" }}>{m.away?.name ?? "-"}</div>
+        <div style={{ fontWeight: 900, color: "#0f172a" }} title={m.home?.name ?? ""}>
+  {formatDisplayName(m.home?.name)}
+</div>
+
+<div style={{ color: "#94a3b8", fontWeight: 900 }}>VS</div>
+
+<div style={{ fontWeight: 900, color: "#0f172a" }} title={m.away?.name ?? ""}>
+  {formatDisplayName(m.away?.name)}
+</div>
       </div>
 
       {/* SCORE */}
@@ -685,10 +754,17 @@ requestAnimationFrame(() => {
   );
 }
 
-
-
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+  <div
+    style={{
+      display: "flex",
+      flexDirection: "column",
+      gap: 14,
+      height: "calc(100dvh - 16px)", // ✅ viewport dinamico (iOS/Android)
+      overflow: "hidden",            // ✅ niente scroll della pagina
+    }}
+  >
+
       {/* Header */}
       <div className="base44-card">
         <div
@@ -745,6 +821,9 @@ requestAnimationFrame(() => {
           </div>
         </div>
       </div>
+
+      {/* ✅ WRAPPER SCROLLABILE */}
+  <div style={{ flex: 1, overflow: "auto", WebkitOverflowScrolling: "touch", paddingBottom: 12 }}>
 
       {!hasAnyMatch && (
         <div className="base44-card">
@@ -911,6 +990,7 @@ requestAnimationFrame(() => {
         ))}
       </div>
     </div>
+
   );
 })}
 
@@ -918,6 +998,7 @@ requestAnimationFrame(() => {
           )}
         </div>
       </div>
+      </div> {/* ✅ chiusura WRAPPER SCROLLABILE */}
     </div>
   );
 }

@@ -41,6 +41,38 @@ function sanitizeScore(v: string) {
   return onlyDigits.slice(0, 2);
 }
 
+function formatDisplayName(full: string | null | undefined): string {
+  const s = String(full ?? "").trim();
+  if (!s) return "";
+
+  const parts = s.split(/\s+/);
+  if (parts.length <= 1) return s; // solo nome -> completo
+
+  const particles = new Set([
+    "de", "del", "della", "dello", "dei", "degli",
+    "di", "da", "dal", "dai",
+    "la", "le", "lo", "li",
+    "van", "von", "der", "den", "ten", "ter",
+  ]);
+
+  const first = parts[0];
+  let last = parts[parts.length - 1];
+
+  // ✅ cognome composto: se penultima parola è una particella, includila
+  if (parts.length >= 3) {
+    const prev = parts[parts.length - 2].toLowerCase();
+    if (particles.has(prev)) {
+      last = `${parts[parts.length - 2]} ${last}`;
+    }
+  }
+
+  // ✅ gestisce D’Angelo / D'Angelo: iniziale "D."
+  const initial = first.charAt(0);
+
+  return `${initial}. ${last}`;
+}
+
+
 function round1(n: number) {
   return Math.round(n * 10) / 10;
 }
@@ -545,17 +577,17 @@ export default function RunClient({
                     
                         <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: 10, alignItems: "center" }}>
   {/* TEAM 1 */}
-  <div style={{ fontWeight: 800, color: "#0f172a", lineHeight: 1.15 }}>
-    <div>{(m.team1 ?? [])[0] ?? ""}</div>
-    <div>{(m.team1 ?? [])[1] ?? ""}</div>
+  <div style={{ fontWeight: 800, color: "#0f172a", lineHeight: 1.15, minWidth: 0 }}>
+  <div title={(m.team1 ?? [])[0] ?? ""}>{formatDisplayName((m.team1 ?? [])[0])}</div>
+  <div title={(m.team1 ?? [])[1] ?? ""}>{formatDisplayName((m.team1 ?? [])[1])}</div>
   </div>
 
   <div style={{ color: "#94a3b8", fontWeight: 900, textAlign: "center" }}>VS</div>
 
   {/* TEAM 2 */}
-  <div style={{ fontWeight: 800, color: "#0f172a", textAlign: "right", lineHeight: 1.15 }}>
-    <div>{(m.team2 ?? [])[0] ?? ""}</div>
-    <div>{(m.team2 ?? [])[1] ?? ""}</div>
+  <div style={{ fontWeight: 800, color: "#0f172a", textAlign: "right", lineHeight: 1.15, minWidth: 0 }}>
+  <div title={(m.team2 ?? [])[0] ?? ""}>{formatDisplayName((m.team2 ?? [])[0])}</div>
+  <div title={(m.team2 ?? [])[1] ?? ""}>{formatDisplayName((m.team2 ?? [])[1])}</div>
   </div>
 </div>
 
