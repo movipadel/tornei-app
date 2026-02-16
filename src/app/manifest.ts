@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "MoviTorneoFacile",
-    short_name: "MoviTorneo",
+    name: "MoviPadel Tornei",
+    short_name: "Tornei Movi",
     description: "Iscriviti ai tornei MoviTorneoFacile",
     start_url: "/",
     display: "standalone",

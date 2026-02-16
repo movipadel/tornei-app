@@ -15,6 +15,8 @@ export const metadata: Metadata = {
   applicationName: "MoviTorneoFacile",
 
   themeColor: "#4f46e5",
+  manifest: "/manifest.webmanifest",
+
 
   appleWebApp: {
     capable: true,
@@ -29,6 +31,10 @@ export const metadata: Metadata = {
     ],
     apple: [{ url: "/apple-touch-icon.png", sizes: "180x180" }],
   },
+};
+
+export const viewport = {
+  themeColor: "#4f46e5",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
