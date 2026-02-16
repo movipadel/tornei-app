@@ -3,12 +3,7 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export type TournamentDTO = {
   id: string;
@@ -94,8 +89,7 @@ export default function TournamentDialogForm({
       if (!form.name.trim()) throw new Error("Nome torneo obbligatorio");
       if (!form.date) throw new Error("Data obbligatoria");
       if (!form.time) throw new Error("Ora obbligatoria");
-      if (!form.max_participants || form.max_participants < 1)
-        throw new Error("Max partecipanti non valido");
+      if (!form.max_participants || form.max_participants < 1) throw new Error("Max partecipanti non valido");
 
       const payload = {
         name: form.name.trim(),
@@ -109,9 +103,7 @@ export default function TournamentDialogForm({
       };
 
       const isEdit = Boolean(tournament?.id);
-      const url = isEdit
-        ? `/api/admin/tournaments/${tournament!.id}`
-        : `/api/admin/tournaments`;
+      const url = isEdit ? `/api/admin/tournaments/${tournament!.id}` : `/api/admin/tournaments`;
       const method = isEdit ? "PATCH" : "POST";
 
       const res = await fetch(url, {
@@ -121,7 +113,7 @@ export default function TournamentDialogForm({
       });
 
       const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json.error || "Errore salvataggio");
+      if (!res.ok) throw new Error((json as any).error || "Errore salvataggio");
 
       toast.success(isEdit ? "Torneo aggiornato" : "Torneo creato");
       await onSaved();
@@ -135,7 +127,14 @@ export default function TournamentDialogForm({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent>
+      <DialogContent
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          maxHeight: "85dvh",
+          overflow: "hidden",
+        }}
+      >
         {/* Nascondiamo la X (close button) → usiamo solo "Annulla" */}
         <style>{`
           .absolute.right-4.top-4 {
@@ -144,9 +143,7 @@ export default function TournamentDialogForm({
         `}</style>
 
         <DialogHeader>
-          <DialogTitle>
-            {tournament ? "Modifica Torneo" : "Nuovo Torneo"}
-          </DialogTitle>
+          <DialogTitle>{tournament ? "Modifica Torneo" : "Nuovo Torneo"}</DialogTitle>
         </DialogHeader>
 
         <form
@@ -156,154 +153,145 @@ export default function TournamentDialogForm({
             flexDirection: "column",
             gap: 14,
             marginTop: 8,
+            flex: 1,
+            minHeight: 0,
           }}
         >
-          <div>
-            <div style={{ fontWeight: 700, marginBottom: 6 }}>Nome torneo</div>
-            <input
-              className="base44-input"
-              value={form.name}
-              onChange={(e) =>
-                setForm({ ...form, name: e.target.value })
-              }
-              placeholder="Es: Torneo Primavera"
-              required
-            />
-          </div>
-
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          {/* ✅ CONTENUTO SCROLLABILE */}
+          <div style={{ flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch", paddingRight: 2 }}>
             <div>
-              <div style={{ fontWeight: 700, marginBottom: 6 }}>Tipo</div>
+              <div style={{ fontWeight: 700, marginBottom: 6 }}>Nome torneo</div>
+              <input
+                className="base44-input"
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                placeholder="Es: Torneo Primavera"
+                required
+              />
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div>
+                <div style={{ fontWeight: 700, marginBottom: 6 }}>Tipo</div>
+                <select
+                  className="base44-input"
+                  value={form.type}
+                  onChange={(e) => setForm({ ...form, type: e.target.value as any })}
+                >
+                  <option value="Baraonda">Baraonda</option>
+                  <option value="Coppie fisse">Amatoriale Coppie fisse</option>
+                </select>
+              </div>
+
+              <div>
+                <div style={{ fontWeight: 700, marginBottom: 6 }}>Categoria</div>
+                <select
+                  className="base44-input"
+                  value={form.category}
+                  onChange={(e) => setForm({ ...form, category: e.target.value as any })}
+                >
+                  <option value="Maschile">Maschile</option>
+                  <option value="Femminile">Femminile</option>
+                  <option value="Misto">Misto</option>
+                  <option value="Libero">Libero</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <div style={{ fontWeight: 700, marginBottom: 6 }}>Livello</div>
               <select
                 className="base44-input"
-                value={form.type}
-                onChange={(e) =>
-                  setForm({ ...form, type: e.target.value as any })
-                }
+                value={form.level}
+                onChange={(e) => setForm({ ...form, level: e.target.value as any })}
               >
-                <option value="Baraonda">Baraonda</option>
-                <option value="Coppie fisse">Amatoriale Coppie fisse</option>
+                <option value="principiante">Principiante</option>
+                <option value="intermedio">Intermedio</option>
+                <option value="avanzato">Avanzato</option>
+              </select>
+            </div>
+
+            {/* 🔥 FIX DEFINITIVO DATA / ORA */}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr",
+                gap: 12,
+              }}
+            >
+              <div>
+                <div style={{ fontWeight: 700, marginBottom: 6 }}>Data</div>
+                <input
+                  type="date"
+                  className="base44-input"
+                  value={form.date}
+                  onChange={(e) => setForm({ ...form, date: e.target.value })}
+                  required
+                  style={{ minWidth: 0 }}
+                />
+              </div>
+
+              <div>
+                <div style={{ fontWeight: 700, marginBottom: 6 }}>Ora</div>
+                <input
+                  type="time"
+                  className="base44-input"
+                  value={form.time}
+                  onChange={(e) => setForm({ ...form, time: e.target.value })}
+                  required
+                  style={{ minWidth: 0 }}
+                />
+              </div>
+            </div>
+
+            <div>
+              <div style={{ fontWeight: 700, marginBottom: 6 }}>Luogo</div>
+              <select
+                className="base44-input"
+                value={form.location}
+                onChange={(e) => setForm({ ...form, location: e.target.value })}
+              >
+                {LOCATIONS.map((l) => (
+                  <option key={l} value={l}>
+                    {l}
+                  </option>
+                ))}
               </select>
             </div>
 
             <div>
-              <div style={{ fontWeight: 700, marginBottom: 6 }}>Categoria</div>
-              <select
-                className="base44-input"
-                value={form.category}
-                onChange={(e) =>
-                  setForm({ ...form, category: e.target.value as any })
-                }
-              >
-                <option value="Maschile">Maschile</option>
-                <option value="Femminile">Femminile</option>
-                <option value="Misto">Misto</option>
-                <option value="Libero">Libero</option>
-              </select>
-            </div>
-          </div>
-
-          <div>
-            <div style={{ fontWeight: 700, marginBottom: 6 }}>Livello</div>
-            <select
-              className="base44-input"
-              value={form.level}
-              onChange={(e) =>
-                setForm({ ...form, level: e.target.value as any })
-              }
-            >
-              <option value="principiante">Principiante</option>
-              <option value="intermedio">Intermedio</option>
-              <option value="avanzato">Avanzato</option>
-            </select>
-          </div>
-
-          {/* 🔥 FIX DEFINITIVO DATA / ORA */}
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr",
-              gap: 12,
-            }}
-          >
-            <div>
-              <div style={{ fontWeight: 700, marginBottom: 6 }}>Data</div>
+              <div style={{ fontWeight: 700, marginBottom: 6 }}>Max partecipanti</div>
               <input
-                type="date"
+                type="number"
+                min={2}
                 className="base44-input"
-                value={form.date}
+                value={form.max_participants}
                 onChange={(e) =>
-                  setForm({ ...form, date: e.target.value })
+                  setForm({
+                    ...form,
+                    max_participants: Number(e.target.value) || 0,
+                  })
                 }
                 required
-                style={{ minWidth: 0 }}
-              />
-            </div>
-
-            <div>
-              <div style={{ fontWeight: 700, marginBottom: 6 }}>Ora</div>
-              <input
-                type="time"
-                className="base44-input"
-                value={form.time}
-                onChange={(e) =>
-                  setForm({ ...form, time: e.target.value })
-                }
-                required
-                style={{ minWidth: 0 }}
               />
             </div>
           </div>
 
-          <div>
-            <div style={{ fontWeight: 700, marginBottom: 6 }}>Luogo</div>
-            <select
-              className="base44-input"
-              value={form.location}
-              onChange={(e) =>
-                setForm({ ...form, location: e.target.value })
-              }
-            >
-              {LOCATIONS.map((l) => (
-                <option key={l} value={l}>
-                  {l}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <div style={{ fontWeight: 700, marginBottom: 6 }}>
-              Max partecipanti
-            </div>
-            <input
-              type="number"
-              min={2}
-              className="base44-input"
-              value={form.max_participants}
-              onChange={(e) =>
-                setForm({
-                  ...form,
-                  max_participants: Number(e.target.value) || 0,
-                })
-              }
-              required
-            />
-          </div>
-
+          {/* ✅ FOOTER SEMPRE VISIBILE */}
           <div
             style={{
               display: "flex",
               gap: 10,
               justifyContent: "flex-end",
               marginTop: 8,
+              position: "sticky",
+              bottom: 0,
+              background: "white",
+              paddingTop: 10,
+              paddingBottom: "env(safe-area-inset-bottom)",
             }}
           >
-            <button
-              type="button"
-              className="base44-csv-btn"
-              onClick={onClose}
-            >
+            <button type="button" className="base44-csv-btn" onClick={onClose}>
               Annulla
             </button>
 
@@ -313,11 +301,7 @@ export default function TournamentDialogForm({
               disabled={saving}
               style={{ opacity: saving ? 0.75 : 1 }}
             >
-              {saving
-                ? "Salvataggio..."
-                : tournament
-                ? "Salva"
-                : "Crea"}
+              {saving ? "Salvataggio..." : tournament ? "Salva" : "Crea"}
             </button>
           </div>
         </form>
