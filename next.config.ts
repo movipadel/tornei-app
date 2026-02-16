@@ -1,7 +1,21 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  async redirects() {
+    return [
+      {
+        source: "/:path*",
+        has: [
+          {
+            type: "host",
+            value: "tornei-app.vercel.app",
+          },
+        ],
+        destination: "https://tornei.movipadel.it/:path*",
+        permanent: true,
+      },
+    ];
+  },
 };
 
 export default nextConfig;
