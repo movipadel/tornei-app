@@ -188,6 +188,7 @@ export default function TournamentDialogForm({
             className="px-5 py-5"
             style={{
               overflowY: "auto",
+              overflowX: "hidden",
               WebkitOverflowScrolling: "touch",
               flex: 1,
               minHeight: 0,
@@ -280,7 +281,7 @@ export default function TournamentDialogForm({
                     value={form.date}
                     onChange={(e) => setForm({ ...form, date: e.target.value })}
                     required
-                    style={{ minWidth: 0, fontSize: 16 }}
+                    style={{ minWidth: 0, width: "100%", fontSize: 16 }}
                   />
                 </div>
 
@@ -292,7 +293,7 @@ export default function TournamentDialogForm({
                     value={form.time}
                     onChange={(e) => setForm({ ...form, time: e.target.value })}
                     required
-                    style={{ minWidth: 0, fontSize: 16 }}
+                    style={{ minWidth: 0, width: "100%", fontSize: 16 }}
                   />
                 </div>
               </div>
