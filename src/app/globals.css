@@ -88,6 +88,10 @@ body {
 *, ::before, ::after {
   border-color: hsl(var(--border));
 }
+/* Layout safety: evita sbordi con padding/width (soprattutto in dialog e grid) */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
 
 a {
   color: inherit;
@@ -767,6 +771,14 @@ body:has([data-radix-portal])::before {
     margin: 0.6rem 0;
   }
 
+  /* ✅ NUOVO — input più compatti su mobile (no zoom iOS) */
+  .base44-input {
+    padding: 10px 12px;
+    border-radius: 12px;
+  }
+}
+
+
   /* tabelle: header/righe molto più strette */
   table th,
   table td {
@@ -793,7 +805,6 @@ body:has([data-radix-portal])::before {
     margin-top: 12px;
     padding-top: 10px;
   }
-}
 
 @media (max-width: 640px) {
   /* Tabelle dentro dialog "Sviluppi" */
@@ -815,3 +826,13 @@ body:has([data-radix-portal])::before {
     padding-right: 6px !important;
   }
 }
+
+/* iOS Safari: evita zoom quando focus su input/select/textarea (serve 16px) */
+@media (max-width: 768px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+

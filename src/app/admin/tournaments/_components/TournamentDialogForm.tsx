@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -62,7 +62,13 @@ export default function TournamentDialogForm({
   const [form, setForm] = useState<FormState>(DEFAULTS);
   const [saving, setSaving] = useState(false);
 
+  const isEdit = !!tournament?.id;
+  const title = isEdit ? "Modifica Torneo" : "Nuovo Torneo";
+
+  // Pre-compila / reset
   useEffect(() => {
+    if (!open) return;
+
     if (tournament) {
       setForm({
         name: tournament.name ?? "",
@@ -78,6 +84,15 @@ export default function TournamentDialogForm({
       setForm(DEFAULTS);
     }
   }, [tournament, open]);
+
+  // Label “Amatoriale Coppie fisse” in UI, valore “Coppie fisse” in payload
+  const typeOptions = useMemo(
+    () => [
+      { value: "Baraonda" as const, label: "Baraonda" },
+      { value: "Coppie fisse" as const, label: "Amatoriale Coppie fisse" },
+    ],
+    []
+  );
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -102,7 +117,6 @@ export default function TournamentDialogForm({
         max_participants: form.max_participants,
       };
 
-      const isEdit = Boolean(tournament?.id);
       const url = isEdit ? `/api/admin/tournaments/${tournament!.id}` : `/api/admin/tournaments`;
       const method = isEdit ? "PATCH" : "POST";
 
@@ -126,183 +140,226 @@ export default function TournamentDialogForm({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        // IMPORTANT: onOpenChange passa true/false.
+        // Noi chiudiamo solo quando diventa false.
+        if (!next) onClose();
+      }}
+    >
       <DialogContent
+        className={[
+          // Mobile: sheet full-height
+          "p-0 w-[100vw] max-w-none h-[100dvh] rounded-none",
+          // Desktop: dialog classico
+          "sm:h-auto sm:max-w-lg sm:rounded-2xl",
+          // Evita scroll esterno e bounce
+          "overflow-hidden",
+        ].join(" ")}
         style={{
           display: "flex",
           flexDirection: "column",
-          maxHeight: "85dvh",
-          overflow: "hidden",
         }}
       >
         {/* Nascondiamo la X (close button) → usiamo solo "Annulla" */}
         <style>{`
-          .absolute.right-4.top-4 {
-            display: none !important;
-          }
+          .absolute.right-4.top-4 { display: none !important; }
         `}</style>
 
-        <DialogHeader>
-          <DialogTitle>{tournament ? "Modifica Torneo" : "Nuovo Torneo"}</DialogTitle>
-        </DialogHeader>
+        {/* Header sticky */}
+        <div className="sticky top-0 z-10 bg-white border-b">
+          <DialogHeader className="px-5 py-4">
+            <DialogTitle className="text-xl font-extrabold">{title}</DialogTitle>
+          </DialogHeader>
+        </div>
 
         <form
           onSubmit={submit}
           style={{
             display: "flex",
             flexDirection: "column",
-            gap: 14,
-            marginTop: 8,
             flex: 1,
             minHeight: 0,
           }}
         >
-          {/* ✅ CONTENUTO SCROLLABILE */}
-          <div style={{ flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch", paddingRight: 2 }}>
-            <div>
-              <div style={{ fontWeight: 700, marginBottom: 6 }}>Nome torneo</div>
-              <input
-                className="base44-input"
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                placeholder="Es: Torneo Primavera"
-                required
-              />
-            </div>
-
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          {/* Body scrollabile */}
+          <div
+            className="px-5 py-5"
+            style={{
+              overflowY: "auto",
+              WebkitOverflowScrolling: "touch",
+              flex: 1,
+              minHeight: 0,
+            }}
+          >
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              {/* Nome */}
               <div>
-                <div style={{ fontWeight: 700, marginBottom: 6 }}>Tipo</div>
-                <select
-                  className="base44-input"
-                  value={form.type}
-                  onChange={(e) => setForm({ ...form, type: e.target.value as any })}
-                >
-                  <option value="Baraonda">Baraonda</option>
-                  <option value="Coppie fisse">Amatoriale Coppie fisse</option>
-                </select>
-              </div>
-
-              <div>
-                <div style={{ fontWeight: 700, marginBottom: 6 }}>Categoria</div>
-                <select
-                  className="base44-input"
-                  value={form.category}
-                  onChange={(e) => setForm({ ...form, category: e.target.value as any })}
-                >
-                  <option value="Maschile">Maschile</option>
-                  <option value="Femminile">Femminile</option>
-                  <option value="Misto">Misto</option>
-                  <option value="Libero">Libero</option>
-                </select>
-              </div>
-            </div>
-
-            <div>
-              <div style={{ fontWeight: 700, marginBottom: 6 }}>Livello</div>
-              <select
-                className="base44-input"
-                value={form.level}
-                onChange={(e) => setForm({ ...form, level: e.target.value as any })}
-              >
-                <option value="principiante">Principiante</option>
-                <option value="intermedio">Intermedio</option>
-                <option value="avanzato">Avanzato</option>
-              </select>
-            </div>
-
-            {/* 🔥 FIX DEFINITIVO DATA / ORA */}
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr",
-                gap: 12,
-              }}
-            >
-              <div>
-                <div style={{ fontWeight: 700, marginBottom: 6 }}>Data</div>
+                <div style={{ fontWeight: 800, marginBottom: 6 }}>Nome torneo</div>
                 <input
-                  type="date"
                   className="base44-input"
-                  value={form.date}
-                  onChange={(e) => setForm({ ...form, date: e.target.value })}
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  placeholder="Es: Torneo Primavera"
                   required
-                  style={{ minWidth: 0 }}
+                  // extra safety anti-zoom (iOS)
+                  style={{ fontSize: 16 }}
                 />
               </div>
 
+              {/* Tipo / Categoria (su mobile meglio stacked, su sm+ 2 colonne) */}
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr",
+                  gap: 12,
+                }}
+                className="sm:grid sm:grid-cols-2"
+              >
+                <div>
+                  <div style={{ fontWeight: 800, marginBottom: 6 }}>Tipo</div>
+                  <select
+                    className="base44-input"
+                    value={form.type}
+                    onChange={(e) => setForm({ ...form, type: e.target.value as any })}
+                    style={{ fontSize: 16 }}
+                  >
+                    {typeOptions.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <div style={{ fontWeight: 800, marginBottom: 6 }}>Categoria</div>
+                  <select
+                    className="base44-input"
+                    value={form.category}
+                    onChange={(e) => setForm({ ...form, category: e.target.value as any })}
+                    style={{ fontSize: 16 }}
+                  >
+                    <option value="Maschile">Maschile</option>
+                    <option value="Femminile">Femminile</option>
+                    <option value="Misto">Misto</option>
+                    <option value="Libero">Libero</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Livello */}
               <div>
-                <div style={{ fontWeight: 700, marginBottom: 6 }}>Ora</div>
-                <input
-                  type="time"
+                <div style={{ fontWeight: 800, marginBottom: 6 }}>Livello</div>
+                <select
                   className="base44-input"
-                  value={form.time}
-                  onChange={(e) => setForm({ ...form, time: e.target.value })}
+                  value={form.level}
+                  onChange={(e) => setForm({ ...form, level: e.target.value as any })}
+                  style={{ fontSize: 16 }}
+                >
+                  <option value="principiante">Principiante</option>
+                  <option value="intermedio">Intermedio</option>
+                  <option value="avanzato">Avanzato</option>
+                </select>
+              </div>
+
+              {/* Data + Ora affiancati (mobile 2 colonne: è comodo e riduce scroll) */}
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)",
+                  gap: 12,
+                }}
+              >
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontWeight: 800, marginBottom: 6 }}>Data</div>
+                  <input
+                    type="date"
+                    className="base44-input"
+                    value={form.date}
+                    onChange={(e) => setForm({ ...form, date: e.target.value })}
+                    required
+                    style={{ minWidth: 0, fontSize: 16 }}
+                  />
+                </div>
+
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontWeight: 800, marginBottom: 6 }}>Ora</div>
+                  <input
+                    type="time"
+                    className="base44-input"
+                    value={form.time}
+                    onChange={(e) => setForm({ ...form, time: e.target.value })}
+                    required
+                    style={{ minWidth: 0, fontSize: 16 }}
+                  />
+                </div>
+              </div>
+
+              {/* Luogo */}
+              <div>
+                <div style={{ fontWeight: 800, marginBottom: 6 }}>Luogo</div>
+                <select
+                  className="base44-input"
+                  value={form.location}
+                  onChange={(e) => setForm({ ...form, location: e.target.value })}
+                  style={{ fontSize: 16 }}
+                >
+                  {LOCATIONS.map((l) => (
+                    <option key={l} value={l}>
+                      {l}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Max partecipanti */}
+              <div>
+                <div style={{ fontWeight: 800, marginBottom: 6 }}>Max partecipanti</div>
+                <input
+                  type="number"
+                  min={2}
+                  className="base44-input"
+                  value={form.max_participants}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      max_participants: Number(e.target.value) || 0,
+                    })
+                  }
                   required
-                  style={{ minWidth: 0 }}
+                  style={{ fontSize: 16 }}
                 />
               </div>
-            </div>
 
-            <div>
-              <div style={{ fontWeight: 700, marginBottom: 6 }}>Luogo</div>
-              <select
-                className="base44-input"
-                value={form.location}
-                onChange={(e) => setForm({ ...form, location: e.target.value })}
-              >
-                {LOCATIONS.map((l) => (
-                  <option key={l} value={l}>
-                    {l}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <div style={{ fontWeight: 700, marginBottom: 6 }}>Max partecipanti</div>
-              <input
-                type="number"
-                min={2}
-                className="base44-input"
-                value={form.max_participants}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    max_participants: Number(e.target.value) || 0,
-                  })
-                }
-                required
-              />
+              {/* Spacer per evitare che l’ultimo campo finisca sotto al footer sticky */}
+              <div style={{ height: 10 }} />
             </div>
           </div>
 
-          {/* ✅ FOOTER SEMPRE VISIBILE */}
+          {/* Footer sticky (app-like) */}
           <div
+            className="sticky bottom-0 z-10 bg-white border-t"
             style={{
-              display: "flex",
-              gap: 10,
-              justifyContent: "flex-end",
-              marginTop: 8,
-              position: "sticky",
-              bottom: 0,
-              background: "white",
-              paddingTop: 10,
-              paddingBottom: "env(safe-area-inset-bottom)",
+              padding: "14px 16px",
+              paddingBottom: "calc(14px + env(safe-area-inset-bottom))",
             }}
           >
-            <button type="button" className="base44-csv-btn" onClick={onClose}>
-              Annulla
-            </button>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button type="button" className="base44-csv-btn" onClick={onClose} style={{ flex: 1 }}>
+                Annulla
+              </button>
 
-            <button
-              className="base44-primary-btn"
-              type="submit"
-              disabled={saving}
-              style={{ opacity: saving ? 0.75 : 1 }}
-            >
-              {saving ? "Salvataggio..." : tournament ? "Salva" : "Crea"}
-            </button>
+              <button
+                className="base44-primary-btn"
+                type="submit"
+                disabled={saving}
+                style={{ flex: 1, opacity: saving ? 0.75 : 1 }}
+              >
+                {saving ? "Salvataggio..." : isEdit ? "Salva" : "Crea"}
+              </button>
+            </div>
           </div>
         </form>
       </DialogContent>

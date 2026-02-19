@@ -37,6 +37,7 @@ import {
 import TournamentDialogForm, { TournamentDTO } from "./_components/TournamentDialogForm";
 import RegistrationForm from "./[id]/registrations/RegistrationForm";
 import FixedPairsGenerateWizard, { FixedPairsPair } from "./FixedPairsGenerateWizard";
+import ResponsiveSheetDialog from "@/components/base44/ResponsiveSheetDialog";
 
 type ApiListResponse = { data: TournamentDTO[] };
 
@@ -1213,98 +1214,111 @@ export default function AdminTournamentsUI() {
       {/* Dialog tornei */}
       <TournamentDialogForm open={open} onClose={() => setOpen(false)} tournament={selected} onSaved={loadList} />
 
-      {/* Dialog personalizzazione */}
-      <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Personalizzazione Home Page</DialogTitle>
-          </DialogHeader>
+      {/* Dialog personalizzazione (mobile sheet + footer sticky) */}
+<ResponsiveSheetDialog
+  open={settingsOpen}
+  onOpenChange={setSettingsOpen}
+  title="Personalizzazione Home Page"
+  footer={
+    <div className="flex gap-3">
+      <button className="base44-csv-btn" style={{ flex: 1 }} onClick={() => setSettingsOpen(false)}>
+        Annulla
+      </button>
+      <button
+        className="base44-primary-btn"
+        style={{ flex: 1, opacity: settingsSaving ? 0.7 : 1 }}
+        onClick={saveSettings}
+        disabled={settingsSaving}
+      >
+        {settingsSaving ? "Salvataggio..." : "Salva"}
+      </button>
+    </div>
+  }
+>
+  {settingsLoading ? (
+    <div style={{ color: "#64748b" }}>Caricamento...</div>
+  ) : (
+    <>
+      <div>
+        <div style={{ fontWeight: 800, marginBottom: 6 }}>Titolo</div>
+        <input
+          value={homeTitle}
+          onChange={(e) => setHomeTitle(e.target.value)}
+          style={{
+            width: "100%",
+            padding: "12px 12px",
+            borderRadius: 12,
+            border: "1px solid #e2e8f0",
+            outline: "none",
+            fontSize: 16, // extra safety (iOS)
+          }}
+        />
+      </div>
 
-          {settingsLoading ? (
-            <div style={{ color: "#64748b" }}>Caricamento...</div>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              <div>
-                <div style={{ fontWeight: 700, marginBottom: 6 }}>Titolo</div>
-                <input
-                  value={homeTitle}
-                  onChange={(e) => setHomeTitle(e.target.value)}
-                  style={{
-                    width: "100%",
-                    padding: "10px 12px",
-                    borderRadius: 10,
-                    border: "1px solid #e2e8f0",
-                    outline: "none",
-                  }}
-                />
-              </div>
+      <div>
+        <div style={{ fontWeight: 800, marginBottom: 6 }}>Sottotitolo</div>
+        <textarea
+          value={homeSubtitle}
+          onChange={(e) => setHomeSubtitle(e.target.value)}
+          rows={4}
+          style={{
+            width: "100%",
+            padding: "12px 12px",
+            borderRadius: 12,
+            border: "1px solid #e2e8f0",
+            outline: "none",
+            resize: "vertical",
+            fontSize: 16, // extra safety (iOS)
+          }}
+        />
+      </div>
 
-              <div>
-                <div style={{ fontWeight: 700, marginBottom: 6 }}>Sottotitolo</div>
-                <textarea
-                  value={homeSubtitle}
-                  onChange={(e) => setHomeSubtitle(e.target.value)}
-                  rows={3}
-                  style={{
-                    width: "100%",
-                    padding: "10px 12px",
-                    borderRadius: 10,
-                    border: "1px solid #e2e8f0",
-                    outline: "none",
-                    resize: "vertical",
-                  }}
-                />
-              </div>
+      <div>
+        <div style={{ fontWeight: 800, marginBottom: 6 }}>Logo (opzionale)</div>
 
-              <div>
-                <div style={{ fontWeight: 700, marginBottom: 6 }}>Logo (opzionale)</div>
+        {homeLogoUrl ? (
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <img
+              src={homeLogoUrl}
+              alt="Logo"
+              style={{
+                width: 64,
+                height: 64,
+                objectFit: "contain",
+                border: "1px solid #e2e8f0",
+                borderRadius: 12,
+              }}
+            />
+            <button
+              className="base44-csv-btn"
+              onClick={() => {
+                setHomeLogoUrl(null);
+                setLogoFile(null);
+              }}
+              style={{ color: "#dc2626" }}
+            >
+              Rimuovi
+            </button>
+          </div>
+        ) : null}
 
-                {homeLogoUrl ? (
-                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                    <img
-                      src={homeLogoUrl}
-                      alt="Logo"
-                      style={{
-                        width: 64,
-                        height: 64,
-                        objectFit: "contain",
-                        border: "1px solid #e2e8f0",
-                        borderRadius: 12,
-                      }}
-                    />
-                    <button
-                      className="base44-csv-btn"
-                      onClick={() => {
-                        setHomeLogoUrl(null);
-                        setLogoFile(null);
-                      }}
-                      style={{ color: "#dc2626" }}
-                    >
-                      Rimuovi
-                    </button>
-                  </div>
-                ) : null}
+        <input
+          type="file"
+          accept="image/*"
+          onChange={(e) => setLogoFile(e.target.files?.[0] ?? null)}
+          style={{ marginTop: 10, fontSize: 16 }}
+        />
 
-                <input type="file" accept="image/*" onChange={(e) => setLogoFile(e.target.files?.[0] ?? null)} style={{ marginTop: 8 }} />
-                {logoFile ? (
-                  <div style={{ color: "#64748b", fontSize: 12, marginTop: 6 }}>
-                    Selezionato: <b>{logoFile.name}</b>
-                  </div>
-                ) : null}
-              </div>
+        {logoFile ? (
+          <div style={{ color: "#64748b", fontSize: 12, marginTop: 6 }}>
+            Selezionato: <b>{logoFile.name}</b>
+          </div>
+        ) : null}
+      </div>
+    </>
+  )}
+</ResponsiveSheetDialog>
 
-              <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 6 }}>
-                <button className="base44-csv-btn" onClick={() => setSettingsOpen(false)}>
-                  Annulla
-                </button>
-                <button className="base44-primary-btn" onClick={saveSettings} disabled={settingsSaving} style={{ opacity: settingsSaving ? 0.7 : 1 }}>
-                  {settingsSaving ? "Salvataggio..." : "Salva"}
-                </button>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
     </>
   );
 }
