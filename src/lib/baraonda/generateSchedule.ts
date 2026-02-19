@@ -789,6 +789,204 @@ function pickBestGroupAndSplit(
   return pick;
 }
 
+// ---------- MISTO (generic) — stable engine for 6..20 ----------
+
+function mistoTargetMatchesPerPlayer(nPlayers: number): number {
+  // nPlayers is total (M+F), must be even and M=F.
+  if (nPlayers === 6) return 4;   // 3+3: coverage totale possibile
+  if (nPlayers === 8) return 4;   // 4+4: coverage totale possibile
+  if (nPlayers === 12) return 6;  // 6+6: coverage totale possibile (ancora "umana")
+  if (nPlayers >= 14 && nPlayers <= 20) return 4; // standard
+  // fallback: keep standard unless you decide otherwise
+  return 4;
+}
+
+function mistoExpectedTurns(nPlayers: number, matchesPerTurn: number, matchesPerPlayer: number): number {
+  const totalSlots = nPlayers * matchesPerPlayer; // each match slot = one player in one match
+  const denom = matchesPerTurn * 4;               // per turn: matchesPerTurn matches, 4 players each
+  if (totalSlots % denom !== 0) {
+    throw new Error(
+      `Regole MISTO non eque: N(${nPlayers}) * matchesPerPlayer(${matchesPerPlayer}) = ${totalSlots} ` +
+      `non divisibile per matchesPerTurn(${matchesPerTurn}) * 4 = ${denom}.`
+    );
+  }
+  return totalSlots / denom;
+}
+
+function generateGenericMistoSchedule(participants: Participant[], rules: BaraondaRules): Turn[] {
+  const { matchesPerTurn } = rules;
+
+  const males = participants.filter((p) => p.sex === "m");
+  const females = participants.filter((p) => p.sex === "f");
+
+  const n = participants.length;
+  if (males.length !== females.length) {
+    throw new Error(`Baraonda misto richiede stesso numero M/F (M=${males.length}, F=${females.length}).`);
+  }
+  if (matchesPerTurn !== 1 && matchesPerTurn !== 2) {
+    throw new Error("Baraonda misto supporta matchesPerTurn = 1 o 2.");
+  }
+
+  // Preset chosen by product rules
+  const targetMpp = mistoTargetMatchesPerPlayer(n);
+
+  // Special case: 10 players uses the deterministic perfect schedule (handled outside)
+  if (n === 10) {
+    throw new Error("MISTO N=10 deve usare il preset deterministico 5M+5F (gestito esternamente).");
+  }
+
+  const turns = mistoExpectedTurns(n, matchesPerTurn, targetMpp);
+
+  // state
+  const played = new Map<string, number>();
+  const teammateCount = new Map<string, Map<string, number>>();
+  const opponentCount = new Map<string, Map<string, number>>();
+
+  for (const p of participants) {
+    played.set(p.id, 0);
+    teammateCount.set(p.id, new Map());
+    opponentCount.set(p.id, new Map());
+  }
+
+  // coverage helpers
+  function maleCoveredAll(m: Participant) {
+    for (const f of females) {
+      const c = getNested(teammateCount, m.id, f.id) + getNested(teammateCount, f.id, m.id);
+      if (c === 0) return false;
+    }
+    return true;
+  }
+  function femaleCoveredAll(f: Participant) {
+    for (const m of males) {
+      const c = getNested(teammateCount, f.id, m.id) + getNested(teammateCount, m.id, f.id);
+      if (c === 0) return false;
+    }
+    return true;
+  }
+
+  // build candidate edges M-F (phase 1 = no repeats, phase 2 = repeats only after full coverage on both sides)
+  function buildEdges(allowRepeatsAfterCoverageOnly: boolean): EdgeMF[] {
+    const edges: EdgeMF[] = [];
+
+    for (const m of males) {
+      if ((played.get(m.id) ?? 0) >= targetMpp) continue;
+      const mFull = maleCoveredAll(m);
+
+      for (const f of females) {
+        if ((played.get(f.id) ?? 0) >= targetMpp) continue;
+
+        const tf = getNested(teammateCount, m.id, f.id) + getNested(teammateCount, f.id, m.id);
+
+        // prefer never-played teammate
+        if (tf === 0) {
+          edges.push({ m, f });
+          continue;
+        }
+
+        // allow repeats only if both completed coverage and we need to reach equity
+        if (!allowRepeatsAfterCoverageOnly) continue;
+        const fFull = femaleCoveredAll(f);
+        if (mFull && fFull) edges.push({ m, f });
+      }
+    }
+
+    // deterministic sorting: who played less first, then prefer non-repeated
+    edges.sort((a, b) => {
+      const am = played.get(a.m.id) ?? 0;
+      const bm = played.get(b.m.id) ?? 0;
+      if (am !== bm) return am - bm;
+
+      const af = played.get(a.f.id) ?? 0;
+      const bf = played.get(b.f.id) ?? 0;
+      if (af !== bf) return af - bf;
+
+      const ar = getNested(teammateCount, a.m.id, a.f.id);
+      const br = getNested(teammateCount, b.m.id, b.f.id);
+      if (ar !== br) return ar - br;
+
+      return (a.m.id + a.f.id).localeCompare(b.m.id + b.f.id);
+    });
+
+    return edges;
+  }
+
+  const turnsResult: Turn[] = [];
+  const needEdges = matchesPerTurn * 2; // 2 edges per match
+
+  function pickEdgesForTurn(): EdgeMF[] {
+    const phase1 = buildEdges(false);
+    const p1 = pickDisjointEdgesK(phase1, needEdges);
+    if (p1) return p1;
+
+    const phase2 = buildEdges(true);
+    const p2 = pickDisjointEdgesK(phase2, needEdges);
+    if (p2) return p2;
+
+    throw new Error("MISTO: impossibile comporre un turno rispettando equità + vincoli.");
+  }
+
+  for (let t = 1; t <= turns; t++) {
+    const picked = pickEdgesForTurn();
+
+    // resting players = everyone not in picked
+    const activePlayers: Participant[] = [];
+    for (const e of picked) activePlayers.push(e.m, e.f);
+    const activeIds = new Set(activePlayers.map((p) => p.id));
+    const resting = participants.filter((p) => !activeIds.has(p.id));
+
+    const matches: Match[] = [];
+    let matchNumber = 1;
+
+    if (needEdges === 2) {
+      const team1: [Participant, Participant] = [picked[0].m, picked[0].f];
+      const team2: [Participant, Participant] = [picked[1].m, picked[1].f];
+
+      // hard guardrail
+      if (!isMixedTeam(team1) || !isMixedTeam(team2)) throw new Error("MISTO guardrail: team non misto.");
+
+      for (const p of [...team1, ...team2]) played.set(p.id, (played.get(p.id) ?? 0) + 1);
+      registerMatchRelations(team1, team2, teammateCount, opponentCount);
+      matches.push({ matchNumber, players: [team1[0], team1[1], team2[0], team2[1]] });
+    } else {
+      const ordered = bestPairingOfFourEdges(picked as [EdgeMF, EdgeMF, EdgeMF, EdgeMF], opponentCount);
+
+      // match 1
+      {
+        const team1: [Participant, Participant] = [ordered[0].m, ordered[0].f];
+        const team2: [Participant, Participant] = [ordered[1].m, ordered[1].f];
+        if (!isMixedTeam(team1) || !isMixedTeam(team2)) throw new Error("MISTO guardrail: team non misto.");
+        for (const p of [...team1, ...team2]) played.set(p.id, (played.get(p.id) ?? 0) + 1);
+        registerMatchRelations(team1, team2, teammateCount, opponentCount);
+        matches.push({ matchNumber, players: [team1[0], team1[1], team2[0], team2[1]] });
+        matchNumber++;
+      }
+
+      // match 2
+      {
+        const team1: [Participant, Participant] = [ordered[2].m, ordered[2].f];
+        const team2: [Participant, Participant] = [ordered[3].m, ordered[3].f];
+        if (!isMixedTeam(team1) || !isMixedTeam(team2)) throw new Error("MISTO guardrail: team non misto.");
+        for (const p of [...team1, ...team2]) played.set(p.id, (played.get(p.id) ?? 0) + 1);
+        registerMatchRelations(team1, team2, teammateCount, opponentCount);
+        matches.push({ matchNumber, players: [team1[0], team1[1], team2[0], team2[1]] });
+      }
+    }
+
+    turnsResult.push({ turnNumber: t, matches, resting });
+  }
+
+  // hard equity check
+  for (const p of participants) {
+    const c = played.get(p.id) ?? 0;
+    if (c !== targetMpp) {
+      throw new Error(`Equità MISTO fallita: ${p.name} ha ${c} match invece di ${targetMpp}.`);
+    }
+  }
+
+  return turnsResult;
+}
+
+
 // ---------- main exported function ----------
 
 export function generateBaraondaSchedule(participants: Participant[], rules: BaraondaRules): Turn[] {
@@ -802,20 +1000,30 @@ export function generateBaraondaSchedule(participants: Participant[], rules: Bar
     if (males !== females) throw new Error(`Baraonda misto richiede stesso numero M/F (M=${males}, F=${females})`);
   }
 
-  // ✅ deterministic MISTO 5+5
-  if (category === "misto" && participants.length === 10 && matchesPerTurn === 2 && turns === 8 && matchesPerPlayer === 6) {
-    return generateDeterministicMisto5x5(participants, rules);
+  // ✅ deterministic MISTO 5+5 (perfect preset)
+if (category === "misto" && participants.length === 10) {
+  // we expect the "perfect" preset (8 turns, last turn has 1 match inside the deterministic generator logic)
+  if (!(matchesPerTurn === 2 && turns === 8 && matchesPerPlayer === 6)) {
+    throw new Error("MISTO N=10: preset richiesto = matchesPerTurn=2, turns=8, matchesPerPlayer=6.");
   }
+  return generateDeterministicMisto5x5(participants, rules);
+}
 
-  // ✅ deterministic NON-MISTO 9 players (0 teammate repeats)
-  if (category !== "misto" && participants.length === 9 && matchesPerTurn === 2 && turns === 9) {
-    return generateDeterministicNonMisto9(participants, rules);
-  }
+// ✅ generic MISTO 6..20 (stable, equity hard, coverage-first)
+if (category === "misto") {
+  return generateGenericMistoSchedule(participants, rules);
+}
 
-  // ✅ deterministic NON-MISTO 10 players (0 teammate repeats)
-  if (category !== "misto" && participants.length === 10 && matchesPerTurn === 2 && turns === 10 && matchesPerPlayer === 8) {
-    return generateDeterministicNonMisto10(participants, rules);
-  }
+// ✅ deterministic NON-MISTO 9 players (0 teammate repeats)
+if (participants.length === 9 && matchesPerTurn === 2 && turns === 9) {
+  return generateDeterministicNonMisto9(participants, rules);
+}
+
+// ✅ deterministic NON-MISTO 10 players (0 teammate repeats)
+if (participants.length === 10 && matchesPerTurn === 2 && turns === 10 && matchesPerPlayer === 8) {
+  return generateDeterministicNonMisto10(participants, rules);
+}
+
 
   // ---- fallback heuristic for other cases ----
   const activeSlots = matchesPerTurn * 4;

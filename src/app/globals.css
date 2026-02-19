@@ -836,3 +836,27 @@ body:has([data-radix-portal])::before {
   }
 }
 
+/* Base44 — player name formatting */
+.base44-player-name {
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+/* Base44 — gender mark (small + colored) */
+.base44-gender-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  font-size: 14px;
+  line-height: 1;
+  margin-left: 6px;
+}
+
+.base44-gender-mark.male {
+  color: #2563eb; /* blue-600 */
+}
+
+.base44-gender-mark.female {
+  color: #db2777; /* pink-600 */
+}

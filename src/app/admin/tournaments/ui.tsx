@@ -91,10 +91,11 @@ function capitalize(value?: string | null) {
   return v.charAt(0).toUpperCase() + v.slice(1);
 }
 
-function GenderBadge({ gender }: { gender: "M" | "F" | null }) {
+function GenderMark({ gender }: { gender: "M" | "F" | null }) {
   if (!gender) return null;
+  const cls = gender === "M" ? "male" : "female";
   return (
-    <span className="base44-chip" style={{ padding: "0 8px" }}>
+    <span className={`base44-gender-mark ${cls}`} aria-label={gender === "M" ? "Uomo" : "Donna"}>
       {gender === "M" ? "♂" : "♀"}
     </span>
   );
@@ -1059,14 +1060,17 @@ export default function AdminTournamentsUI() {
                                       <TableCell>{idx + 1}</TableCell>
                                       <TableCell>
                                         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                                          {r.p1_name} <GenderBadge gender={r.p1_gender} />
+                                          <span className="base44-player-name">{r.p1_name}</span>
+                                        <GenderMark gender={r.p1_gender} />
+
                                         </div>
                                       </TableCell>
                                       <TableCell>{r.p1_phone}</TableCell>
                                       <TableCell>
                                         {r.p2_name ? (
                                           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                                            {r.p2_name} <GenderBadge gender={r.p2_gender} />
+                                            <span className="base44-player-name">{r.p2_name}</span>
+                                          <GenderMark gender={r.p2_gender} />
                                           </div>
                                         ) : (
                                           "-"
@@ -1137,14 +1141,16 @@ export default function AdminTournamentsUI() {
                                         <TableCell>{idx + 1}</TableCell>
                                         <TableCell>
                                           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                                            {r.p1_name} <GenderBadge gender={r.p1_gender} />
+                                            <span className="base44-player-name">{r.p1_name}</span>
+                                          <GenderMark gender={r.p1_gender} />
                                           </div>
                                         </TableCell>
                                         <TableCell>{r.p1_phone}</TableCell>
                                         <TableCell>
                                           {r.p2_name ? (
                                             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                                              {r.p2_name} <GenderBadge gender={r.p2_gender} />
+                                              <span className="base44-player-name">{r.p2_name}</span>
+                                            <GenderMark gender={r.p2_gender} />
                                             </div>
                                           ) : (
                                             "-"

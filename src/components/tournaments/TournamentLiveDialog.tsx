@@ -248,7 +248,7 @@ function FixedPairsMatchStack({ m }: { m: FPMatch }) {
     >
       {/* riga 1: coppia 1 */}
       <div style={{ fontWeight: 750, color: "#0f172a", lineHeight: 1.15 }}>
-        {homeName}
+        <span className="base44-player-name">{homeName}</span>
       </div>
 
       {/* riga 2: VS */}
@@ -274,7 +274,7 @@ function FixedPairsMatchStack({ m }: { m: FPMatch }) {
           lineHeight: 1.15,
         }}
       >
-        {awayName}
+        <span className="base44-player-name">{awayName}</span>
       </div>
 
       {/* riga 4: risultati set */}
@@ -490,7 +490,7 @@ export default function TournamentLiveDialog({
             color: "#0f172a",
           }}
         >
-          {r.name}
+          <span className="base44-player-name">{r.name}</span>
           {isLeader && (
             <span
               style={{
@@ -571,7 +571,10 @@ export default function TournamentLiveDialog({
 
                               {t.resting?.length ? (
                                 <div className="base44-chip" style={{ padding: "2px 10px", background: "#fffbeb", borderColor: "#fde68a", color: "#b45309" }}>
-                                  Riposa: {t.resting.join(", ")}
+                                  Riposa:{" "}
+                                   <span className="base44-player-name">
+                                   {t.resting.join(", ")}
+                                  </span>
                                 </div>
                               ) : (
                                 <div className="base44-chip" style={{ padding: "2px 10px" }}>
@@ -592,7 +595,8 @@ export default function TournamentLiveDialog({
                                     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
   {/* Coppia 1 sopra, allineata a sinistra */}
   <div style={{ fontWeight: 800, color: "#0f172a", lineHeight: 1.15 }}>
-    {m.team1?.[0]} - {m.team1?.[1]}
+    <span className="base44-player-name">{m.team1?.[0]}</span> -{" "}
+<span className="base44-player-name">{m.team1?.[1]}</span>
   </div>
 
   {/* Badge punteggio (come ora) */}
@@ -618,7 +622,8 @@ export default function TournamentLiveDialog({
 
   {/* Coppia 2 sotto, allineata a destra */}
   <div style={{ fontWeight: 800, color: "#0f172a", textAlign: "right", lineHeight: 1.15 }}>
-    {m.team2?.[0]} - {m.team2?.[1]}
+    <span className="base44-player-name">{m.team2?.[0]}</span> -{" "}
+<span className="base44-player-name">{m.team2?.[1]}</span>
   </div>
 </div>
 
@@ -695,7 +700,7 @@ export default function TournamentLiveDialog({
     .map((s) => s.trim())
     .filter(Boolean)
     .map((part, i) => (
-      <div key={i}>{part}</div>
+      <div key={i} className="base44-player-name">{part}</div>
     ))}
 </td>
 

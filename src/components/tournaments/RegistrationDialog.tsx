@@ -91,7 +91,7 @@ export default function RegistrationDialog({
       setSaving(true);
 
       const payload: any = {
-        p1_name: formData.p1_name.trim(),
+        p1_name: formData.p1_name.trim().toUpperCase(),
         p1_phone: normalizePhone(formData.p1_phone),
         p1_gender: isMisto ? formData.p1_gender : null,
       };
@@ -100,7 +100,7 @@ export default function RegistrationDialog({
       if (!payload.p1_phone) throw new Error("Telefono obbligatorio");
 
       if (isCouple) {
-        payload.p2_name = formData.p2_name.trim();
+        payload.p2_name = formData.p2_name.trim().toUpperCase();
         payload.p2_phone = normalizePhone(formData.p2_phone);
 
         if (!payload.p2_name) throw new Error("Nome giocatore 2 obbligatorio");
