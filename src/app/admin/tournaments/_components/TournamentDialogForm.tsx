@@ -169,8 +169,8 @@ export default function TournamentDialogForm({
 
         {/* Header sticky */}
         <div className="sticky top-0 z-10 bg-white border-b">
-          <DialogHeader className="px-5 py-4">
-            <DialogTitle className="text-xl font-extrabold">{title}</DialogTitle>
+          <DialogHeader className="px-4 py-3 sm:px-5 sm:py-4">
+          <DialogTitle className="text-lg sm:text-xl font-extrabold">{title}</DialogTitle>
           </DialogHeader>
         </div>
 
@@ -185,7 +185,7 @@ export default function TournamentDialogForm({
         >
           {/* Body scrollabile */}
           <div
-            className="px-5 py-5"
+            className="px-4 py-4 sm:px-5 sm:py-5"
             style={{
               overflowY: "auto",
               overflowX: "hidden",
@@ -265,38 +265,62 @@ export default function TournamentDialogForm({
                 </select>
               </div>
 
-              {/* Data + Ora affiancati (mobile 2 colonne: è comodo e riduce scroll) */}
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)",
-                  gap: 12,
-                }}
-              >
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontWeight: 800, marginBottom: 6 }}>Data</div>
-                  <input
-                    type="date"
-                    className="base44-input"
-                    value={form.date}
-                    onChange={(e) => setForm({ ...form, date: e.target.value })}
-                    required
-                    style={{ minWidth: 0, width: "100%", fontSize: 16 }}
-                  />
-                </div>
+              {/* Data + Ora — versione blindata iOS */}
+<div
+  style={{
+    display: "grid",
+    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+    gap: 16,
+    alignItems: "start",
+  }}
+>
+  <div
+    style={{
+      minWidth: 0,
+      position: "relative",
+    }}
+  >
+    <div style={{ fontWeight: 800, marginBottom: 6 }}>Data</div>
+    <input
+      type="date"
+      className="base44-input"
+      value={form.date}
+      onChange={(e) => setForm({ ...form, date: e.target.value })}
+      required
+      style={{
+        width: "100%",
+        minWidth: 0,
+        maxWidth: "100%",
+        fontSize: 16,
+        display: "block",
+      }}
+    />
+  </div>
 
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontWeight: 800, marginBottom: 6 }}>Ora</div>
-                  <input
-                    type="time"
-                    className="base44-input"
-                    value={form.time}
-                    onChange={(e) => setForm({ ...form, time: e.target.value })}
-                    required
-                    style={{ minWidth: 0, width: "100%", fontSize: 16 }}
-                  />
-                </div>
-              </div>
+  <div
+    style={{
+      minWidth: 0,
+      position: "relative",
+    }}
+  >
+    <div style={{ fontWeight: 800, marginBottom: 6 }}>Ora</div>
+    <input
+      type="time"
+      className="base44-input"
+      value={form.time}
+      onChange={(e) => setForm({ ...form, time: e.target.value })}
+      required
+      style={{
+        width: "100%",
+        minWidth: 0,
+        maxWidth: "100%",
+        fontSize: 16,
+        display: "block",
+      }}
+    />
+  </div>
+</div>
+
 
               {/* Luogo */}
               <div>
@@ -335,7 +359,7 @@ export default function TournamentDialogForm({
               </div>
 
               {/* Spacer per evitare che l’ultimo campo finisca sotto al footer sticky */}
-              <div style={{ height: 10 }} />
+              <div style={{ height: 4 }} />
             </div>
           </div>
 
