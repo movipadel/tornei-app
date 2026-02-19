@@ -618,12 +618,14 @@ if (isMisto) {
   });
 
   return NextResponse.json({
-    mode: "baraonda",
-    status: run.status,
-    runId: run.id,
-    currentTurn,
-    totalTurns: turnsOut.length,
-    standings,
-    turns: turnsOut,
-  });
+  mode: "baraonda",
+  status: run.status,
+  runId: run.id,
+  rules: (run as any).rules ?? null, // ✅ aggiungi questa riga
+  currentTurn,
+  totalTurns: turnsOut.length,
+  standings,
+  turns: turnsOut,
+});
+
 }
