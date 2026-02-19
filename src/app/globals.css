@@ -875,3 +875,29 @@ body:has([data-radix-portal])::before {
   font-weight: 600;
   letter-spacing: 0.01em;
 }
+
+/* ===========================
+   Player name styling (LIVE)
+   =========================== */
+.base44-player-name {
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+/* Misto: leggermente diverso (elegante) */
+.base44-player-name-misto {
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: #334155 !important; /* forza vs colori ereditati */
+}
+
+/* stelline */
+.base44-star-m {
+  color: #2563eb; /* blu */
+}
+
+.base44-star-f {
+  color: #db2777; /* rosa elegante */
+}

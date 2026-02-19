@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { formatPlayerName } from "@/lib/formatPlayerName";
 
 export const runtime = "nodejs";
 
@@ -20,6 +21,7 @@ function safeInt(v: any): number | null {
  *  ========================== */
 type StandingRow = {
   name: string;
+  sex?: "m" | "f"; // ✅ new
   points: number; // Pt
   played: number; // Pg
   wins: number; // V
@@ -117,6 +119,40 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   if (!run?.id) return NextResponse.json({ status: "no-run" });
 
   const mode = String((run as any)?.mode ?? "");
+
+  // ✅ Detect "misto" dalla run.rules (come fa la UI)
+const runCategory = String((run as any)?.rules?.category ?? "").toLowerCase().trim();
+const isMisto = runCategory === "misto";
+
+// ✅ Mappa: nome normalizzato -> sex ("m" | "f")
+// (si popola SOLO per misto; altrimenti resta vuota e non rompe nulla)
+const sexByName = new Map<string, "m" | "f">();
+
+if (isMisto) {
+  const { data: regs, error: rErr } = await sb
+    .from("tournament_registrations")
+    .select("p1_name,p1_gender")
+    .eq("tournament_id", tournamentId);
+
+  if (rErr) return NextResponse.json({ error: rErr.message }, { status: 500 });
+
+  for (const r of regs ?? []) {
+    const rawName = String((r as any).p1_name ?? "");
+    const rawGender = String((r as any).p1_gender ?? "").toLowerCase().trim();
+
+    const key = formatPlayerName(rawName);
+
+    // accettiamo varianti "M/F", "m/f", "male/female"
+    const g =
+      rawGender === "m" || rawGender === "male"
+        ? "m"
+        : rawGender === "f" || rawGender === "female"
+        ? "f"
+        : null;
+
+    if (g) sexByName.set(key, g);
+  }
+}
 
   /** ============================================================
    *  FIXED PAIRS (PUBBLICO)
@@ -499,11 +535,26 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   // standings (GW -> Pt -> DifG -> GL -> nome)
   const map = new Map<string, StandingRow>();
   function ensure(name: string) {
-    if (!map.has(name)) {
-      map.set(name, { name, points: 0, played: 0, wins: 0, draws: 0, losses: 0, gw: 0, gl: 0, difg: 0 });
-    }
-    return map.get(name)!;
+  if (!map.has(name)) {
+    const key = formatPlayerName(name);
+    const sex = sexByName.get(key); // può essere undefined (va benissimo)
+
+    map.set(name, {
+      name,
+      sex, // ✅
+      points: 0,
+      played: 0,
+      wins: 0,
+      draws: 0,
+      losses: 0,
+      gw: 0,
+      gl: 0,
+      difg: 0,
+    });
   }
+  return map.get(name)!;
+}
+
 
   for (const t of turnsOut) {
     for (const m of t.matches ?? []) {

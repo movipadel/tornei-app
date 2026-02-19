@@ -16,6 +16,7 @@ import {
  *  ========================== */
 type LiveStandingRow = {
   name: string;
+  sex?: "m" | "f"; // ✅ aggiungi questa riga
   points: number;
   played: number;
   wins: number;
@@ -228,7 +229,14 @@ function ScoreLine({ m }: { m: FPMatch }) {
 }
 
 /** Layout match Fixed Pairs: 4 righe (home / VS / away / sets) */
-function FixedPairsMatchStack({ m }: { m: FPMatch }) {
+function FixedPairsMatchStack({
+  m,
+  playerNameClass,
+}: {
+  m: FPMatch;
+  playerNameClass: string;
+}) {
+
   const empty = m.home?.name === "—" || m.away?.name === "—";
 
   const homeName = String(m.home?.name ?? "").replaceAll("/", " - ");
@@ -253,7 +261,7 @@ function FixedPairsMatchStack({ m }: { m: FPMatch }) {
   {homeName
     .split(" - ")
     .map((p, i) => (
-      <div key={i} className="base44-player-name">
+      <div key={i} className={playerNameClass}>
         {formatPlayerName(p)}
       </div>
     ))}
@@ -295,7 +303,7 @@ function FixedPairsMatchStack({ m }: { m: FPMatch }) {
   {awayName
     .split(" - ")
     .map((p, i) => (
-      <div key={i} className="base44-player-name">
+      <div key={i} className={playerNameClass}>
         {formatPlayerName(p)}
       </div>
     ))}
@@ -378,6 +386,18 @@ const isMisto =
     .trim() === "misto";
 
 const playerNameClass = isMisto ? "base44-player-name-misto" : "base44-player-name";
+
+const maleLeaderName = useMemo(() => {
+  if (!isMisto || !baraonda?.standings?.length) return null;
+  const row = (baraonda.standings as LiveStandingRow[]).find((x) => x.sex === "m");
+  return row?.name ?? null;
+}, [isMisto, baraonda?.standings]);
+
+const femaleLeaderName = useMemo(() => {
+  if (!isMisto || !baraonda?.standings?.length) return null;
+  const row = (baraonda.standings as LiveStandingRow[]).find((x) => x.sex === "f");
+  return row?.name ?? null;
+}, [isMisto, baraonda?.standings]);
 
   const fpMatchesById = useMemo(() => {
     const m = new Map<string, FPMatch>();
@@ -501,9 +521,19 @@ const playerNameClass = isMisto ? "base44-player-name-misto" : "base44-player-na
                           </thead>
 
                           <tbody>
-  {baraonda.standings.map((r: any, idx: number) => {
-    const isLeader = idx === 0;
-    return (
+  {baraonda.standings.map((r: LiveStandingRow, idx: number) => {
+  const isLeaderClassic = !isMisto && idx === 0;
+
+  const rNameNorm = formatPlayerName(r.name);
+  const maleLeaderNorm = maleLeaderName ? formatPlayerName(maleLeaderName) : null;
+  const femaleLeaderNorm = femaleLeaderName ? formatPlayerName(femaleLeaderName) : null;
+
+  const isMaleLeader = !!maleLeaderNorm && rNameNorm === maleLeaderNorm;
+  const isFemaleLeader = !!femaleLeaderNorm && rNameNorm === femaleLeaderNorm;
+  const isLeader = isLeaderClassic || isMaleLeader || isFemaleLeader;
+
+  return (
+
       <tr key={`${r.name}-${idx}`} style={isLeader ? { background: "#eef2ff" } : undefined}>
         <td
           style={{
@@ -525,21 +555,55 @@ const playerNameClass = isMisto ? "base44-player-name-misto" : "base44-player-na
             color: "#0f172a",
           }}
         >
-          <span className="base44-player-name">{formatPlayerName(r.name)}</span>
-          {isLeader && (
-            <span
-              style={{
-                marginLeft: 6,
-                color: "#f59e0b",
-                fontSize: 14,
-                fontWeight: 900,
-                verticalAlign: "middle",
-              }}
-              title="Leader"
-            >
-              ★
-            </span>
-          )}
+          <span className={playerNameClass}>{formatPlayerName(r.name)}</span>
+          {/* ⭐ Leader classico (non misto) */}
+{isLeaderClassic ? (
+  <span
+    style={{
+      marginLeft: 6,
+      color: "#f59e0b",
+      fontSize: 14,
+      fontWeight: 900,
+      verticalAlign: "middle",
+    }}
+    title="Leader"
+  >
+    ★
+  </span>
+) : null}
+
+{/* ⭐ Leader misto: uomo (blu) */}
+{isMisto && isMaleLeader ? (
+  <span
+    style={{
+      marginLeft: 6,
+      color: "#2563eb",
+      fontSize: 14,
+      fontWeight: 900,
+      verticalAlign: "middle",
+    }}
+    title="Leader uomo"
+  >
+    ★
+  </span>
+) : null}
+
+{/* ⭐ Leader misto: donna (rosa elegante) */}
+{isMisto && isFemaleLeader ? (
+  <span
+    style={{
+      marginLeft: 6,
+      color: "#db2777",
+      fontSize: 14,
+      fontWeight: 900,
+      verticalAlign: "middle",
+    }}
+    title="Leader donna"
+  >
+    ★
+  </span>
+) : null}
+
         </td>
 
         <td style={{ padding: 10, borderBottom: "1px solid #eef2f7", textAlign: "right", fontWeight: 900 }}>
@@ -607,7 +671,7 @@ const playerNameClass = isMisto ? "base44-player-name-misto" : "base44-player-na
                               {t.resting?.length ? (
                                 <div className="base44-chip" style={{ padding: "2px 10px", background: "#fffbeb", borderColor: "#fde68a", color: "#b45309" }}>
                                   Riposa:{" "}
-                                   <span className="base44-player-name">
+                                   <span className={playerNameClass}>
                                   {t.resting.map((n: string) => formatPlayerName(n)).join(", ")}
                                 </span>
 
@@ -631,8 +695,8 @@ const playerNameClass = isMisto ? "base44-player-name-misto" : "base44-player-na
                                     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
   {/* Coppia 1 sopra, allineata a sinistra */}
   <div style={{ fontWeight: 650, color: "#0f172a", lineHeight: 1.15 }}>
-    <span className="base44-player-name">{formatPlayerName(m.team1?.[0])}</span> -{" "}
-   <span className="base44-player-name">{formatPlayerName(m.team1?.[1])}</span>
+    <span className={playerNameClass}>{formatPlayerName(m.team1?.[0])}</span> -{" "}
+   <span className={playerNameClass}>{formatPlayerName(m.team1?.[1])}</span>
 
   </div>
 
@@ -659,8 +723,8 @@ const playerNameClass = isMisto ? "base44-player-name-misto" : "base44-player-na
 
   {/* Coppia 2 sotto, allineata a destra */}
   <div style={{ fontWeight: 650, color: "#0f172a", textAlign: "right", lineHeight: 1.15 }}>
-    <span className="base44-player-name">{formatPlayerName(m.team2?.[0])}</span> -{" "}
-  <span className="base44-player-name">{formatPlayerName(m.team2?.[1])}</span>
+    <span className={playerNameClass}>{formatPlayerName(m.team2?.[0])}</span> -{" "}
+  <span className={playerNameClass}>{formatPlayerName(m.team2?.[1])}</span>
 
   </div>
 </div>
@@ -738,7 +802,7 @@ const playerNameClass = isMisto ? "base44-player-name-misto" : "base44-player-na
     .map((s) => s.trim())
     .filter(Boolean)
     .map((part, i) => (
-      <div key={i} className="base44-player-name">{formatPlayerName(part)}</div>
+      <div key={i} className={playerNameClass}>{formatPlayerName(part)}</div>
     ))}
 </td>
 
@@ -756,7 +820,7 @@ const playerNameClass = isMisto ? "base44-player-name-misto" : "base44-player-na
                               {/* match girone (NUOVO layout 4 righe, niente header) */}
                               <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 10 }}>
                                 {groupMatches.map((m: FPMatch) => (
-                                  <FixedPairsMatchStack key={m.id} m={m} />
+                                  <FixedPairsMatchStack key={m.id} m={m} playerNameClass={playerNameClass} />
                                 ))}
                               </div>
                             </div>
@@ -792,7 +856,7 @@ const playerNameClass = isMisto ? "base44-player-name-misto" : "base44-player-na
 
                               <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 10 }}>
                                 {matches.map((m) => (
-                                  <FixedPairsMatchStack key={m.id} m={m} />
+                                  <FixedPairsMatchStack key={m.id} m={m} playerNameClass={playerNameClass} />
                                 ))}
                               </div>
                             </div>
