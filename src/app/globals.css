@@ -860,3 +860,18 @@ body:has([data-radix-portal])::before {
 .base44-gender-mark.female {
   color: #db2777; /* pink-600 */
 }
+
+/* =========================================
+   Base44 — Player Name Styling
+   ========================================= */
+
+.base44-player-name {
+  color: #0f172a;
+  font-weight: 600; /* meno forte rispetto a 800/900 */
+}
+
+.base44-player-name-misto {
+  color: #4f46e5;   /* indigo elegante */
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}

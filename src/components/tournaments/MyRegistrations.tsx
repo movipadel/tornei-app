@@ -3,6 +3,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { formatPlayerName } from "@/lib/formatPlayerName";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -117,14 +118,19 @@ export default function MyRegistrations({
                       <div className="pt-2 border-t border-slate-100 mt-2">
                         <div className="flex items-center gap-2 text-sm">
                           <User className="w-3.5 h-3.5 text-indigo-500" />
-                          <span className="font-medium base44-player-name">{reg.p1_name}</span>
+                          <span className="font-medium">
+                          {formatPlayerName(reg.p1_name)}
+                        </span>
                           <span className="text-slate-400">• {reg.p1_phone}</span>
                         </div>
 
                         {reg.p2_name && (
                           <div className="flex items-center gap-2 text-sm mt-1">
                             <Users className="w-3.5 h-3.5 text-indigo-500" />
-                            <span className="font-medium base44-player-name">{reg.p2_name}</span>
+                            <span className="font-medium">
+                            {formatPlayerName(reg.p2_name)}
+                            </span>
+
                             <span className="text-slate-400">• {reg.p2_phone ?? "-"}</span>
                           </div>
                         )}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { formatPlayerName } from "@/lib/formatPlayerName";
 import {
   Dialog,
   DialogClose,
@@ -126,8 +127,8 @@ function statusChipStyle(s?: string | null) {
 function TeamColumn({ team }: { team: [string, string] }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 4, lineHeight: 1.15 }}>
-      <div style={{ fontWeight: 650 }}>{team[0]}</div>
-      <div style={{ fontWeight: 650 }}>{team[1]}</div>
+      <div style={{ fontWeight: 650 }}>{formatPlayerName(team[0])}</div>
+      <div style={{ fontWeight: 650 }}>{formatPlayerName(team[1])}</div>
     </div>
   );
 }
@@ -248,7 +249,16 @@ function FixedPairsMatchStack({ m }: { m: FPMatch }) {
     >
       {/* riga 1: coppia 1 */}
       <div style={{ fontWeight: 750, color: "#0f172a", lineHeight: 1.15 }}>
-        <span className="base44-player-name">{homeName}</span>
+        <div style={{ fontWeight: 750, color: "#0f172a", lineHeight: 1.15 }}>
+  {homeName
+    .split(" - ")
+    .map((p, i) => (
+      <div key={i} className="base44-player-name">
+        {formatPlayerName(p)}
+      </div>
+    ))}
+</div>
+
       </div>
 
       {/* riga 2: VS */}
@@ -274,7 +284,23 @@ function FixedPairsMatchStack({ m }: { m: FPMatch }) {
           lineHeight: 1.15,
         }}
       >
-        <span className="base44-player-name">{awayName}</span>
+        <div
+  style={{
+    fontWeight: 750,
+    color: "#0f172a",
+    textAlign: "right",
+    lineHeight: 1.15,
+  }}
+>
+  {awayName
+    .split(" - ")
+    .map((p, i) => (
+      <div key={i} className="base44-player-name">
+        {formatPlayerName(p)}
+      </div>
+    ))}
+</div>
+
       </div>
 
       {/* riga 4: risultati set */}
@@ -343,6 +369,15 @@ export default function TournamentLiveDialog({
 
   const baraonda = data && (data as any).mode === "baraonda" ? (data as any) : null;
   const fixed = data && (data as any).mode === "fixed_pairs" ? (data as any) : null;
+
+  // ✅ MISTO detection (vale sia per baraonda che coppie fisse)
+// Proviamo a leggerlo da rules/category (a seconda di cosa arriva dall’API live)
+const isMisto =
+  String((data as any)?.rules?.category ?? (data as any)?.category ?? "")
+    .toLowerCase()
+    .trim() === "misto";
+
+const playerNameClass = isMisto ? "base44-player-name-misto" : "base44-player-name";
 
   const fpMatchesById = useMemo(() => {
     const m = new Map<string, FPMatch>();
@@ -490,7 +525,7 @@ export default function TournamentLiveDialog({
             color: "#0f172a",
           }}
         >
-          <span className="base44-player-name">{r.name}</span>
+          <span className="base44-player-name">{formatPlayerName(r.name)}</span>
           {isLeader && (
             <span
               style={{
@@ -573,8 +608,9 @@ export default function TournamentLiveDialog({
                                 <div className="base44-chip" style={{ padding: "2px 10px", background: "#fffbeb", borderColor: "#fde68a", color: "#b45309" }}>
                                   Riposa:{" "}
                                    <span className="base44-player-name">
-                                   {t.resting.join(", ")}
-                                  </span>
+                                  {t.resting.map((n: string) => formatPlayerName(n)).join(", ")}
+                                </span>
+
                                 </div>
                               ) : (
                                 <div className="base44-chip" style={{ padding: "2px 10px" }}>
@@ -594,9 +630,10 @@ export default function TournamentLiveDialog({
           
                                     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
   {/* Coppia 1 sopra, allineata a sinistra */}
-  <div style={{ fontWeight: 800, color: "#0f172a", lineHeight: 1.15 }}>
-    <span className="base44-player-name">{m.team1?.[0]}</span> -{" "}
-<span className="base44-player-name">{m.team1?.[1]}</span>
+  <div style={{ fontWeight: 650, color: "#0f172a", lineHeight: 1.15 }}>
+    <span className="base44-player-name">{formatPlayerName(m.team1?.[0])}</span> -{" "}
+   <span className="base44-player-name">{formatPlayerName(m.team1?.[1])}</span>
+
   </div>
 
   {/* Badge punteggio (come ora) */}
@@ -621,9 +658,10 @@ export default function TournamentLiveDialog({
   </div>
 
   {/* Coppia 2 sotto, allineata a destra */}
-  <div style={{ fontWeight: 800, color: "#0f172a", textAlign: "right", lineHeight: 1.15 }}>
-    <span className="base44-player-name">{m.team2?.[0]}</span> -{" "}
-<span className="base44-player-name">{m.team2?.[1]}</span>
+  <div style={{ fontWeight: 650, color: "#0f172a", textAlign: "right", lineHeight: 1.15 }}>
+    <span className="base44-player-name">{formatPlayerName(m.team2?.[0])}</span> -{" "}
+  <span className="base44-player-name">{formatPlayerName(m.team2?.[1])}</span>
+
   </div>
 </div>
 
@@ -700,7 +738,7 @@ export default function TournamentLiveDialog({
     .map((s) => s.trim())
     .filter(Boolean)
     .map((part, i) => (
-      <div key={i} className="base44-player-name">{part}</div>
+      <div key={i} className="base44-player-name">{formatPlayerName(part)}</div>
     ))}
 </td>
 
