@@ -192,6 +192,27 @@ function formatDisplayName(full: string | null | undefined): string {
   return `${initial}. ${last}`;
 }
 
+function formatPairDisplayName(raw: string | null | undefined): string {
+  const s = String(raw ?? "").trim();
+  if (!s) return "";
+
+  // coppia: "Nome Cognome / Nome Cognome"
+  if (s.includes("/")) {
+    const parts = s
+      .split("/")
+      .map((p) => p.trim())
+      .filter(Boolean);
+
+    if (parts.length >= 2) {
+      const a = formatDisplayName(parts[0]);
+      const b = formatDisplayName(parts[1]);
+      return `${a} / ${b}`.toUpperCase();
+    }
+  }
+
+  // singolo
+  return formatDisplayName(s).toUpperCase();
+}
 
 function fmtTimeOnly(v?: string | null) {
   if (!v) return "-";
@@ -587,13 +608,13 @@ requestAnimationFrame(() => {
         }}
       >
         <div style={{ fontWeight: 900, color: "#0f172a" }} title={m.home?.name ?? ""}>
-  {formatDisplayName(m.home?.name)}
+  {formatPairDisplayName(m.home?.name)}
 </div>
 
 <div style={{ color: "#94a3b8", fontWeight: 900 }}>VS</div>
 
 <div style={{ fontWeight: 900, color: "#0f172a" }} title={m.away?.name ?? ""}>
-  {formatDisplayName(m.away?.name)}
+  {formatPairDisplayName(m.away?.name)}
 </div>
       </div>
 
@@ -918,7 +939,7 @@ requestAnimationFrame(() => {
                     {idx + 1}
                   </td>
                   <td style={{ padding: 10, borderBottom: "1px solid #eef2f7", fontWeight: 600, color: "#475569" }}>
-                    {r.name}
+                  {formatPairDisplayName(r.name)}
                   </td>
                   <td style={{ padding: 10, borderBottom: "1px solid #eef2f7", textAlign: "right" }}>{r.pt}</td>
                   <td style={{ padding: 10, borderBottom: "1px solid #eef2f7", textAlign: "right", fontWeight: 900 }}>{r.gw}</td>

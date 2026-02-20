@@ -36,6 +36,7 @@ export async function GET(_req: Request) {
       max_participants,
       image_url,
       notes,
+      show_participants,
       created_at,
       updated_at
     `

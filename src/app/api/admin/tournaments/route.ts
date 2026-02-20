@@ -74,7 +74,7 @@ export async function GET(req: Request) {
   // 1) tornei
   const { data, error } = await sb
     .from("tournaments")
-    .select("id,name,type,category,date,time,location,max_participants,image_url,level,created_at,updated_at")
+    .select("id,name,type,category,date,time,location,max_participants,image_url,level,show_participants,created_at,updated_at")
     .order("date", { ascending: true })
     .order("time", { ascending: true });
 
@@ -85,6 +85,34 @@ export async function GET(req: Request) {
 
   // 2) counts (main/reserve/male/female) per tutti i tornei
   const ids = tournaments.map((t) => t.id);
+    // 3) runs per tutti i tornei (per capire se il torneo è già stato generato)
+  const { data: runs, error: runErr } = await sb
+    .from("tournament_runs")
+    .select("id,tournament_id,created_at")
+    .in("tournament_id", ids);
+
+  if (runErr) return NextResponse.json({ error: runErr.message }, { status: 500 });
+
+  // per ogni torneo: has_run + active_run_id (run più recente)
+  const runInfoByTournament: Record<string, { has_run: boolean; active_run_id: string | null; runs_count: number }> = {};
+  for (const tid of ids) runInfoByTournament[tid] = { has_run: false, active_run_id: null, runs_count: 0 };
+
+  const latestTsByTournament: Record<string, number> = {};
+  for (const tid of ids) latestTsByTournament[tid] = 0;
+
+  for (const r of runs ?? []) {
+    const tid = String((r as any).tournament_id ?? "");
+    if (!tid || !runInfoByTournament[tid]) continue;
+
+    runInfoByTournament[tid].has_run = true;
+    runInfoByTournament[tid].runs_count += 1;
+
+    const ts = (r as any).created_at ? new Date((r as any).created_at).getTime() : 0;
+    if (ts >= (latestTsByTournament[tid] ?? 0)) {
+      latestTsByTournament[tid] = ts;
+      runInfoByTournament[tid].active_run_id = String((r as any).id);
+    }
+  }
 
   const { data: regs, error: rerr } = await sb
     .from("tournament_registrations")
@@ -109,9 +137,12 @@ export async function GET(req: Request) {
     }
   }
 
-  const out = tournaments.map((t) => ({
+    const out = tournaments.map((t) => ({
     ...t,
     counts: counts[t.id] ?? { main: 0, reserve: 0, male: 0, female: 0 },
+    has_run: runInfoByTournament[t.id]?.has_run ?? false,
+    active_run_id: runInfoByTournament[t.id]?.active_run_id ?? null,
+    runs_count: runInfoByTournament[t.id]?.runs_count ?? 0,
   }));
 
   return NextResponse.json({ data: out });
@@ -153,6 +184,7 @@ if (denied) return denied;
     time,
     max_participants: maxParticipants,
     notes: body?.notes ? String(body.notes) : null,
+    show_participants: Boolean(body?.show_participants),
     updated_at: new Date().toISOString(),
   };
 

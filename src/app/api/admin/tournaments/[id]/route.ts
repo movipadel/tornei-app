@@ -66,7 +66,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
 
   const { data, error } = await sb
     .from("tournaments")
-    .select("id,name,type,category,level,location,date,time,max_participants,image_url,created_at,updated_at")
+    .select("id,name,type,category,level,location,date,time,max_participants,image_url,show_participants,created_at,updated_at")
     .eq("id", id)
     .single();
 
@@ -102,7 +102,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     return NextResponse.json({ error: "Max partecipanti non valido" }, { status: 400 });
   }
 
-  const payload: any = {
+    const payload: any = {
     name,
     type,
     category,
@@ -110,8 +110,13 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     time,
     max_participants: maxParticipants,
     location: body?.location ? String(body.location).trim() : null,
+    show_participants: Boolean(body?.show_participants), // ✅ NEW
     updated_at: new Date().toISOString(),
   };
+  
+  if (body?.show_participants !== undefined) {
+    payload.show_participants = Boolean(body.show_participants);
+  }
 
   if (body?.level !== undefined) payload.level = body.level || null;
   if (body?.image_url !== undefined) payload.image_url = body.image_url || null;

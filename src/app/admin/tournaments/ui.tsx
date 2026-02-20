@@ -101,6 +101,20 @@ function GenderMark({ gender }: { gender: "M" | "F" | null }) {
   );
 }
 
+function defaultBaraondaCourts(players: number) {
+  // comportamento "Auto" (esteso a 3 campi)
+  if (players >= 12) return 3;
+  if (players >= 8) return 2;
+  return 1;
+}
+
+function maxBaraondaCourtsSupported(players: number) {
+  // limite fisico: ogni match usa 4 giocatori
+  const physical = Math.floor(players / 4);
+  // supporto richiesto: fino a 3 campi, ma almeno 1
+  return Math.min(3, Math.max(1, physical));
+}
+
 export default function AdminTournamentsUI() {
   const router = useRouter();
 
@@ -117,6 +131,8 @@ export default function AdminTournamentsUI() {
   >({});
 
   const [startingById, setStartingById] = useState<Record<string, boolean>>({});
+  // Baraonda courts preset: 0 = Auto, 1..3 = campi scelti
+const [baraondaCourtsById, setBaraondaCourtsById] = useState<Record<string, number>>({});
 
   // Fixed pairs wizard state
   const [fixedWizardOpen, setFixedWizardOpen] = useState(false);
@@ -237,40 +253,50 @@ export default function AdminTournamentsUI() {
     }
   }
 
-  async function createTournamentRunBaraonda(tournamentId: string) {
-    setStartingById((p) => ({ ...p, [tournamentId]: true }));
-    try {
-      const res = await fetch(`/api/admin/tournaments/${tournamentId}/run/start`, { method: "POST" });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json.error || "Errore avvio torneo");
-      toast.success("Torneo generato");
-      router.push(`/admin/tournaments/${tournamentId}/run`);
-    } catch (e: any) {
-      toast.error(e?.message ?? "Errore");
-    } finally {
-      setStartingById((p) => ({ ...p, [tournamentId]: false }));
-    }
+  async function createTournamentRunBaraonda(tournamentId: string, courts?: number) {
+  setStartingById((p) => ({ ...p, [tournamentId]: true }));
+  try {
+    const res = await fetch(`/api/admin/tournaments/${tournamentId}/run/start`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(courts ? { courts } : {}),
+    });
+
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error((json as any).error || "Errore avvio torneo");
+
+    toast.success("Torneo generato");
+    router.push(`/admin/tournaments/${tournamentId}/run`);
+  } catch (e: any) {
+    toast.error(e?.message ?? "Errore");
+  } finally {
+    setStartingById((p) => ({ ...p, [tournamentId]: false }));
   }
+}
 
-  async function recreateTournamentRunBaraonda(tournamentId: string) {
-    setStartingById((p) => ({ ...p, [tournamentId]: true }));
-    try {
-      const r = await fetch(`/api/admin/tournaments/${tournamentId}/run/reset`, { method: "POST" });
-      const rj = await r.json().catch(() => ({}));
-      if (!r.ok) throw new Error(rj.error || "Errore reset torneo");
+  async function recreateTournamentRunBaraonda(tournamentId: string, courts?: number) {
+  setStartingById((p) => ({ ...p, [tournamentId]: true }));
+  try {
+    const r = await fetch(`/api/admin/tournaments/${tournamentId}/run/reset`, { method: "POST" });
+    const rj = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error((rj as any).error || "Errore reset torneo");
 
-      const s = await fetch(`/api/admin/tournaments/${tournamentId}/run/start`, { method: "POST" });
-      const sj = await s.json().catch(() => ({}));
-      if (!s.ok) throw new Error(sj.error || "Errore rigenerazione torneo");
+    const s = await fetch(`/api/admin/tournaments/${tournamentId}/run/start`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(courts ? { courts } : {}),
+    });
+    const sj = await s.json().catch(() => ({}));
+    if (!s.ok) throw new Error((sj as any).error || "Errore rigenerazione torneo");
 
-      toast.success("Torneo rigenerato");
-      router.push(`/admin/tournaments/${tournamentId}/run`);
-    } catch (e: any) {
-      toast.error(e?.message ?? "Errore");
-    } finally {
-      setStartingById((p) => ({ ...p, [tournamentId]: false }));
-    }
+    toast.success("Torneo rigenerato");
+    router.push(`/admin/tournaments/${tournamentId}/run`);
+  } catch (e: any) {
+    toast.error(e?.message ?? "Errore");
+  } finally {
+    setStartingById((p) => ({ ...p, [tournamentId]: false }));
   }
+}
 
   async function openFixedPairsWizardFromServer(t: any, tid: string) {
     if (fixedWizardLoading) return;
@@ -513,6 +539,8 @@ export default function AdminTournamentsUI() {
             const canGenerateBaraonda = isBaraonda && mainCount >= 4 && mainCount <= MAX_BARAONDA_PLAYERS;
             const canGenerateFixedPairs = isFixedPairs && mainCount >= 2;
             const isStarting = !!startingById[tid];
+            // 🔴 run già creato? (prova più possibili campi dal backend)
+            const hasRun = Boolean((t as any).has_run);
 
             return (
               <div key={tid} className="base44-card">
@@ -856,11 +884,15 @@ export default function AdminTournamentsUI() {
                                 className="base44-primary-btn"
                                 disabled={!canGenerateBaraonda || isStarting}
                                 style={{
-                                  padding: "8px 14px",
-                                  borderRadius: 999,
-                                  opacity: !canGenerateBaraonda || isStarting ? 0.6 : 1,
-                                  cursor: !canGenerateBaraonda || isStarting ? "not-allowed" : "pointer",
-                                }}
+                                 padding: "8px 14px",
+                                 borderRadius: 999,
+                                 opacity: !canGenerateBaraonda || isStarting ? 0.6 : 1,
+                                 cursor: !canGenerateBaraonda || isStarting ? "not-allowed" : "pointer",
+
+                                 // 🔥 FORZA COLORE
+                                 backgroundColor: hasRun ? "#dc2626" : "#4f46e5",
+                                 borderColor: hasRun ? "#dc2626" : "#4f46e5",
+                               }}
                                 title={
                                  mainCount < 4
                                  ? "Servono almeno 4 iscritti in lista principale"
@@ -869,7 +901,7 @@ export default function AdminTournamentsUI() {
                                  : "Genera il torneo"
                                }
                               >
-                                {isStarting ? "..." : "Genera torneo"}
+                                {isStarting ? "..." : hasRun ? "Rigenera torneo" : "Genera torneo"}
                               </button>
                             </AlertDialogTrigger>
 
@@ -880,30 +912,122 @@ export default function AdminTournamentsUI() {
                                   Puoi creare il torneo (se non esiste) oppure ricrearlo cancellando lo storico dello sviluppo.
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
+                             {(() => {
+  const selectedCourts = baraondaCourtsById[tid] ?? 0; // 0 = Auto
+  const maxCourts = canGenerateBaraonda ? maxBaraondaCourtsSupported(mainCount) : 1;
+  const autoCourts = defaultBaraondaCourts(mainCount);
+  const effectiveCourts = selectedCourts === 0 ? autoCourts : selectedCourts;
+
+  const optionStyle = (active: boolean) => ({
+    padding: "10px 12px",
+    borderRadius: 999,
+    border: "1px solid #e2e8f0",
+    background: active ? "#eef2ff" : "white",
+    color: active ? "#3730a3" : "#0f172a",
+    fontWeight: 800 as const,
+    cursor: "pointer",
+  });
+
+  const disabledStyle = {
+    opacity: 0.45,
+    cursor: "not-allowed",
+  };
+
+  return (
+    <div style={{ marginTop: 12 }}>
+      <div style={{ fontWeight: 900, marginBottom: 8, color: "#0f172a" }}>Campi</div>
+
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <button
+  type="button"
+  className="base44-csv-btn"
+  style={{
+    ...optionStyle(selectedCourts === 0),
+    ...(!canGenerateBaraonda ? { opacity: 0.45, cursor: "not-allowed" } : null),
+  }}
+  disabled={!canGenerateBaraonda}
+  onClick={() => {
+    if (!canGenerateBaraonda) return;
+    setBaraondaCourtsById((p) => ({ ...p, [tid]: 0 }));
+  }}
+  title={
+    !canGenerateBaraonda
+      ? mainCount < 4
+        ? "Servono almeno 4 iscritti in lista principale"
+        : mainCount > MAX_BARAONDA_PLAYERS
+        ? `Massimo ${MAX_BARAONDA_PLAYERS} iscritti per Baraonda`
+        : "Non disponibile"
+      : "Selezione automatica in base agli iscritti"
+  }
+>
+  Auto
+</button>
+
+        {[1, 2, 3].map((c) => {
+          const disabled = c > maxCourts;
+          const active = selectedCourts === c;
+
+          return (
+            <button
+              key={c}
+              type="button"
+              className="base44-csv-btn"
+              style={{
+                ...optionStyle(active),
+                ...(disabled ? (disabledStyle as any) : null),
+              }}
+              disabled={!canGenerateBaraonda || disabled}
+              onClick={() => {
+                if (!canGenerateBaraonda) return;
+                if (c > maxCourts) return;
+                setBaraondaCourtsById((p) => ({ ...p, [tid]: c }));
+              }}
+              title={
+  !canGenerateBaraonda
+    ? "Servono almeno 4 iscritti in lista principale"
+    : c > maxCourts
+    ? `Con ${mainCount} iscritti massimo ${maxCourts} campi`
+    : `${c} ${c === 1 ? "campo" : "campi"}`
+}
+            >
+              {c} {c === 1 ? "campo" : "campi"}
+            </button>
+          );
+        })}
+      </div>
+
+      <div style={{ marginTop: 10, fontSize: 12, color: "#64748b", lineHeight: 1.3 }}>
+        Iscritti: <b>{mainCount}</b> · Max campi possibili: <b>{maxCourts}</b> · Scelta:{" "}
+        <b>{selectedCourts === 0 ? `Auto (${autoCourts})` : selectedCourts}</b> · Partite/turno: <b>{effectiveCourts}</b>
+      </div>
+    </div>
+  );
+})()}
 
                               <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 14 }}>
   <button
     className="base44-primary-btn"
-    style={{ width: "100%", padding: "12px 14px", borderRadius: 14 }}
-    onClick={() => createTournamentRunBaraonda(tid)}
-    disabled={!canGenerateBaraonda || isStarting}
-  >
-    Crea
-  </button>
-
-  <button
-    className="base44-csv-btn"
     style={{
       width: "100%",
       padding: "12px 14px",
       borderRadius: 14,
-      borderColor: "#fecaca",
-      color: "#b91c1c",
+      backgroundColor: hasRun ? "#dc2626" : "#4f46e5",
+      borderColor: hasRun ? "#dc2626" : "#4f46e5",
     }}
-    onClick={() => recreateTournamentRunBaraonda(tid)}
+    onClick={() => {
+      const selectedCourts = baraondaCourtsById[tid] ?? 0;
+      const courts = selectedCourts === 0 ? undefined : selectedCourts;
+
+      // Se esiste già run → reset + start (recreate). Altrimenti start normale.
+      if (hasRun) {
+        recreateTournamentRunBaraonda(tid, courts);
+      } else {
+        createTournamentRunBaraonda(tid, courts);
+      }
+    }}
     disabled={!canGenerateBaraonda || isStarting}
   >
-    Ricrea (reset)
+    {hasRun ? "Rigenera (reset + genera)" : "Genera torneo"}
   </button>
 
   <AlertDialogCancel asChild>
@@ -929,51 +1053,54 @@ export default function AdminTournamentsUI() {
                                   borderRadius: 999,
                                   opacity: !canGenerateFixedPairs || fixedWizardLoading || isStarting ? 0.6 : 1,
                                   cursor: !canGenerateFixedPairs || fixedWizardLoading || isStarting ? "not-allowed" : "pointer",
+                                  backgroundColor: hasRun ? "#dc2626" : "#4f46e5",
+                                  borderColor: hasRun ? "#dc2626" : "#4f46e5",
                                 }}
-                                title={!canGenerateFixedPairs ? "Servono almeno 2 coppie in lista principale" : "Configura e genera il torneo"}
+                                title={
+                                !canGenerateFixedPairs
+                                ? "Servono almeno 2 coppie in lista principale"
+                                : hasRun
+                                ? "Rigenera il torneo (reset + configura di nuovo)"
+                                : "Configura e genera il torneo"
+                              }
                               >
-                                {fixedWizardLoading || isStarting ? "..." : "Genera torneo"}
+                                {fixedWizardLoading || isStarting ? "..." : hasRun ? "Rigenera torneo" : "Genera torneo"}
                               </button>
                             </AlertDialogTrigger>
 
                             <AlertDialogContent>
                               <AlertDialogHeader>
-                                <AlertDialogTitle>Generare il torneo (Coppie fisse)?</AlertDialogTitle>
+                                <AlertDialogTitle>{hasRun ? "Rigenerare il torneo (Coppie fisse)?" : "Generare il torneo (Coppie fisse)?"}</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                  Puoi configurare e creare il torneo, oppure ricrearlo cancellando lo sviluppo attuale.
-                                </AlertDialogDescription>
+                                 {hasRun
+                                 ? "Rigenerando verrà fatto reset dello sviluppo attuale e poi potrai configurare e creare di nuovo."
+                                 : "Puoi configurare e creare il torneo."}
+                               </AlertDialogDescription>
                               </AlertDialogHeader>
 
                               <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 14 }}>
   <button
     className="base44-primary-btn"
-    style={{ width: "100%", padding: "12px 14px", borderRadius: 14 }}
-    onClick={() => openFixedPairsWizardFromServer(t, tid)}
-    disabled={!canGenerateFixedPairs || fixedWizardLoading || isStarting}
-  >
-    Configura e crea
-  </button>
-
-  <button
-    className="base44-csv-btn"
     style={{
       width: "100%",
       padding: "12px 14px",
       borderRadius: 14,
-      borderColor: "#fecaca",
-      color: "#b91c1c",
+      backgroundColor: hasRun ? "#dc2626" : "#4f46e5",
+      borderColor: hasRun ? "#dc2626" : "#4f46e5",
     }}
     onClick={async () => {
       try {
-        await resetTournamentRunFixedPairs(tid);
+        if (hasRun) {
+          await resetTournamentRunFixedPairs(tid);
+        }
         await openFixedPairsWizardFromServer(t, tid);
       } catch {
-        // già gestito
+        // già gestito dai toast
       }
     }}
     disabled={!canGenerateFixedPairs || fixedWizardLoading || isStarting}
   >
-    Ricrea (reset) + configura
+    {hasRun ? "Rigenera (reset) + configura" : "Configura e crea"}
   </button>
 
   <AlertDialogCancel asChild>

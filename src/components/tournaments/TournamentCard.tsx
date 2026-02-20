@@ -3,6 +3,7 @@
 import { Calendar, Clock, MapPin, Users, UserPlus, X } from "lucide-react";
 import { motion } from "framer-motion";
 import TournamentLiveDialog from "./TournamentLiveDialog";
+import { useState } from "react";
 
 export type PublicTournament = {
   id: string;
@@ -16,7 +17,8 @@ export type PublicTournament = {
   max_participants: number;
   image_url?: string | null;
   counts?: { main: number; reserve: number; male: number; female: number };
-  hasLive?: boolean; // se true, CTA diventa "Sviluppi"
+    hasLive?: boolean; // se true, CTA diventa "Sviluppi"
+  show_participants?: boolean; // ✅ nuovo flag pubblico
 };
 
 type Props = {
@@ -79,10 +81,48 @@ export default function TournamentCard({ tournament, onRegister, status, onCance
 
   // fonte unica
   const live = Boolean(hasLive ?? tournament.hasLive);
+    const showParticipants = Boolean((tournament as any).show_participants);
+
+  const [participantsLoading, setParticipantsLoading] = useState(false);
+  const [participantsLoaded, setParticipantsLoaded] = useState(false);
+  const [participantNames, setParticipantNames] = useState<string[]>([]);
+  const [participantPairs, setParticipantPairs] = useState<{ p1: string; p2: string }[]>([]);
+
+  async function loadParticipantsOnce() {
+    if (!showParticipants) return;
+    if (participantsLoaded || participantsLoading) return;
+
+    setParticipantsLoading(true);
+    try {
+      const res = await fetch(`/api/tournaments/${tournament.id}/participants`, { cache: "no-store" });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || "Errore caricamento iscritti");
+
+      const type = String(json.type ?? tournament.type ?? "");
+      if (type.toLowerCase() === "baraonda") {
+        setParticipantNames(Array.isArray(json.names) ? json.names : []);
+        setParticipantPairs([]);
+      } else {
+        setParticipantPairs(Array.isArray(json.pairs) ? json.pairs : []);
+        setParticipantNames([]);
+      }
+
+      setParticipantsLoaded(true);
+    } catch {
+      // silenzioso: non vogliamo toast invasivi nella lista pubblica
+      setParticipantsLoaded(true);
+    } finally {
+      setParticipantsLoading(false);
+    }
+  }
 
   return (
     <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }}>
-      <div className="base44-tcard">
+      <div
+  className="base44-tcard"
+  onMouseEnter={() => loadParticipantsOnce()}
+  onTouchStart={() => loadParticipantsOnce()}
+>
         {tournament.image_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img className="base44-tcard-img" src={tournament.image_url} alt={tournament.name} />
@@ -136,6 +176,72 @@ export default function TournamentCard({ tournament, onRegister, status, onCance
               <span>{tournament.location}</span>
             </div>
           </div>
+
+          {showParticipants ? (
+  <div style={{ marginTop: 10 }}>
+    <div style={{ fontWeight: 800, color: "#334155", marginBottom: 6, fontSize: 13 }}>
+      Iscritti
+    </div>
+
+    {participantsLoading && !participantsLoaded ? (
+      <div style={{ color: "#64748b", fontSize: 13 }}>Caricamento...</div>
+    ) : tournament.type === "Baraonda" ? (
+      participantNames.length ? (
+        <div
+          style={{
+            border: "1px solid #e2e8f0",
+            borderRadius: 12,
+            overflow: "hidden",
+            background: "white",
+          }}
+        >
+          {participantNames.map((n, idx) => (
+            <div
+              key={`${n}-${idx}`}
+              style={{
+                padding: "8px 10px",
+                fontSize: 13,
+                borderTop: idx === 0 ? "none" : "1px solid #f1f5f9",
+              }}
+            >
+              {n}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div style={{ color: "#64748b", fontSize: 13 }}>Nessun iscritto</div>
+      )
+    ) : participantPairs.length ? (
+      <div
+        style={{
+          border: "1px solid #e2e8f0",
+          borderRadius: 12,
+          overflow: "hidden",
+          background: "white",
+        }}
+      >
+        {participantPairs.map((p, idx) => (
+          <div
+            key={`${p.p1}-${p.p2}-${idx}`}
+            style={{
+              padding: "8px 10px",
+              fontSize: 13,
+              background: idx % 2 === 0 ? "#ffffff" : "#f8fafc", // ✅ righe alternate
+              display: "flex",
+              flexDirection: "column",
+              gap: 2,
+            }}
+          >
+            <div>{p.p1}</div>
+            <div>{p.p2}</div>
+          </div>
+        ))}
+      </div>
+    ) : (
+      <div style={{ color: "#64748b", fontSize: 13 }}>Nessuna coppia completa</div>
+    )}
+  </div>
+) : null}
 
           <div className="base44-tcard-bottom">
             <div className="base44-counts">

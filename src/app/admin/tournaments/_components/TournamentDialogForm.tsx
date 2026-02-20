@@ -16,6 +16,7 @@ export type TournamentDTO = {
   time: string;
   max_participants: number;
   image_url?: string | null;
+  show_participants?: boolean; // ✅ nuovo
 };
 
 type FormState = {
@@ -27,6 +28,7 @@ type FormState = {
   time: string;
   location: string;
   max_participants: number;
+  show_participants: boolean; // ✅ nuovo
 };
 
 const DEFAULTS: FormState = {
@@ -38,6 +40,7 @@ const DEFAULTS: FormState = {
   time: "",
   location: "Movi Club Centallo",
   max_participants: 16,
+  show_participants: false, // ✅ default OFF
 };
 
 const LOCATIONS = [
@@ -79,6 +82,7 @@ export default function TournamentDialogForm({
         time: tournament.time ?? "",
         location: tournament.location ?? "Movi Club Centallo",
         max_participants: tournament.max_participants ?? 16,
+        show_participants: Boolean((tournament as any).show_participants),
       });
     } else {
       setForm(DEFAULTS);
@@ -106,7 +110,7 @@ export default function TournamentDialogForm({
       if (!form.time) throw new Error("Ora obbligatoria");
       if (!form.max_participants || form.max_participants < 1) throw new Error("Max partecipanti non valido");
 
-      const payload = {
+            const payload = {
         name: form.name.trim(),
         type: form.type,
         category: form.category,
@@ -115,6 +119,7 @@ export default function TournamentDialogForm({
         date: form.date,
         time: form.time,
         max_participants: form.max_participants,
+        show_participants: Boolean(form.show_participants), // ✅ nuovo
       };
 
       const url = isEdit ? `/api/admin/tournaments/${tournament!.id}` : `/api/admin/tournaments`;
@@ -263,6 +268,46 @@ export default function TournamentDialogForm({
                   <option value="intermedio">Intermedio</option>
                   <option value="avanzato">Avanzato</option>
                 </select>
+              </div>
+
+                            {/* Mostra iscritti (solo nome) */}
+              <div
+                style={{
+                  border: "1px solid #e2e8f0",
+                  borderRadius: 14,
+                  padding: 12,
+                  background: "#f8fafc",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 12,
+                }}
+              >
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontWeight: 900, color: "#0f172a" }}>Mostra iscritti</div>
+                  <div style={{ color: "#64748b", fontSize: 13, lineHeight: 1.25, marginTop: 2 }}>
+                    Se attivo, nella card pubblica verranno mostrati solo i nomi (nessun telefono o altro).
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  className="base44-csv-btn"
+                  onClick={() => setForm({ ...form, show_participants: !form.show_participants })}
+                  style={{
+                    borderRadius: 999,
+                    padding: "10px 14px",
+                    fontWeight: 900,
+                    background: form.show_participants ? "#16a34a" : "white",
+                    borderColor: form.show_participants ? "#16a34a" : "#e2e8f0",
+                    color: form.show_participants ? "white" : "#0f172a",
+                    flexShrink: 0,
+                  }}
+                  aria-pressed={form.show_participants}
+                  title={form.show_participants ? "Attivo" : "Disattivo"}
+                >
+                  {form.show_participants ? "ON" : "OFF"}
+                </button>
               </div>
 
               {/* Data + Ora — versione blindata iOS */}
