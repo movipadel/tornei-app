@@ -509,7 +509,8 @@ export default function AdminTournamentsUI() {
             const isBaraonda = typeLower === "baraonda";
             const isFixedPairs = typeLower === "coppie fisse";
 
-            const canGenerateBaraonda = isBaraonda && mainCount >= 4 && mainCount <= 10;
+            const MAX_BARAONDA_PLAYERS = 20;
+            const canGenerateBaraonda = isBaraonda && mainCount >= 4 && mainCount <= MAX_BARAONDA_PLAYERS;
             const canGenerateFixedPairs = isFixedPairs && mainCount >= 2;
             const isStarting = !!startingById[tid];
 
@@ -861,12 +862,12 @@ export default function AdminTournamentsUI() {
                                   cursor: !canGenerateBaraonda || isStarting ? "not-allowed" : "pointer",
                                 }}
                                 title={
-                                  mainCount < 4
-                                    ? "Servono almeno 4 iscritti in lista principale"
-                                    : mainCount > 10
-                                    ? "Massimo 10 iscritti per Baraonda"
-                                    : "Genera il torneo"
-                                }
+                                 mainCount < 4
+                                 ? "Servono almeno 4 iscritti in lista principale"
+                                 : mainCount > MAX_BARAONDA_PLAYERS
+                                 ? `Massimo ${MAX_BARAONDA_PLAYERS} iscritti per Baraonda`
+                                 : "Genera il torneo"
+                               }
                               >
                                 {isStarting ? "..." : "Genera torneo"}
                               </button>

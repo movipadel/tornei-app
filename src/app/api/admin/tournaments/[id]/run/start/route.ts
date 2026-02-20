@@ -188,11 +188,18 @@ if (denied) return denied;
 
     const main = (regs ?? []) as RegRow[];
 
-    if (main.length < 4) return NextResponse.json({ error: "Minimo 4 partecipanti in lista principale" }, { status: 400 });
-    if (main.length > 10) return NextResponse.json({ error: "Baraonda supportata da 4 a 10 partecipanti" }, { status: 400 });
+    const MAX_BARAONDA_SUPPORTED = 20;
 
+if (main.length < 4)
+  return NextResponse.json({ error: "Minimo 4 partecipanti in lista principale" }, { status: 400 });
+
+if (main.length > MAX_BARAONDA_SUPPORTED)
+  return NextResponse.json(
+    { error: `Baraonda supportata da 4 a ${MAX_BARAONDA_SUPPORTED} partecipanti` },
+    { status: 400 }
+  );
    const players = main.length;
-const matchesPerTurn = players >= 8 ? 2 : 1;
+const matchesPerTurn = Math.max(1, Math.floor(players / 4));
 
 // ✅ categoria normalizzata (DB)
 const category = mapCategory(tr.category);
