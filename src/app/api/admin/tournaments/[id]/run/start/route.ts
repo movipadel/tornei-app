@@ -199,21 +199,20 @@ if (main.length > MAX_BARAONDA_SUPPORTED)
     { status: 400 }
   );
    const players = main.length;
-const matchesPerTurn = Math.max(1, Math.floor(players / 4));
-
-// ✅ categoria normalizzata (DB)
 const category = mapCategory(tr.category);
 
-// ✅ turni preset
-let turns = computeTurns(players);
+// ✅ finché non abbiamo "courts", cappiamo a 2 campi
+const matchesPerTurn = players >= 8 ? 2 : 1;
 
-// ✅ Regola EQUITÀ (solo NON misto): 10 player + 2 campi => 10 turni (8 match a testa)
-if (category !== "misto" && players === 10 && matchesPerTurn === 2) {
-  turns = 10;
-}
-
-// ✅ REGOLA MISTO: M/F uguali (coverage partner gestita dal generator, non qui)
+// ✅ MISTO: numero pari + M/F uguali (una sola volta, niente duplicati)
 if (category === "misto") {
+  if (players % 2 !== 0) {
+    return NextResponse.json(
+      { error: "Baraonda misto richiede un numero pari di partecipanti" },
+      { status: 400 }
+    );
+  }
+
   const males = main.filter((r) => r.p1_gender === "M").length;
   const females = main.filter((r) => r.p1_gender === "F").length;
 
@@ -223,73 +222,100 @@ if (category === "misto") {
       { status: 400 }
     );
   }
-
-  // ✅ PRESET MISTO 10 (5M+5F): coverage partner + equità
-  if (players === 10 && matchesPerTurn === 2) {
-    turns = 8; // 7 turni pieni + 1 turno mezzo = 15 match
-  }
 }
 
-// ricalcola matchesPerPlayer
-let matchesPerPlayer = (matchesPerTurn * 4 * turns) / players;
+// calcolo equo coerente con generator
+function computeStandardTurns(players: number, matchesPerTurn: number, matchesPerPlayer: number) {
+  const totalSlots = players * matchesPerPlayer;
+  const denom = matchesPerTurn * 4;
+  if (totalSlots % denom !== 0) {
+    throw new Error(
+      `Regole non eque: N(${players})*mpp(${matchesPerPlayer})=${totalSlots} non divisibile per mpt(${matchesPerTurn})*4=${denom}`
+    );
+  }
+  return totalSlots / denom;
+}
 
-// ✅ override matchesPerPlayer per misto 10 (perché l'ultimo turno è mezzo)
+function targetMatchesPerPlayer(players: number, category: string) {
+  if (category !== "misto") return 4;
+
+  // preset misto “forte”
+  if (players === 10) return 6;
+  if (players === 12) return 6;
+
+  return 4;
+}
+
+let turns: number;
+let matchesPerPlayer: number;
+
+// preset misto 10 (5+5) richiesto dal generator deterministico
 if (category === "misto" && players === 10 && matchesPerTurn === 2) {
+  turns = 8;
   matchesPerPlayer = 6;
+} else {
+  matchesPerPlayer = targetMatchesPerPlayer(players, category);
+  turns = computeStandardTurns(players, matchesPerTurn, matchesPerPlayer);
 }
 
-    // 4) crea run
-    const rules = {
-      players,
-      matchesPerTurn,
-      turns,
-      matchesPerPlayer,
-      durationPreset: "standard",
-      tieWinValue: 0.5,
-      category,
-    };
+// eccezione NON-MISTO 10 “full equo” (preset deterministico N=10)
+if (category !== "misto" && players === 10 && matchesPerTurn === 2) {
+  turns = 10;
+  matchesPerPlayer = 8;
+}
 
-    const { data: run, error: runErr } = await sb
-      .from("tournament_runs")
-      .insert({
-        tournament_id: tournamentId,
-        mode: "baraonda",
-        category,
-        status: "locked",
-        locked_at: new Date().toISOString(),
-        rules,
-      })
-      .select("id,rules")
-      .single();
+// 4) crea run
+const rules = {
+  players,
+  matchesPerTurn,
+  turns,
+  matchesPerPlayer,
+  durationPreset: "standard",
+  tieWinValue: 0.5,
+  category,
+};
 
-    if (runErr || !run) return NextResponse.json({ error: runErr?.message ?? "Run error" }, { status: 500 });
+const { data: run, error: runErr } = await sb
+  .from("tournament_runs")
+  .insert({
+    tournament_id: tournamentId,
+    mode: "baraonda",
+    category,
+    status: "locked",
+    locked_at: new Date().toISOString(),
+    rules,
+  })
+  .select("id,rules")
+  .single();
 
-    const runId = String((run as any).id);
+if (runErr || !run) return NextResponse.json({ error: runErr?.message ?? "Run error" }, { status: 500 });
 
-    // 5) snapshot partecipanti
-    const participantsPayload = main.map((r) => ({
-      run_id: runId,
-      name: r.p1_name,
-      phone: r.p1_phone,
-      sex: toSex(r.p1_gender),
-    }));
+const runId = String((run as any).id);
 
-    const { error: perr } = await sb.from("tournament_run_participants").insert(participantsPayload);
-    if (perr) return NextResponse.json({ error: perr.message }, { status: 500 });
+// 5) snapshot partecipanti
+const participantsPayload = main.map((r) => ({
+  run_id: runId,
+  name: r.p1_name,
+  phone: r.p1_phone,
+  sex: toSex(r.p1_gender),
+}));
 
-    // 6) genera e inserisce schedule (idempotente)
-    await ensureScheduleForRun(sb, runId, (run as any).rules ?? rules);
+const { error: perr } = await sb.from("tournament_run_participants").insert(participantsPayload);
+if (perr) return NextResponse.json({ error: perr.message }, { status: 500 });
 
-    // 7) running
-    const { error: uerr } = await sb
-      .from("tournament_runs")
-      .update({ status: "running", started_at: new Date().toISOString() })
-      .eq("id", runId);
+// 6) genera e inserisce schedule (idempotente)
+await ensureScheduleForRun(sb, runId, (run as any).rules ?? rules);
 
-    if (uerr) return NextResponse.json({ error: uerr.message }, { status: 500 });
+// 7) running
+const { error: uerr } = await sb
+  .from("tournament_runs")
+  .update({ status: "running", started_at: new Date().toISOString() })
+  .eq("id", runId);
 
-    return NextResponse.json({ tournamentId, runId, reused: false });
-  } catch (e: any) {
-    return NextResponse.json({ error: e?.message ?? "Errore" }, { status: 500 });
-  }
+if (uerr) return NextResponse.json({ error: uerr.message }, { status: 500 });
+
+return NextResponse.json({ tournamentId, runId, reused: false });
+} catch (e: any) {
+return NextResponse.json({ error: e?.message ?? "Errore" }, { status: 500 });
+}
 }

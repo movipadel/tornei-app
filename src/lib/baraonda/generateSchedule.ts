@@ -10,7 +10,7 @@ export interface Participant {
 
 export interface BaraondaRules {
   players: number;
-  matchesPerTurn: number; // 1 o 2
+  matchesPerTurn: number; // 1..floor(players/4)
   turns: number;
   matchesPerPlayer: number;
   category: "maschile" | "femminile" | "libero" | "misto";
@@ -823,9 +823,13 @@ function generateGenericMistoSchedule(participants: Participant[], rules: Baraon
   if (males.length !== females.length) {
     throw new Error(`Baraonda misto richiede stesso numero M/F (M=${males.length}, F=${females.length}).`);
   }
-  if (matchesPerTurn !== 1 && matchesPerTurn !== 2) {
-    throw new Error("Baraonda misto supporta matchesPerTurn = 1 o 2.");
-  }
+  const players = rules.players ?? participants.length;
+  const maxMatchesPerTurn = Math.floor(players / 4);
+
+// ✅ MISTO: consenti 1..maxMatchesPerTurn
+if (matchesPerTurn < 1 || matchesPerTurn > maxMatchesPerTurn) {
+  throw new Error(`Misto: matchesPerTurn deve essere tra 1 e ${maxMatchesPerTurn} (players=${players})`);
+}
 
   // Preset chosen by product rules
   const targetMpp = mistoTargetMatchesPerPlayer(n);
@@ -992,7 +996,11 @@ function generateGenericMistoSchedule(participants: Participant[], rules: Baraon
 export function generateBaraondaSchedule(participants: Participant[], rules: BaraondaRules): Turn[] {
   const { category, matchesPerTurn, turns, matchesPerPlayer } = rules;
 
-  if (participants.length < 4) throw new Error("Partecipanti insufficienti");
+if (participants.length < 4) throw new Error("Partecipanti insufficienti");
+  const maxMatchesPerTurn = Math.floor(participants.length / 4);
+if (matchesPerTurn < 1 || matchesPerTurn > maxMatchesPerTurn) {
+  throw new Error(`matchesPerTurn deve essere tra 1 e ${maxMatchesPerTurn} (players=${participants.length})`);
+}
 
   if (category === "misto") {
     const males = participants.filter((p) => p.sex === "m").length;
