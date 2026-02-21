@@ -37,10 +37,8 @@ export async function PUT(req: Request) {
 
   const body = await req.json().catch(() => ({}));
 
-  const home_title = String(body.home_title ?? "").trim() || "Tornei";
-  const home_subtitle =
-    String(body.home_subtitle ?? "").trim() ||
-    "Iscriviti ai tornei Movi e gestisci le tue iscrizioni";
+  const home_title = String(body.home_title ?? "").trim();
+  const home_subtitle = String(body.home_subtitle ?? "").trim();
   const home_logo_url = body.home_logo_url ? String(body.home_logo_url) : null;
 
   const sb = supabaseAdmin();
