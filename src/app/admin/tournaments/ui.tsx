@@ -146,7 +146,7 @@ const [baraondaCourtsById, setBaraondaCourtsById] = useState<Record<string, numb
   const [settingsLoading, setSettingsLoading] = useState(false);
   const [settingsSaving, setSettingsSaving] = useState(false);
 
-  const [homeTitle, setHomeTitle] = useState("Tornei");
+  const [homeTitle, setHomeTitle] = useState("");
   const [homeSubtitle, setHomeSubtitle] = useState("Iscriviti ai tornei Movi e gestisci le tue iscrizioni");
   const [homeLogoUrl, setHomeLogoUrl] = useState<string | null>(null);
   const [logoFile, setLogoFile] = useState<File | null>(null);
@@ -353,7 +353,7 @@ const [baraondaCourtsById, setBaraondaCourtsById] = useState<Record<string, numb
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json.error || "Errore caricamento impostazioni");
 
-      setHomeTitle(json.home_title ?? "Tornei");
+      setHomeTitle(json.home_title ?? "");
       setHomeSubtitle(json.home_subtitle ?? "");
       setHomeLogoUrl(json.home_logo_url ?? null);
       setLogoFile(null);

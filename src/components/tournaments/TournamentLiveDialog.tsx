@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import { formatPlayerName } from "@/lib/formatPlayerName";
 import {
   Dialog,
@@ -16,7 +16,7 @@ import {
  *  ========================== */
 type LiveStandingRow = {
   name: string;
-  sex?: "m" | "f"; // ✅ aggiungi questa riga
+  sex?: "m" | "f";
   points: number;
   played: number;
   wins: number;
@@ -109,222 +109,197 @@ type LiveData =
       bracketRounds: { label: string; matchIds: string[] }[];
     };
 
-function statusLabel(s?: string | null) {
-  const v = String(s ?? "").toLowerCase();
-  if (v === "running") return "In corso";
-  if (v === "locked") return "Bloccato";
-  if (v === "finished") return "Finito";
-  return s ?? "-";
-}
+/** ==========================
+ *  Helpers UI
+ *  ========================== */
 
-function statusChipStyle(s?: string | null) {
-  const v = String(s ?? "").toLowerCase();
-  if (v === "running") return { background: "#ecfeff", borderColor: "#a5f3fc", color: "#155e75" };
-  if (v === "locked") return { background: "#eef2ff", borderColor: "#c7d2fe", color: "#3730a3" };
-  if (v === "finished") return { background: "#f0fdf4", borderColor: "#bbf7d0", color: "#166534" };
-  return { background: "#f8fafc", borderColor: "#e2e8f0", color: "#334155" };
-}
-
-function TeamColumn({ team }: { team: [string, string] }) {
+/** fascia blu tipo broadcast per wrapper (Turno / Girone / Round tabellone) */
+function BlueHeader({
+  left,
+  right,
+}: {
+  left: string;
+  right?: string | null;
+}) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 4, lineHeight: 1.15 }}>
-      <div style={{ fontWeight: 650 }}>{formatPlayerName(team[0])}</div>
-      <div style={{ fontWeight: 650 }}>{formatPlayerName(team[1])}</div>
+    <div
+      style={{
+        background: "linear-gradient(90deg, #2563eb 0%, #06b6d4 85%)",
+        borderRadius: 12,
+        padding: "10px 12px",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: 10,
+        color: "white",
+      }}
+    >
+      <div style={{ fontWeight: 950, letterSpacing: "0.08em", textTransform: "uppercase" }}>
+        {left}
+      </div>
+
+      {right ? (
+        <div
+          style={{
+            padding: "4px 10px",
+            borderRadius: 999,
+            background: "rgba(255,255,255,0.18)",
+            border: "1px solid rgba(255,255,255,0.25)",
+            fontWeight: 900,
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+            fontSize: 12,
+          }}
+        >
+          {right}
+        </div>
+      ) : null}
     </div>
   );
 }
 
-function scoreBadgeStyle(team1_games: number | null, team2_games: number | null) {
-  const hasScore = team1_games != null && team2_games != null;
-  const isDraw = hasScore && team1_games === team2_games;
+function splitPairDisplayName(raw: string): string[] {
+  const s = String(raw ?? "").trim();
+  if (!s) return ["—", "—"];
 
-  if (!hasScore) {
-    return {
-      background: "#e2e8f0",
-      borderColor: "#cbd5e1",
-      color: "#334155",
-      boxShadow: "inset 0 1px 2px rgba(0,0,0,0.08)",
-    };
-  }
+  // Supporta: "A/B", "A / B", "A - B"
+  const normalized = s
+    .replaceAll(" - ", "/")
+    .replaceAll(" / ", "/")
+    .replaceAll(" /", "/")
+    .replaceAll("/ ", "/");
 
-  if (isDraw) {
-    return {
-      background: "#2563eb",
-      borderColor: "#1d4ed8",
-      color: "#ffffff",
-      boxShadow: "0 2px 8px rgba(37,99,235,0.35)",
-    };
-  }
+  const parts = normalized
+    .split("/")
+    .map((x) => x.trim())
+    .filter(Boolean);
 
-  return {
-    background: "#111827",
-    borderColor: "#0b1220",
-    color: "#ffffff",
-    boxShadow: "0 2px 8px rgba(0,0,0,0.25)",
-  };
+  if (parts.length >= 2) return [parts[0], parts[1]];
+  return [parts[0] ?? s, ""].filter((x) => x !== "");
 }
 
 /**
- * FIXED PAIRS: score line per layout "mobile-first"
- * - one_set: mostra solo 6-4
- * - best_of_3: mostra SOLO set scores (es: 6-4 3-6 10-8)
- * - niente "2-0 / 2-1"
+ * Match renderer in stile Baraonda:
+ *  - striscia laterale
+ *  - coppia sx VS coppia dx
+ *  - 2 box punteggio con colori dinamici
+ *  - draw: verde
  */
-function ScoreLine({ m }: { m: FPMatch }) {
-  if (!m.sets) {
-    const b = scoreBadgeStyle(m.home_games, m.away_games);
-    return (
-      <div
-        style={{
-          padding: "4px 12px",
-          borderRadius: 999,
-          border: `1px solid ${b.borderColor}`,
-          background: b.background,
-          color: b.color,
-          fontSize: 16,
-          fontWeight: 900,
-          minWidth: 72,
-          textAlign: "center",
-          lineHeight: 1.05,
-          boxShadow: b.boxShadow,
-        }}
-      >
-        {(m.home_games ?? "-")} - {(m.away_games ?? "-")}
-      </div>
-    );
-  }
-
-  const parts: string[] = [];
-  (["set1", "set2", "set3"] as const).forEach((k) => {
-    const s = (m.sets as any)[k];
-    const has = s?.home != null && s?.away != null;
-    if (has) parts.push(`${s.home}-${s.away}`);
-  });
-
-  if (parts.length === 0) return null;
-
-  return (
-    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "center" }}>
-      {parts.map((txt, i) => (
-        <span
-          key={`${txt}-${i}`}
-          className="base44-chip"
-          style={{
-  padding: "3px 10px",
-  background: "#f8fafc",
-  borderColor: "#e2e8f0",
-  color: "#0f172a",
-  fontWeight: 900,
-  fontSize: 14,
-  lineHeight: 1.1,
-  boxShadow: "0 1px 2px rgba(15,23,42,0.08)",
-}}
-
-        >
-          {txt}
-        </span>
-      ))}
-    </div>
-  );
-}
-
-/** Layout match Fixed Pairs: 4 righe (home / VS / away / sets) */
-function FixedPairsMatchStack({
-  m,
+function MatchCardBaraondaStyle({
+  left,
+  right,
+  leftScore,
+  rightScore,
+  stripeColor,
   playerNameClass,
 }: {
-  m: FPMatch;
+  left: [string, string];
+  right: [string, string];
+  leftScore: number | null;
+  rightScore: number | null;
+  stripeColor: string;
   playerNameClass: string;
 }) {
+  const hasScore = leftScore != null && rightScore != null;
+  const draw = hasScore && leftScore === rightScore;
+  const leftWin = hasScore && (leftScore as number) > (rightScore as number);
+  const rightWin = hasScore && (rightScore as number) > (leftScore as number);
 
-  const empty = m.home?.name === "—" || m.away?.name === "—";
+  const boxStyleBase: CSSProperties = {
+    minWidth: 70,
+    height: 42,
+    borderRadius: 14,
+    border: "1px solid #e2e8f0",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontWeight: 950,
+    fontSize: 18,
+    boxShadow: "0 1px 2px rgba(15,23,42,0.08)",
+    background: "#ffffff",
+    color: "#0f172a",
+  };
 
-  const homeName = String(m.home?.name ?? "").replaceAll("/", " - ");
-  const awayName = String(m.away?.name ?? "").replaceAll("/", " - ");
+  const drawStyle: CSSProperties = draw
+    ? {
+        background: "linear-gradient(180deg, rgba(22,163,74,0.22) 0%, rgba(22,163,74,0.10) 100%)",
+        borderColor: "rgba(22,163,74,0.35)",
+      }
+    : {};
+
+  const leftBoxStyle: CSSProperties = leftWin
+    ? {
+        background: "linear-gradient(180deg, rgba(37,99,235,0.22) 0%, rgba(37,99,235,0.10) 100%)",
+        borderColor: "rgba(37,99,235,0.35)",
+      }
+    : drawStyle;
+
+  const rightBoxStyle: CSSProperties = rightWin
+    ? {
+        background: "linear-gradient(180deg, rgba(245,158,11,0.22) 0%, rgba(245,158,11,0.10) 100%)",
+        borderColor: "rgba(245,158,11,0.35)",
+      }
+    : drawStyle;
 
   return (
     <div
       style={{
         border: "1px solid #eef2f7",
-        borderRadius: 12,
-        padding: 10,
-        background: empty ? "#f8fafc" : "#fafafa",
-        opacity: empty ? 0.78 : 1,
+        borderRadius: 14,
+        background: "#ffffff",
+        overflow: "hidden",
         display: "flex",
-        flexDirection: "column",
-        gap: 8,
       }}
     >
-      {/* riga 1: coppia 1 */}
-      <div style={{ fontWeight: 750, color: "#0f172a", lineHeight: 1.15 }}>
-        <div style={{ fontWeight: 750, color: "#0f172a", lineHeight: 1.15 }}>
-  {homeName
-    .split(" - ")
-    .map((p, i) => (
-      <div key={i} className={playerNameClass}>
-        {formatPlayerName(p)}
-      </div>
-    ))}
-</div>
+      <div style={{ width: 6, background: stripeColor }} />
 
-      </div>
+      <div style={{ flex: 1, padding: 12, display: "flex", flexDirection: "column", gap: 10 }}>
+        {/* Nomi: sx vs dx */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: 10, alignItems: "center" }}>
+          <div style={{ lineHeight: 1.15 }}>
+            <div style={{ fontWeight: 900, color: "#0f172a" }}>
+              <span className={playerNameClass}>{formatPlayerName(left[0])}</span>
+            </div>
+            <div style={{ fontWeight: 900, color: "#0f172a" }}>
+              <span className={playerNameClass}>{formatPlayerName(left[1])}</span>
+            </div>
+          </div>
 
-      {/* riga 2: VS */}
-      <div style={{ display: "flex", justifyContent: "center" }}>
-        <div
-          style={{
-            color: "#94a3b8",
-            fontWeight: 900,
-            fontSize: 12,
-            letterSpacing: "0.08em",
-          }}
-        >
-          VS
+          <div style={{ color: "#94a3b8", fontWeight: 950, fontSize: 12, letterSpacing: "0.08em" }}>
+            VS
+          </div>
+
+          <div style={{ textAlign: "right", lineHeight: 1.15 }}>
+            <div style={{ fontWeight: 900, color: "#0f172a" }}>
+              <span className={playerNameClass}>{formatPlayerName(right[0])}</span>
+            </div>
+            <div style={{ fontWeight: 900, color: "#0f172a" }}>
+              <span className={playerNameClass}>{formatPlayerName(right[1])}</span>
+            </div>
+          </div>
         </div>
-      </div>
 
-      {/* riga 3: coppia 2 */}
-      <div
-        style={{
-          fontWeight: 750,
-          color: "#0f172a",
-          textAlign: "right",
-          lineHeight: 1.15,
-        }}
-      >
-        <div
-  style={{
-    fontWeight: 750,
-    color: "#0f172a",
-    textAlign: "right",
-    lineHeight: 1.15,
-  }}
->
-  {awayName
-    .split(" - ")
-    .map((p, i) => (
-      <div key={i} className={playerNameClass}>
-        {formatPlayerName(p)}
-      </div>
-    ))}
-</div>
-
-      </div>
-
-      {/* riga 4: risultati set */}
-      <div style={{ display: "flex", justifyContent: "center" }}>
-        <ScoreLine m={m} />
+        {/* Score: due box */}
+        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 12 }}>
+          <div style={{ ...boxStyleBase, ...leftBoxStyle }}>{leftScore ?? ""}</div>
+          <div style={{ color: "#94a3b8", fontWeight: 950, fontSize: 18 }}>-</div>
+          <div style={{ ...boxStyleBase, ...rightBoxStyle }}>{rightScore ?? ""}</div>
+        </div>
       </div>
     </div>
   );
 }
 
-
+/** ==========================
+ *  Component
+ *  ========================== */
 export default function TournamentLiveDialog({
   tournamentId,
+  tournamentName,
   triggerLabel = "Vedi sviluppi",
 }: {
   tournamentId: string;
+  tournamentName?: string;
   triggerLabel?: string;
 }) {
   const [open, setOpen] = useState(false);
@@ -372,32 +347,56 @@ export default function TournamentLiveDialog({
   }, [open, tournamentId]);
 
   const isNoRun = data && "status" in data && (data as any).status === "no-run";
-
   const mode = (data as any)?.mode ?? null;
 
   const baraonda = data && (data as any).mode === "baraonda" ? (data as any) : null;
   const fixed = data && (data as any).mode === "fixed_pairs" ? (data as any) : null;
 
-  // ✅ MISTO detection (vale sia per baraonda che coppie fisse)
-// Proviamo a leggerlo da rules/category (a seconda di cosa arriva dall’API live)
-const isMisto =
-  String((data as any)?.rules?.category ?? (data as any)?.category ?? "")
-    .toLowerCase()
-    .trim() === "misto";
+  const dialogTitle =
+    tournamentName && String(tournamentName).trim()
+      ? String(tournamentName).trim()
+      : "Sviluppi torneo";
 
-const playerNameClass = isMisto ? "base44-player-name-misto" : "base44-player-name";
+  const isMisto =
+    String((data as any)?.rules?.category ?? (data as any)?.category ?? "")
+      .toLowerCase()
+      .trim() === "misto";
 
-const maleLeaderName = useMemo(() => {
-  if (!isMisto || !baraonda?.standings?.length) return null;
-  const row = (baraonda.standings as LiveStandingRow[]).find((x) => x.sex === "m");
-  return row?.name ?? null;
-}, [isMisto, baraonda?.standings]);
+  const playerNameClass = isMisto ? "base44-player-name-misto" : "base44-player-name";
 
-const femaleLeaderName = useMemo(() => {
-  if (!isMisto || !baraonda?.standings?.length) return null;
-  const row = (baraonda.standings as LiveStandingRow[]).find((x) => x.sex === "f");
-  return row?.name ?? null;
-}, [isMisto, baraonda?.standings]);
+  const maleLeaderName = useMemo(() => {
+    if (!isMisto || !baraonda?.standings?.length) return null;
+    const row = (baraonda.standings as LiveStandingRow[]).find((x) => x.sex === "m");
+    return row?.name ?? null;
+  }, [isMisto, baraonda?.standings]);
+
+  const femaleLeaderName = useMemo(() => {
+    if (!isMisto || !baraonda?.standings?.length) return null;
+    const row = (baraonda.standings as LiveStandingRow[]).find((x) => x.sex === "f");
+    return row?.name ?? null;
+  }, [isMisto, baraonda?.standings]);
+
+  const progressPct = useMemo(() => {
+    if (baraonda?.totalTurns) {
+      const pct = Math.round(
+        (Number(baraonda.currentTurn || 0) / Number(baraonda.totalTurns || 1)) * 100
+      );
+      return Math.max(0, Math.min(100, pct));
+    }
+
+    if (fixed?.matches_fp?.length) {
+      const total = fixed.matches_fp.length;
+      const done = fixed.matches_fp.filter((m: FPMatch) => {
+        const hasScore = m.home_games != null && m.away_games != null;
+        return hasScore || !!m.completed_at;
+      }).length;
+
+      const pct = Math.round((done / total) * 100);
+      return Math.max(0, Math.min(100, pct));
+    }
+
+    return 0;
+  }, [baraonda?.currentTurn, baraonda?.totalTurns, fixed?.matches_fp]);
 
   const fpMatchesById = useMemo(() => {
     const m = new Map<string, FPMatch>();
@@ -413,11 +412,111 @@ const femaleLeaderName = useMemo(() => {
         </button>
       </DialogTrigger>
 
-      {/* (mantengo la tua versione attuale) */}
       <DialogContent className="max-w-3xl [&>button[aria-label='Close']]:hidden">
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
-          <DialogHeader>
-            <DialogTitle>Sviluppi torneo</DialogTitle>
+        {/* Keyframes per pallino LIVE */}
+        <style>
+          {`
+            @keyframes livePulse {
+              0% { transform: scale(1); opacity: 1; }
+              50% { transform: scale(1.6); opacity: 0.55; }
+              100% { transform: scale(1); opacity: 1; }
+            }
+          `}
+        </style>
+
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+          <DialogHeader style={{ width: "100%" }}>
+            <DialogTitle style={{ display: "none" }}>Live</DialogTitle>
+
+            {/* Riga LIVE + Nome torneo */}
+            {data && mode ? (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 14,
+                  marginTop: 6,
+                  flexWrap: "wrap",
+                }}
+              >
+                <span
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 8,
+                    padding: "6px 14px",
+                    borderRadius: 999,
+                    background: "#ef4444",
+                    color: "white",
+                    fontWeight: 900,
+                    letterSpacing: "0.08em",
+                    fontSize: 12,
+                  }}
+                >
+                  <span
+                    style={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: 999,
+                      background: "white",
+                      display: "inline-block",
+                      animation: "livePulse 1.6s ease-in-out infinite",
+                    }}
+                  />
+                  LIVE
+                </span>
+
+                <div
+                  style={{
+                    fontSize: 18,
+                    fontWeight: 900,
+                    letterSpacing: "0.08em",
+                    textTransform: "uppercase",
+                    color: "#0f172a",
+                  }}
+                >
+                  {dialogTitle}
+                </div>
+              </div>
+            ) : (
+              <div
+                style={{
+                  fontSize: 18,
+                  fontWeight: 900,
+                  letterSpacing: "0.08em",
+                  textTransform: "uppercase",
+                  color: "#0f172a",
+                  marginTop: 6,
+                }}
+              >
+                {dialogTitle}
+              </div>
+            )}
+
+            {/* Progress bar */}
+            {data && mode ? (
+              <div
+                style={{
+                  marginTop: 12,
+                  height: 14,
+                  borderRadius: 999,
+                  background: "#e5e7eb",
+                  overflow: "hidden",
+                  border: "1px solid #e2e8f0",
+                }}
+              >
+                <div
+                  style={{
+                    height: "100%",
+                    width: `${progressPct}%`,
+                    borderRadius: 999,
+                    background:
+                      "linear-gradient(90deg, #2563eb 0%, #06b6d4 70%, #e5e7eb 100%)",
+                    transition: "width 250ms ease",
+                  }}
+                />
+              </div>
+            ) : null}
           </DialogHeader>
 
           <DialogClose asChild>
@@ -457,45 +556,12 @@ const femaleLeaderName = useMemo(() => {
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            {/* Header stato */}
-            <div className="base44-card">
-              <div
-                className="base44-card-inner"
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  gap: 10,
-                  flexWrap: "wrap",
-                  alignItems: "center",
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                  <span className="base44-chip" style={{ ...statusChipStyle((data as any).status), padding: "2px 10px" }}>
-                    {statusLabel((data as any).status)}
-                  </span>
-
-                  <span className="base44-chip" style={{ padding: "2px 10px" }}>
-                    {mode === "fixed_pairs" ? "Coppie fisse" : "Baraonda"}
-                  </span>
-                </div>
-
-                <div style={{ color: "#94a3b8", fontSize: 12 }}>{loading ? "Aggiornamento…" : "Auto-refresh: 5s"}</div>
-              </div>
-            </div>
-
             {/* ==========================
-                BARAONDA (lasciato invariato)
+                BARAONDA
                ========================== */}
             {baraonda ? (
               <>
-                <div className="base44-card">
-                  <div className="base44-card-inner" style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
-                    <div style={{ color: "#64748b" }}>
-                      Turno <b style={{ color: "#0f172a" }}>{baraonda.currentTurn}</b>/{baraonda.totalTurns}
-                    </div>
-                  </div>
-                </div>
-
+                {/* Classifica */}
                 <div className="base44-card">
                   <div className="base44-card-inner" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                     <div style={{ fontWeight: 900, color: "#0f172a" }}>Classifica</div>
@@ -521,120 +587,84 @@ const femaleLeaderName = useMemo(() => {
                           </thead>
 
                           <tbody>
-  {baraonda.standings.map((r: LiveStandingRow, idx: number) => {
-  const isLeaderClassic = !isMisto && idx === 0;
+                            {baraonda.standings.map((r: LiveStandingRow, idx: number) => {
+                              const isLeaderClassic = !isMisto && idx === 0;
 
-  const rNameNorm = formatPlayerName(r.name);
-  const maleLeaderNorm = maleLeaderName ? formatPlayerName(maleLeaderName) : null;
-  const femaleLeaderNorm = femaleLeaderName ? formatPlayerName(femaleLeaderName) : null;
+                              const rNameNorm = formatPlayerName(r.name);
+                              const maleLeaderNorm = maleLeaderName ? formatPlayerName(maleLeaderName) : null;
+                              const femaleLeaderNorm = femaleLeaderName ? formatPlayerName(femaleLeaderName) : null;
 
-  const isMaleLeader = !!maleLeaderNorm && rNameNorm === maleLeaderNorm;
-  const isFemaleLeader = !!femaleLeaderNorm && rNameNorm === femaleLeaderNorm;
-  const isLeader = isLeaderClassic || isMaleLeader || isFemaleLeader;
+                              const isMaleLeader = !!maleLeaderNorm && rNameNorm === maleLeaderNorm;
+                              const isFemaleLeader = !!femaleLeaderNorm && rNameNorm === femaleLeaderNorm;
+                              const isLeader = isLeaderClassic || isMaleLeader || isFemaleLeader;
 
-  return (
+                              const leaderRowStyle: CSSProperties | undefined = (() => {
+                                if (!isLeader) return undefined;
 
-      <tr key={`${r.name}-${idx}`} style={isLeader ? { background: "#eef2ff" } : undefined}>
-        <td
-          style={{
-            padding: 10,
-            borderBottom: "1px solid #eef2f7",
-            color: "#64748b",
-            fontWeight: 700,
-          }}
-        >
-          {idx + 1}
-        </td>
+                                if (isLeaderClassic) {
+                                  return {
+                                    backgroundImage:
+                                      "linear-gradient(90deg, rgba(245,158,11,0.22) 0%, rgba(245,158,11,0.10) 40%, rgba(255,255,255,0) 100%)",
+                                  };
+                                }
 
-        <td
-          style={{
-            padding: 10,
-            paddingRight: 40,
-            borderBottom: "1px solid #eef2f7",
-            fontWeight: 650,
-            color: "#0f172a",
-          }}
-        >
-          <span className={playerNameClass}>{formatPlayerName(r.name)}</span>
-          {/* ⭐ Leader classico (non misto) */}
-{isLeaderClassic ? (
-  <span
-    style={{
-      marginLeft: 6,
-      color: "#f59e0b",
-      fontSize: 14,
-      fontWeight: 900,
-      verticalAlign: "middle",
-    }}
-    title="Leader"
-  >
-    ★
-  </span>
-) : null}
+                                if (isMisto && isMaleLeader) {
+                                  return {
+                                    backgroundImage:
+                                      "linear-gradient(90deg, rgba(37,99,235,0.22) 0%, rgba(37,99,235,0.10) 40%, rgba(255,255,255,0) 100%)",
+                                  };
+                                }
 
-{/* ⭐ Leader misto: uomo (blu) */}
-{isMisto && isMaleLeader ? (
-  <span
-    style={{
-      marginLeft: 6,
-      color: "#2563eb",
-      fontSize: 14,
-      fontWeight: 900,
-      verticalAlign: "middle",
-    }}
-    title="Leader uomo"
-  >
-    ★
-  </span>
-) : null}
+                                if (isMisto && isFemaleLeader) {
+                                  return {
+                                    backgroundImage:
+                                      "linear-gradient(90deg, rgba(219,39,119,0.22) 0%, rgba(219,39,119,0.10) 40%, rgba(255,255,255,0) 100%)",
+                                  };
+                                }
 
-{/* ⭐ Leader misto: donna (rosa elegante) */}
-{isMisto && isFemaleLeader ? (
-  <span
-    style={{
-      marginLeft: 6,
-      color: "#db2777",
-      fontSize: 14,
-      fontWeight: 900,
-      verticalAlign: "middle",
-    }}
-    title="Leader donna"
-  >
-    ★
-  </span>
-) : null}
+                                return undefined;
+                              })();
 
-        </td>
+                              return (
+                                <tr key={`${r.name}-${idx}`} style={leaderRowStyle}>
+                                  <td style={{ padding: 10, borderBottom: "1px solid #eef2f7", color: "#64748b", fontWeight: 700 }}>
+                                    {idx + 1}
+                                  </td>
 
-        <td style={{ padding: 10, borderBottom: "1px solid #eef2f7", textAlign: "right", fontWeight: 900 }}>
-          {r.gw}
-        </td>
-        <td style={{ padding: 10, borderBottom: "1px solid #eef2f7", textAlign: "right" }}>
-          {r.points}
-        </td>
-        <td style={{ padding: 10, borderBottom: "1px solid #eef2f7", textAlign: "right" }}>
-          {r.gl}
-        </td>
-        <td style={{ padding: 10, borderBottom: "1px solid #eef2f7", textAlign: "right", fontWeight: 800 }}>
-          {r.difg}
-        </td>
-        <td style={{ padding: 10, borderBottom: "1px solid #eef2f7", textAlign: "right" }}>
-          {r.wins}
-        </td>
-        <td style={{ padding: 10, borderBottom: "1px solid #eef2f7", textAlign: "right" }}>
-          {r.draws}
-        </td>
-        <td style={{ padding: 10, borderBottom: "1px solid #eef2f7", textAlign: "right" }}>
-          {r.losses}
-        </td>
-        <td style={{ padding: 10, borderBottom: "1px solid #eef2f7", textAlign: "right" }}>
-          {r.played}
-        </td>
-      </tr>
-    );
-  })}
-</tbody>
+                                  <td style={{ padding: 10, paddingRight: 40, borderBottom: "1px solid #eef2f7", fontWeight: 650, color: "#0f172a" }}>
+                                    <span className={playerNameClass}>{formatPlayerName(r.name)}</span>
 
+                                    {isLeaderClassic ? (
+                                      <span style={{ marginLeft: 6, color: "#f59e0b", fontSize: 14, fontWeight: 900, verticalAlign: "middle" }} title="Leader">
+                                        ★
+                                      </span>
+                                    ) : null}
+
+                                    {isMisto && isMaleLeader ? (
+                                      <span style={{ marginLeft: 6, color: "#2563eb", fontSize: 14, fontWeight: 900, verticalAlign: "middle" }} title="Leader uomo">
+                                        ★
+                                      </span>
+                                    ) : null}
+
+                                    {isMisto && isFemaleLeader ? (
+                                      <span style={{ marginLeft: 6, color: "#db2777", fontSize: 14, fontWeight: 900, verticalAlign: "middle" }} title="Leader donna">
+                                        ★
+                                      </span>
+                                    ) : null}
+                                  </td>
+
+                                  <td style={{ padding: 10, borderBottom: "1px solid #eef2f7", textAlign: "right", fontWeight: 900 }}>{r.gw}</td>
+                                  <td style={{ padding: 10, borderBottom: "1px solid #eef2f7", textAlign: "right" }}>{r.points}</td>
+                                  <td style={{ padding: 10, borderBottom: "1px solid #eef2f7", textAlign: "right" }}>{r.gl}</td>
+                                  <td style={{ padding: 10, borderBottom: "1px solid #eef2f7", textAlign: "right", fontWeight: 800 }}>{r.difg}</td>
+                                  <td style={{ padding: 10, borderBottom: "1px solid #eef2f7", textAlign: "right" }}>{r.wins}</td>
+                                  <td style={{ padding: 10, borderBottom: "1px solid #eef2f7", textAlign: "right" }}>{r.draws}</td>
+                                  <td style={{ padding: 10, borderBottom: "1px solid #eef2f7", textAlign: "right" }}>{r.losses}</td>
+                                  <td style={{ padding: 10, borderBottom: "1px solid #eef2f7", textAlign: "right" }}>{r.played}</td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
                         </table>
 
                         <div style={{ marginTop: 10, color: "#64748b", fontSize: 12 }}>
@@ -645,227 +675,237 @@ const femaleLeaderName = useMemo(() => {
                   </div>
                 </div>
 
-                <div className="base44-card">
-                  <div className="base44-card-inner" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                    <div style={{ fontWeight: 900, color: "#0f172a" }}>Turni</div>
+                {/* Turni (solo card turno) */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 14, maxHeight: "55vh", overflow: "auto", paddingRight: 6 }}>
+                  {(baraonda.turns ?? []).map((t: any, idx: number) => {
+                    const bg = idx % 2 === 0 ? "#ffffff" : "#f8fafc";
+                    const isCurrent = Number(baraonda.currentTurn) === Number(t.turn_number);
 
-                    <div style={{ display: "flex", flexDirection: "column", gap: 14, maxHeight: "55vh", overflow: "auto", paddingRight: 6 }}>
-                      {(baraonda.turns ?? []).map((t: any, idx: number) => {
-                        const bg = idx % 2 === 0 ? "#ffffff" : "#f8fafc";
-                        return (
-                          <div
-                            key={t.turn_number}
-                            style={{
-                              border: "1px solid #e2e8f0",
-                              borderRadius: 14,
-                              padding: 12,
-                              background: bg,
-                              display: "flex",
-                              flexDirection: "column",
-                              gap: 10,
-                            }}
-                          >
-                            <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-                              <div style={{ fontWeight: 900, color: "#0f172a" }}>Turno {t.turn_number}</div>
+                    return (
+                      <div
+                        key={t.turn_number}
+                        style={{
+                          border: "1px solid #e2e8f0",
+                          borderRadius: 14,
+                          padding: 12,
+                          background: bg,
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 10,
+                        }}
+                      >
+                        <BlueHeader left={`Turno ${t.turn_number}`} right={isCurrent ? "In corso" : null} />
 
-                              {t.resting?.length ? (
-                                <div className="base44-chip" style={{ padding: "2px 10px", background: "#fffbeb", borderColor: "#fde68a", color: "#b45309" }}>
-                                  Riposa:{" "}
-                                   <span className={playerNameClass}>
-                                  {t.resting.map((n: string) => formatPlayerName(n)).join(", ")}
-                                </span>
-
-                                </div>
-                              ) : (
-                                <div className="base44-chip" style={{ padding: "2px 10px" }}>
-                                  Nessun riposo
-                                </div>
-                              )}
-                            </div>
-
-                            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                              {t.matches.map((m: any) => {
-                                const badge = scoreBadgeStyle(m.team1_games, m.team2_games);
-                                return (
-                                  <div
-                                    key={m.match_number}
-                                    style={{ border: "1px solid #eef2f7", borderRadius: 12, padding: 10, background: "#fafafa", display: "flex", flexDirection: "column", gap: 10 }}
-                                  >
-          
-                                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-  {/* Coppia 1 sopra, allineata a sinistra */}
-  <div style={{ fontWeight: 650, color: "#0f172a", lineHeight: 1.15 }}>
-    <span className={playerNameClass}>{formatPlayerName(m.team1?.[0])}</span> -{" "}
-   <span className={playerNameClass}>{formatPlayerName(m.team1?.[1])}</span>
-
-  </div>
-
-  {/* Badge punteggio (come ora) */}
-  <div style={{ display: "flex", justifyContent: "center" }}>
-    <div
-      style={{
-        padding: "5px 16px",
-        borderRadius: 999,
-        border: `1px solid ${badge.borderColor}`,
-        background: badge.background,
-        color: badge.color,
-        fontSize: 20,
-        fontWeight: 800,
-        minWidth: 90,
-        textAlign: "center",
-        lineHeight: 1.05,
-        boxShadow: badge.boxShadow,
-      }}
-    >
-      {(m.team1_games ?? "-")} - {(m.team2_games ?? "-")}
-    </div>
-  </div>
-
-  {/* Coppia 2 sotto, allineata a destra */}
-  <div style={{ fontWeight: 650, color: "#0f172a", textAlign: "right", lineHeight: 1.15 }}>
-    <span className={playerNameClass}>{formatPlayerName(m.team2?.[0])}</span> -{" "}
-  <span className={playerNameClass}>{formatPlayerName(m.team2?.[1])}</span>
-
-  </div>
-</div>
-
-                                  </div>
-                                );
-                              })}
-                            </div>
+                        {/* Riposi */}
+                        {t.resting?.length ? (
+                          <div className="base44-chip" style={{ padding: "2px 10px", background: "#fffbeb", borderColor: "#fde68a", color: "#b45309", width: "fit-content" }}>
+                            Riposa:{" "}
+                            <span className={playerNameClass}>
+                              {t.resting.map((n: string) => formatPlayerName(n)).join(", ")}
+                            </span>
                           </div>
-                        );
-                      })}
-                    </div>
-                  </div>
+                        ) : null}
+
+                        {/* Match */}
+                        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                          {t.matches.map((m: any, matchIdx: number) => {
+                            const stripe = matchIdx % 2 === 0 ? "#2563eb" : "#f59e0b";
+                            return (
+                              <MatchCardBaraondaStyle
+                                key={m.match_number}
+                                left={[m.team1?.[0] ?? "—", m.team1?.[1] ?? "—"]}
+                                right={[m.team2?.[0] ?? "—", m.team2?.[1] ?? "—"]}
+                                leftScore={m.team1_games}
+                                rightScore={m.team2_games}
+                                stripeColor={stripe}
+                                playerNameClass={playerNameClass}
+                              />
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </>
             ) : null}
 
             {/* ==========================
-                FIXED PAIRS (modificato)
+                FIXED PAIRS
                ========================== */}
             {fixed ? (
               <>
-                {/* Gironi */}
-                <div className="base44-card">
-                  <div className="base44-card-inner" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                    <div style={{ fontWeight: 900, color: "#0f172a" }}>Gironi</div>
+                {/* Gironi: SOLO card Girone A/B... */}
+                {(fixed.groups ?? []).length === 0 ? (
+                  <div style={{ color: "#64748b" }}>Gironi non disponibili.</div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                    {fixed.groups.map((g: FPGroup) => {
+                      const rows = fixed.standingsByGroup?.[g.id] ?? [];
+                      const groupMatches = (fixed.matches_fp ?? []).filter(
+                        (m: FPMatch) => m.stage === "group" && m.group_id === g.id
+                      );
 
-                    {(fixed.groups ?? []).length === 0 ? (
-                      <div style={{ color: "#64748b" }}>Gironi non disponibili.</div>
-                    ) : (
-                      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                        {fixed.groups.map((g: FPGroup) => {
-                          const rows = fixed.standingsByGroup?.[g.id] ?? [];
-                          const groupMatches = (fixed.matches_fp ?? []).filter((m: FPMatch) => m.stage === "group" && m.group_id === g.id);
+                      return (
+                        <div
+                          key={g.id}
+                          style={{
+                            border: "1px solid #e2e8f0",
+                            borderRadius: 14,
+                            padding: 12,
+                            background: "#fff",
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: 12,
+                          }}
+                        >
+                          {/* ✅ tolta pill "3 COPPIE" */}
+                          <BlueHeader left={g.name} right={null} />
 
-                          return (
-                            <div key={g.id} style={{ border: "1px solid #e2e8f0", borderRadius: 14, padding: 12, background: "#fff" }}>
-                              <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-                                <div style={{ fontWeight: 900, color: "#0f172a" }}>{g.name}</div>
-                                <span className="base44-chip" style={{ padding: "2px 10px" }}>
-                                  {g.pairs.length} coppie
-                                </span>
-                              </div>
+                          {/* classifica girone */}
+                          <div style={{ overflowX: "auto" }}>
+                            <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0 }}>
+                              <thead>
+                                <tr style={{ background: "#f8fafc" }}>
+                                  <th style={{ textAlign: "left", padding: 10, borderBottom: "1px solid #e2e8f0" }}>#</th>
+                                  <th style={{ textAlign: "left", padding: 10, borderBottom: "1px solid #e2e8f0" }}>Coppia</th>
+                                  <th style={{ textAlign: "right", padding: 10, borderBottom: "1px solid #e2e8f0" }}>Pt</th>
+                                  <th style={{ textAlign: "right", padding: 10, borderBottom: "1px solid #e2e8f0", fontWeight: 900 }}>GW</th>
+                                  <th style={{ textAlign: "right", padding: 10, borderBottom: "1px solid #e2e8f0" }}>GL</th>
+                                  <th style={{ textAlign: "right", padding: 10, borderBottom: "1px solid #e2e8f0" }}>DG</th>
+                                  <th style={{ textAlign: "right", padding: 10, borderBottom: "1px solid #e2e8f0" }}>Pg</th>
+                                </tr>
+                              </thead>
 
-                              {/* classifica girone (lasciata com'è per ora, la uniformiamo dopo se vuoi) */}
-                              <div style={{ marginTop: 10, overflowX: "auto" }}>
-                                <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0 }}>
-                                  <thead>
-                                    <tr style={{ background: "#f8fafc" }}>
-                                      <th style={{ textAlign: "left", padding: 10, borderBottom: "1px solid #e2e8f0" }}>#</th>
-                                      <th style={{ textAlign: "left", padding: 10, borderBottom: "1px solid #e2e8f0" }}>Coppia</th>
-                                      <th style={{ textAlign: "right", padding: 10, borderBottom: "1px solid #e2e8f0" }}>Pt</th>
-                                      <th style={{ textAlign: "right", padding: 10, borderBottom: "1px solid #e2e8f0", fontWeight: 900 }}>GW</th>
-                                      <th style={{ textAlign: "right", padding: 10, borderBottom: "1px solid #e2e8f0" }}>GL</th>
-                                      <th style={{ textAlign: "right", padding: 10, borderBottom: "1px solid #e2e8f0" }}>DG</th>
-                                      <th style={{ textAlign: "right", padding: 10, borderBottom: "1px solid #e2e8f0" }}>Pg</th>
+                              <tbody>
+                                {rows.map((r: FPStandingRow, idx: number) => {
+                                  const isLeader = idx === 0;
+
+                                  const leaderRowStyle = isLeader
+                                    ? {
+                                        backgroundImage:
+                                          "linear-gradient(90deg, rgba(245,158,11,0.22) 0%, rgba(245,158,11,0.10) 40%, rgba(255,255,255,0) 100%)",
+                                      }
+                                    : undefined;
+
+                                  return (
+                                    <tr key={r.pairId} style={leaderRowStyle}>
+                                      <td style={{ padding: 10, borderBottom: "1px solid #eef2f7", color: "#64748b", fontWeight: 700 }}>
+                                        {idx + 1}
+                                      </td>
+
+                                      <td
+                                        style={{
+                                          padding: 10,
+                                          paddingRight: 58,
+                                          borderBottom: "1px solid #eef2f7",
+                                          fontWeight: 750,
+                                          color: "#0f172a",
+                                          lineHeight: 1.15,
+                                        }}
+                                      >
+                                        {String(r.name ?? "")
+                                          .split("/")
+                                          .map((s) => s.trim())
+                                          .filter(Boolean)
+                                          .map((part, i) => (
+                                            <div key={i} className={playerNameClass}>
+                                              {formatPlayerName(part)}
+                                            </div>
+                                          ))}
+
+                                        {isLeader ? (
+                                          <span style={{ marginTop: 6, display: "inline-block", color: "#f59e0b", fontSize: 14, fontWeight: 900 }} title="Leader">
+                                            ★
+                                          </span>
+                                        ) : null}
+                                      </td>
+
+                                      <td style={{ padding: 10, borderBottom: "1px solid #eef2f7", textAlign: "right", fontWeight: 900 }}>{r.pt}</td>
+                                      <td style={{ padding: 10, borderBottom: "1px solid #eef2f7", textAlign: "right", fontWeight: 900 }}>{r.gw}</td>
+                                      <td style={{ padding: 10, borderBottom: "1px solid #eef2f7", textAlign: "right" }}>{r.gl}</td>
+                                      <td style={{ padding: 10, borderBottom: "1px solid #eef2f7", textAlign: "right", fontWeight: 800 }}>{r.dg}</td>
+                                      <td style={{ padding: 10, borderBottom: "1px solid #eef2f7", textAlign: "right" }}>{r.played}</td>
                                     </tr>
-                                  </thead>
-                                  <tbody>
-                                    {rows.map((r: FPStandingRow, idx: number) => (
-                                      <tr key={r.pairId}>
-                                        <td style={{ padding: 10, borderBottom: "1px solid #eef2f7", color: "#64748b", fontWeight: 700 }}>{idx + 1}</td>
-                                        <td
-  style={{
-    padding: 10,
-    paddingRight: 58, // più spazio prima di Pt
-    borderBottom: "1px solid #eef2f7",
-    fontWeight: 750,
-    color: "#0f172a",
-    lineHeight: 1.15,
-  }}
->
-  {String(r.name ?? "")
-    .split("/")
-    .map((s) => s.trim())
-    .filter(Boolean)
-    .map((part, i) => (
-      <div key={i} className={playerNameClass}>{formatPlayerName(part)}</div>
-    ))}
-</td>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
 
-                                        <td style={{ padding: 10, borderBottom: "1px solid #eef2f7", textAlign: "right", fontWeight: 900 }}>{r.pt}</td>
-                                        <td style={{ padding: 10, borderBottom: "1px solid #eef2f7", textAlign: "right", fontWeight: 900 }}>{r.gw}</td>
-                                        <td style={{ padding: 10, borderBottom: "1px solid #eef2f7", textAlign: "right" }}>{r.gl}</td>
-                                        <td style={{ padding: 10, borderBottom: "1px solid #eef2f7", textAlign: "right", fontWeight: 800 }}>{r.dg}</td>
-                                        <td style={{ padding: 10, borderBottom: "1px solid #eef2f7", textAlign: "right" }}>{r.played}</td>
-                                      </tr>
-                                    ))}
-                                  </tbody>
-                                </table>
-                              </div>
+                          {/* ✅ match girone -> stesso layout Baraonda */}
+                          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                            {groupMatches.map((m: FPMatch, matchIdx: number) => {
+                              const stripe = matchIdx % 2 === 0 ? "#2563eb" : "#f59e0b";
+                              const left = splitPairDisplayName(m.home?.name ?? "—");
+                              const right = splitPairDisplayName(m.away?.name ?? "—");
 
-                              {/* match girone (NUOVO layout 4 righe, niente header) */}
-                              <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 10 }}>
-                                {groupMatches.map((m: FPMatch) => (
-                                  <FixedPairsMatchStack key={m.id} m={m} playerNameClass={playerNameClass} />
-                                ))}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
+                              return (
+                                <MatchCardBaraondaStyle
+                                  key={m.id}
+                                  left={[left[0] ?? "—", left[1] ?? "—"]}
+                                  right={[right[0] ?? "—", right[1] ?? "—"]}
+                                  leftScore={m.home_games}
+                                  rightScore={m.away_games}
+                                  stripeColor={stripe}
+                                  playerNameClass={playerNameClass}
+                                />
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                </div>
+                )}
 
-                {/* Tabellone (stesso layout match 4 righe) */}
-                <div className="base44-card">
-                  <div className="base44-card-inner" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                    <div style={{ fontWeight: 900, color: "#0f172a" }}>Tabellone</div>
+                {/* ✅ Tabellone: SOLO round cards (nessun wrapper esterno "Tabellone") */}
+                {(fixed.bracketRounds ?? []).length === 0 ? null : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 14, maxHeight: "55vh", overflow: "auto", paddingRight: 6 }}>
+                    {fixed.bracketRounds.map((r: any) => {
+                      const matches = (r.matchIds ?? [])
+                        .map((id: string) => fpMatchesById.get(id))
+                        .filter(Boolean) as FPMatch[];
 
-                    {(fixed.bracketRounds ?? []).length === 0 ? (
-                      <div style={{ color: "#64748b" }}>Tabellone non disponibile.</div>
-                    ) : (
-                      <div style={{ display: "flex", flexDirection: "column", gap: 14, maxHeight: "55vh", overflow: "auto", paddingRight: 6 }}>
-                        {fixed.bracketRounds.map((r: any) => {
-                          const matches = (r.matchIds ?? [])
-                            .map((id: string) => fpMatchesById.get(id))
-                            .filter(Boolean) as FPMatch[];
+                      return (
+                        <div
+                          key={r.label}
+                          style={{
+                            border: "1px solid #e2e8f0",
+                            borderRadius: 14,
+                            padding: 12,
+                            background: "#fff",
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: 12,
+                          }}
+                        >
+                          <BlueHeader left={r.label} right={null} />
 
-                          return (
-                            <div key={r.label} style={{ border: "1px solid #e2e8f0", borderRadius: 14, padding: 12, background: "#fff" }}>
-                              <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-                                <div style={{ fontWeight: 900, color: "#0f172a" }}>{r.label}</div>
-                                <span className="base44-chip" style={{ padding: "2px 10px" }}>
-                                  {matches.length} match
-                                </span>
-                              </div>
+                          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                            {matches.map((m, matchIdx) => {
+                              const stripe = matchIdx % 2 === 0 ? "#2563eb" : "#f59e0b";
+                              const left = splitPairDisplayName(m.home?.name ?? "—");
+                              const right = splitPairDisplayName(m.away?.name ?? "—");
 
-                              <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 10 }}>
-                                {matches.map((m) => (
-                                  <FixedPairsMatchStack key={m.id} m={m} playerNameClass={playerNameClass} />
-                                ))}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
+                              return (
+                                <MatchCardBaraondaStyle
+                                  key={m.id}
+                                  left={[left[0] ?? "—", left[1] ?? "—"]}
+                                  right={[right[0] ?? "—", right[1] ?? "—"]}
+                                  leftScore={m.home_games}
+                                  rightScore={m.away_games}
+                                  stripeColor={stripe}
+                                  playerNameClass={playerNameClass}
+                                />
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                </div>
+                )}
               </>
             ) : null}
           </div>

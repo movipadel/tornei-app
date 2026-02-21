@@ -286,7 +286,11 @@ export default function TournamentCard({ tournament, onRegister, status, onCance
             </div>
 
             {live ? (
-              <TournamentLiveDialog tournamentId={tournament.id} triggerLabel="Sviluppi" />
+              <TournamentLiveDialog
+  tournamentId={tournament.id}
+  tournamentName={tournament.name}
+  triggerLabel="Sviluppi"
+/>
             ) : status === "none" ? (
               <button
                 className={`base44-cta ${isFull ? "base44-cta-amber" : "base44-cta-indigo"}`}
