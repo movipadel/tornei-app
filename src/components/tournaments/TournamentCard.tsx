@@ -77,6 +77,9 @@ function getHeaderOverlayStyle(type: string) {
   const t = String(type).toLowerCase();
   const isBaraonda = t.includes("baraonda");
   const isCoppie = t.includes("coppie");
+  const darkOverlay = isCoppie
+  ? "linear-gradient(0deg, rgba(0,0,0,0.10), rgba(0,0,0,0.10)),"
+  : "";
 
   if (!isBaraonda && !isCoppie) {
     return {
@@ -93,7 +96,8 @@ function getHeaderOverlayStyle(type: string) {
   const stripeOpacity = isCoppie ? 0.10 : 0.09;
 
   return {
-    backgroundImage: `
+  backgroundImage: `
+      ${darkOverlay}
       radial-gradient(circle at 1px 1px, rgba(255,255,255,${grainOpacity}) 0.6px, rgba(255,255,255,0) 0.7px),
       repeating-linear-gradient(
         135deg,
@@ -119,7 +123,9 @@ function getHeaderOverlayStyle(type: string) {
         rgba(255,255,255,0) 100%
       )
     `,
-    backgroundSize: "3px 3px, 100% 100%, 100% 100%, 100% 100%",
+    backgroundSize: isCoppie
+  ? "100% 100%, 3px 3px, 100% 100%, 100% 100%, 100% 100%"
+  : "3px 3px, 100% 100%, 100% 100%, 100% 100%",
     backgroundPosition: "0 0, 0 0, 0 0, 0 0",
     opacity: 1,
   } as const;
@@ -302,6 +308,7 @@ export default function TournamentCard({ tournament, onRegister, status, onCance
                     fontWeight: 750,
                     fontSize: 20,
                     letterSpacing: "-0.01em",
+                    color: "#0f172a",
                   }}
                 >
                   {tournament.name}
@@ -311,7 +318,7 @@ export default function TournamentCard({ tournament, onRegister, status, onCance
                 <div
                   className="base44-tcard-type"
                   style={{
-                    color: "rgba(255,255,255,0.92)",
+                    color: "rgba(255,255,255,0.85)",
                     fontWeight: 650,
                     fontSize: 15,
                     letterSpacing: "0.02em",
