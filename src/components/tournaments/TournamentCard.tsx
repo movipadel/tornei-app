@@ -50,7 +50,7 @@ function capitalize(value?: string | null) {
 }
 
 function typeLabel(type: string) {
-  return type === "Coppie fisse" ? "Amatoriale Coppie fisse" : "Baraonda";
+  return type === "Coppie fisse" ? "Coppie Fisse" : "Baraonda";
 }
 
 /** Header gradient più premium */
