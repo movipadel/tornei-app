@@ -112,8 +112,6 @@ type LiveData =
 /** ==========================
  *  Helpers UI
  *  ========================== */
-
-/** fascia blu tipo broadcast per wrapper (Turno / Girone / Round tabellone) */
 function BlueHeader({
   left,
   right,
@@ -134,7 +132,13 @@ function BlueHeader({
         color: "white",
       }}
     >
-      <div style={{ fontWeight: 950, letterSpacing: "0.08em", textTransform: "uppercase" }}>
+      <div
+        style={{
+          fontWeight: 950,
+          letterSpacing: "0.08em",
+          textTransform: "uppercase",
+        }}
+      >
         {left}
       </div>
 
@@ -162,7 +166,6 @@ function splitPairDisplayName(raw: string): string[] {
   const s = String(raw ?? "").trim();
   if (!s) return ["—", "—"];
 
-  // Supporta: "A/B", "A / B", "A - B"
   const normalized = s
     .replaceAll(" - ", "/")
     .replaceAll(" / ", "/")
@@ -178,9 +181,21 @@ function splitPairDisplayName(raw: string): string[] {
   return [parts[0] ?? s, ""].filter((x) => x !== "");
 }
 
+function formatTimeHHMM(iso: string | null) {
+  if (!iso) return null;
+  try {
+    const d = new Date(iso);
+    // toLocaleTimeString con 2-digit è la cosa più robusta senza lib esterne
+    return d.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Match renderer in stile Baraonda:
  *  - striscia laterale
+ *  - (opzionale) info bar in alto (campo + orario)
  *  - coppia sx VS coppia dx
  *  - 2 box punteggio con colori dinamici
  *  - draw: verde
@@ -192,6 +207,7 @@ function MatchCardBaraondaStyle({
   rightScore,
   stripeColor,
   playerNameClass,
+  infoTop,
 }: {
   left: [string, string];
   right: [string, string];
@@ -199,6 +215,7 @@ function MatchCardBaraondaStyle({
   rightScore: number | null;
   stripeColor: string;
   playerNameClass: string;
+  infoTop?: React.ReactNode;
 }) {
   const hasScore = leftScore != null && rightScore != null;
   const draw = hasScore && leftScore === rightScore;
@@ -222,21 +239,24 @@ function MatchCardBaraondaStyle({
 
   const drawStyle: CSSProperties = draw
     ? {
-        background: "linear-gradient(180deg, rgba(22,163,74,0.22) 0%, rgba(22,163,74,0.10) 100%)",
+        background:
+          "linear-gradient(180deg, rgba(22,163,74,0.22) 0%, rgba(22,163,74,0.10) 100%)",
         borderColor: "rgba(22,163,74,0.35)",
       }
     : {};
 
   const leftBoxStyle: CSSProperties = leftWin
     ? {
-        background: "linear-gradient(180deg, rgba(37,99,235,0.22) 0%, rgba(37,99,235,0.10) 100%)",
+        background:
+          "linear-gradient(180deg, rgba(37,99,235,0.22) 0%, rgba(37,99,235,0.10) 100%)",
         borderColor: "rgba(37,99,235,0.35)",
       }
     : drawStyle;
 
   const rightBoxStyle: CSSProperties = rightWin
     ? {
-        background: "linear-gradient(180deg, rgba(245,158,11,0.22) 0%, rgba(245,158,11,0.10) 100%)",
+        background:
+          "linear-gradient(180deg, rgba(245,158,11,0.22) 0%, rgba(245,158,11,0.10) 100%)",
         borderColor: "rgba(245,158,11,0.35)",
       }
     : drawStyle;
@@ -254,8 +274,38 @@ function MatchCardBaraondaStyle({
       <div style={{ width: 6, background: stripeColor }} />
 
       <div style={{ flex: 1, padding: 12, display: "flex", flexDirection: "column", gap: 10 }}>
+        {/* info bar */}
+        {infoTop ? (
+          <div
+            style={{
+              background: "#f1f5f9",
+              border: "1px solid #e2e8f0",
+              borderRadius: 12,
+              padding: "6px 10px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 10,
+              color: "#0f172a",
+              fontWeight: 850,
+              fontSize: 12,
+              letterSpacing: "0.06em",
+              textTransform: "uppercase",
+            }}
+          >
+            {infoTop}
+          </div>
+        ) : null}
+
         {/* Nomi: sx vs dx */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: 10, alignItems: "center" }}>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr auto 1fr",
+            gap: 10,
+            alignItems: "center",
+          }}
+        >
           <div style={{ lineHeight: 1.15 }}>
             <div style={{ fontWeight: 900, color: "#0f172a" }}>
               <span className={playerNameClass}>{formatPlayerName(left[0])}</span>
@@ -265,7 +315,14 @@ function MatchCardBaraondaStyle({
             </div>
           </div>
 
-          <div style={{ color: "#94a3b8", fontWeight: 950, fontSize: 12, letterSpacing: "0.08em" }}>
+          <div
+            style={{
+              color: "#94a3b8",
+              fontWeight: 950,
+              fontSize: 12,
+              letterSpacing: "0.08em",
+            }}
+          >
             VS
           </div>
 
@@ -297,10 +354,12 @@ export default function TournamentLiveDialog({
   tournamentId,
   tournamentName,
   triggerLabel = "Vedi sviluppi",
+  triggerVariant = "default",
 }: {
   tournamentId: string;
   tournamentName?: string;
   triggerLabel?: string;
+  triggerVariant?: "default" | "live";
 }) {
   const [open, setOpen] = useState(false);
   const [data, setData] = useState<LiveData | null>(null);
@@ -397,20 +456,73 @@ export default function TournamentLiveDialog({
 
     return 0;
   }, [baraonda?.currentTurn, baraonda?.totalTurns, fixed?.matches_fp]);
-
   const fpMatchesById = useMemo(() => {
-    const m = new Map<string, FPMatch>();
-    (fixed?.matches_fp ?? []).forEach((x: FPMatch) => m.set(x.id, x));
-    return m;
-  }, [fixed?.matches_fp]);
+  const map = new Map<string, FPMatch>();
+  (fixed?.matches_fp ?? []).forEach((m: FPMatch) => map.set(m.id, m));
+  return map;
+}, [fixed?.matches_fp]);
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <button className="base44-cta base44-cta-indigo" type="button">
-          {triggerLabel}
-        </button>
-      </DialogTrigger>
+  <Dialog open={open} onOpenChange={setOpen}>
+    {/* Keyframes per pallino LIVE del bottone (trigger) */}
+    <style jsx global>{`
+      @keyframes mvLiveDot {
+        0% {
+          transform: scale(0.95);
+          opacity: 1;
+          box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7);
+        }
+        70% {
+          transform: scale(1.15);
+          opacity: 0.95;
+          box-shadow: 0 0 0 10px rgba(255, 255, 255, 0);
+        }
+        100% {
+          transform: scale(0.95);
+          opacity: 1;
+          box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
+        }
+      }
+    `}</style>
+
+    <DialogTrigger asChild>
+  {triggerVariant === "live" ? (
+    <button
+      type="button"
+      aria-label="Apri live"
+      style={{
+        background: "linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)",
+        color: "white",
+        fontWeight: 900,
+        padding: "10px 14px",
+        fontSize: 14,
+        borderRadius: 999,
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 8,
+        minWidth: "unset",
+        border: "1px solid rgba(255,255,255,0.25)",
+        boxShadow: "0 12px 26px rgba(239, 68, 68, 0.25)",
+      }}
+    >
+      <span
+        style={{
+          width: 8,
+          height: 8,
+          borderRadius: 999,
+          background: "white",
+          display: "inline-block",
+          animation: "mvLiveDot 1.4s ease-in-out infinite",
+        }}
+      />
+      {triggerLabel || "LIVE"}
+    </button>
+  ) : (
+    <button className="base44-cta base44-cta-indigo" type="button">
+      {triggerLabel}
+    </button>
+  )}
+</DialogTrigger>
 
       <DialogContent className="max-w-3xl [&>button[aria-label='Close']]:hidden">
         {/* Keyframes per pallino LIVE */}
@@ -430,15 +542,7 @@ export default function TournamentLiveDialog({
 
             {/* Riga LIVE + Nome torneo */}
             {data && mode ? (
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 14,
-                  marginTop: 6,
-                  flexWrap: "wrap",
-                }}
-              >
+              <div style={{ display: "flex", alignItems: "center", gap: 14, marginTop: 6, flexWrap: "wrap" }}>
                 <span
                   style={{
                     display: "inline-flex",
@@ -510,8 +614,7 @@ export default function TournamentLiveDialog({
                     height: "100%",
                     width: `${progressPct}%`,
                     borderRadius: 999,
-                    background:
-                      "linear-gradient(90deg, #2563eb 0%, #06b6d4 70%, #e5e7eb 100%)",
+                    background: "linear-gradient(90deg, #2563eb 0%, #06b6d4 70%, #e5e7eb 100%)",
                     transition: "width 250ms ease",
                   }}
                 />
@@ -633,24 +736,6 @@ export default function TournamentLiveDialog({
 
                                   <td style={{ padding: 10, paddingRight: 40, borderBottom: "1px solid #eef2f7", fontWeight: 650, color: "#0f172a" }}>
                                     <span className={playerNameClass}>{formatPlayerName(r.name)}</span>
-
-                                    {isLeaderClassic ? (
-                                      <span style={{ marginLeft: 6, color: "#f59e0b", fontSize: 14, fontWeight: 900, verticalAlign: "middle" }} title="Leader">
-                                        ★
-                                      </span>
-                                    ) : null}
-
-                                    {isMisto && isMaleLeader ? (
-                                      <span style={{ marginLeft: 6, color: "#2563eb", fontSize: 14, fontWeight: 900, verticalAlign: "middle" }} title="Leader uomo">
-                                        ★
-                                      </span>
-                                    ) : null}
-
-                                    {isMisto && isFemaleLeader ? (
-                                      <span style={{ marginLeft: 6, color: "#db2777", fontSize: 14, fontWeight: 900, verticalAlign: "middle" }} title="Leader donna">
-                                        ★
-                                      </span>
-                                    ) : null}
                                   </td>
 
                                   <td style={{ padding: 10, borderBottom: "1px solid #eef2f7", textAlign: "right", fontWeight: 900 }}>{r.gw}</td>
@@ -696,7 +781,6 @@ export default function TournamentLiveDialog({
                       >
                         <BlueHeader left={`Turno ${t.turn_number}`} right={isCurrent ? "In corso" : null} />
 
-                        {/* Riposi */}
                         {t.resting?.length ? (
                           <div className="base44-chip" style={{ padding: "2px 10px", background: "#fffbeb", borderColor: "#fde68a", color: "#b45309", width: "fit-content" }}>
                             Riposa:{" "}
@@ -706,7 +790,6 @@ export default function TournamentLiveDialog({
                           </div>
                         ) : null}
 
-                        {/* Match */}
                         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                           {t.matches.map((m: any, matchIdx: number) => {
                             const stripe = matchIdx % 2 === 0 ? "#2563eb" : "#f59e0b";
@@ -735,7 +818,6 @@ export default function TournamentLiveDialog({
                ========================== */}
             {fixed ? (
               <>
-                {/* Gironi: SOLO card Girone A/B... */}
                 {(fixed.groups ?? []).length === 0 ? (
                   <div style={{ color: "#64748b" }}>Gironi non disponibili.</div>
                 ) : (
@@ -759,7 +841,6 @@ export default function TournamentLiveDialog({
                             gap: 12,
                           }}
                         >
-                          {/* ✅ tolta pill "3 COPPIE" */}
                           <BlueHeader left={g.name} right={null} />
 
                           {/* classifica girone */}
@@ -813,12 +894,6 @@ export default function TournamentLiveDialog({
                                               {formatPlayerName(part)}
                                             </div>
                                           ))}
-
-                                        {isLeader ? (
-                                          <span style={{ marginTop: 6, display: "inline-block", color: "#f59e0b", fontSize: 14, fontWeight: 900 }} title="Leader">
-                                            ★
-                                          </span>
-                                        ) : null}
                                       </td>
 
                                       <td style={{ padding: 10, borderBottom: "1px solid #eef2f7", textAlign: "right", fontWeight: 900 }}>{r.pt}</td>
@@ -833,12 +908,54 @@ export default function TournamentLiveDialog({
                             </table>
                           </div>
 
-                          {/* ✅ match girone -> stesso layout Baraonda */}
+                          {/* match girone -> stesso layout Baraonda + info bar campo/orario */}
                           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                             {groupMatches.map((m: FPMatch, matchIdx: number) => {
                               const stripe = matchIdx % 2 === 0 ? "#2563eb" : "#f59e0b";
                               const left = splitPairDisplayName(m.home?.name ?? "—");
                               const right = splitPairDisplayName(m.away?.name ?? "—");
+
+                              // Campo valido solo se esiste e non è "-" o stringa vuota
+const courtRaw = m.court;
+
+// accetta string o number, ignora altri tipi
+const courtStr =
+  typeof courtRaw === "string"
+    ? courtRaw
+    : typeof courtRaw === "number"
+    ? String(courtRaw)
+    : "";
+
+const courtNorm = courtStr.trim();
+
+// Campo valido solo se non è vuoto e non è placeholder
+const validCourt =
+  courtNorm !== "" &&
+  courtNorm !== "-" &&
+  courtNorm !== "—" &&
+  courtNorm.toLowerCase() !== "null";
+
+// Orario valido: SOLO nei gironi (il tabellone ha orari “finti”)
+const validTime =
+  m.stage === "group" && typeof m.starts_at === "string" && m.starts_at.trim() !== ""
+    ? formatTimeHHMM(m.starts_at)
+    : null;
+
+const hasInfo = Boolean(validCourt) || Boolean(validTime);
+
+                              const infoTop = hasInfo ? (
+                                <>
+                                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                    <span style={{ color: "#64748b", fontWeight: 900 }}>Campo</span>
+                                    <span style={{ fontWeight: 950 }}>{validCourt ? courtNorm : ""}</span>
+                                  </div>
+
+                                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                    <span style={{ color: "#64748b", fontWeight: 900 }}>Ora</span>
+                                    <span style={{ fontWeight: 950 }}>{validTime ?? ""}</span>
+                                  </div>
+                                </>
+                              ) : null;
 
                               return (
                                 <MatchCardBaraondaStyle
@@ -849,6 +966,7 @@ export default function TournamentLiveDialog({
                                   rightScore={m.away_games}
                                   stripeColor={stripe}
                                   playerNameClass={playerNameClass}
+                                  infoTop={infoTop ?? undefined}
                                 />
                               );
                             })}
@@ -859,7 +977,7 @@ export default function TournamentLiveDialog({
                   </div>
                 )}
 
-                {/* ✅ Tabellone: SOLO round cards (nessun wrapper esterno "Tabellone") */}
+                {/* Tabellone: SOLO round cards + match stile Baraonda + info bar */}
                 {(fixed.bracketRounds ?? []).length === 0 ? null : (
                   <div style={{ display: "flex", flexDirection: "column", gap: 14, maxHeight: "55vh", overflow: "auto", paddingRight: 6 }}>
                     {fixed.bracketRounds.map((r: any) => {
@@ -888,6 +1006,48 @@ export default function TournamentLiveDialog({
                               const left = splitPairDisplayName(m.home?.name ?? "—");
                               const right = splitPairDisplayName(m.away?.name ?? "—");
 
+                              // Campo valido solo se esiste e non è "-" o stringa vuota
+const courtRaw = m.court;
+
+// accetta string o number, ignora altri tipi
+const courtStr =
+  typeof courtRaw === "string"
+    ? courtRaw
+    : typeof courtRaw === "number"
+    ? String(courtRaw)
+    : "";
+
+const courtNorm = courtStr.trim();
+
+// Campo valido solo se non è vuoto e non è placeholder
+const validCourt =
+  courtNorm !== "" &&
+  courtNorm !== "-" &&
+  courtNorm !== "—" &&
+  courtNorm.toLowerCase() !== "null";
+
+// Orario valido: SOLO nei gironi (il tabellone ha orari “finti”)
+const validTime =
+  m.stage === "group" && typeof m.starts_at === "string" && m.starts_at.trim() !== ""
+    ? formatTimeHHMM(m.starts_at)
+    : null;
+
+const hasInfo = Boolean(validCourt) || Boolean(validTime);
+
+                              const infoTop = hasInfo ? (
+                                <>
+                                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                    <span style={{ color: "#64748b", fontWeight: 900 }}>Campo</span>
+                                    <span style={{ fontWeight: 950 }}>{validCourt ? courtNorm : ""}</span>
+                                  </div>
+
+                                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                    <span style={{ color: "#64748b", fontWeight: 900 }}>Ora</span>
+                                    <span style={{ fontWeight: 950 }}>{validTime ?? ""}</span>
+                                  </div>
+                                </>
+                              ) : null;
+
                               return (
                                 <MatchCardBaraondaStyle
                                   key={m.id}
@@ -897,6 +1057,7 @@ export default function TournamentLiveDialog({
                                   rightScore={m.away_games}
                                   stripeColor={stripe}
                                   playerNameClass={playerNameClass}
+                                  infoTop={infoTop ?? undefined}
                                 />
                               );
                             })}

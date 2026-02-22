@@ -392,10 +392,28 @@ export default function FixedPairsGenerateWizard(props: {
     }
 
     if (step === 3) {
-      if (courtsCount < 1) return toast.error("Numero campi non valido");
-      setStep(4);
-      return;
+  if (courtsCount < 1) return toast.error("Numero campi non valido");
+
+  // ✅ Obbligo campo + orario per ogni partita (gironi)
+  if (format !== "bracket_only") {
+    const missingCourt = matches.filter(
+      (m) => m.stage === "group" && (m.court == null || m.court === 0)
+    );
+
+    const missingTime = matches.filter(
+      (m) => m.stage === "group" && !m.startsAt
+    );
+
+    if (missingCourt.length > 0 || missingTime.length > 0) {
+      return toast.error(
+        "Devi inserire campo e orario per tutte le partite."
+      );
     }
+  }
+
+  setStep(4);
+  return;
+}
   }
 
   function goBack() {
@@ -417,7 +435,22 @@ export default function FixedPairsGenerateWizard(props: {
     if (format === "group_only") {
       if (roundRobinLegs !== 1 && roundRobinLegs !== 2) return toast.error("Andata/ritorno non valido");
     }
+    // ✅ Controllo finale obbligo campo + orario
+if (format !== "bracket_only") {
+  const missingCourt = matches.filter(
+    (m) => m.stage === "group" && (m.court == null || m.court === 0)
+  );
 
+  const missingTime = matches.filter(
+    (m) => m.stage === "group" && !m.startsAt
+  );
+
+  if (missingCourt.length > 0 || missingTime.length > 0) {
+    return toast.error(
+      "Devi inserire campo e orario per tutte le partite."
+    );
+  }
+}
     setSaving(true);
     try {
       const payload = {
