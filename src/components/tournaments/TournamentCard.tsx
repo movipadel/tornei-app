@@ -62,7 +62,7 @@ function getHeaderGradient(type: string) {
   }
 
   if (t.includes("coppie")) {
-    return "linear-gradient(135deg, #4f46e5 0%, #2563eb 100%)";
+    return "linear-gradient(135deg, #2dd4bf 0%, #0ea5a4 100%)";
   }
 
   return "linear-gradient(135deg, #94a3b8 0%, #64748b 100%)";
