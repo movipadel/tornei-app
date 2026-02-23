@@ -1,6 +1,6 @@
 "use client";
 
-import { Calendar, Clock, MapPin, Users, UserPlus, X } from "lucide-react";
+import { Calendar, Clock, MapPin, Users, UserPlus, X, UserRound } from "lucide-react";
 import { motion } from "framer-motion";
 import TournamentLiveDialog from "./TournamentLiveDialog";
 import { useState } from "react";
@@ -9,7 +9,7 @@ export type PublicTournament = {
   id: string;
   name: string;
   type: "Baraonda" | "Coppie fisse" | string;
-  category: "Maschile" | "Femminile" | "Misto" | "Libero" | string;
+  category: "Maschile" | "Femminile" | "Misto" | "Libero" | "Open" | string;
   level?: string | null;
   date: string; // YYYY-MM-DD
   time: string; // HH:mm
@@ -31,26 +31,25 @@ type Props = {
   hasLive?: boolean;
 };
 
-function catKey(cat: string) {
-  const c = String(cat ?? "").toLowerCase();
-  if (["maschile", "femminile", "misto", "libero"].includes(c)) return c;
-  return "libero";
+type CatKey = "maschile" | "femminile" | "misto" | "open";
+
+function catKey(cat: string): CatKey {
+  const c = String(cat ?? "").toLowerCase().trim();
+  if (c === "libero" || c === "open") return "open";
+  if (c === "maschile") return "maschile";
+  if (c === "femminile") return "femminile";
+  if (c === "misto") return "misto";
+  return "open";
 }
 
 function lvlKey(level?: string | null) {
-  const l = String(level ?? "intermedio").toLowerCase();
+  const l = String(level ?? "intermedio").toLowerCase().trim();
   if (["principiante", "intermedio", "avanzato"].includes(l)) return l;
   return "intermedio";
 }
 
-function capitalize(value?: string | null) {
-  if (!value) return "-";
-  const v = String(value).toLowerCase();
-  return v.charAt(0).toUpperCase() + v.slice(1);
-}
-
 function typeLabel(type: string) {
-  return type === "Coppie fisse" ? "Coppie Fisse" : "Baraonda";
+  return type === "Coppie fisse" ? "Coppie fisse" : "Baraonda";
 }
 
 /** Header gradient più premium */
@@ -62,6 +61,7 @@ function getHeaderGradient(type: string) {
   }
 
   if (t.includes("coppie")) {
+    // ✅ verde acqua (scelta B)
     return "linear-gradient(135deg, #2dd4bf 0%, #0ea5a4 100%)";
   }
 
@@ -69,35 +69,29 @@ function getHeaderGradient(type: string) {
 }
 
 /**
- * Texture header (modalità C: premium minimal)
+ * Texture header (premium minimal)
  * - grana leggera
- * - diagonali/streak molto soft (quasi satin)
+ * - diagonali/streak soft (satin)
  */
 function getHeaderOverlayStyle(type: string) {
   const t = String(type).toLowerCase();
   const isBaraonda = t.includes("baraonda");
   const isCoppie = t.includes("coppie");
-  const darkOverlay = isCoppie
-  ? "linear-gradient(0deg, rgba(0,0,0,0.10), rgba(0,0,0,0.10)),"
-  : "";
 
   if (!isBaraonda && !isCoppie) {
     return {
-      backgroundImage:
-        "linear-gradient(135deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0) 55%)",
+      backgroundImage: "linear-gradient(135deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0) 55%)",
       backgroundSize: "100% 100%",
       backgroundPosition: "0 0",
       opacity: 1,
     } as const;
   }
 
-  // Premium minimal: tutto più soft
   const grainOpacity = isCoppie ? 0.10 : 0.12;
   const stripeOpacity = isCoppie ? 0.10 : 0.09;
 
   return {
-  backgroundImage: `
-      ${darkOverlay}
+    backgroundImage: `
       radial-gradient(circle at 1px 1px, rgba(255,255,255,${grainOpacity}) 0.6px, rgba(255,255,255,0) 0.7px),
       repeating-linear-gradient(
         135deg,
@@ -123,39 +117,109 @@ function getHeaderOverlayStyle(type: string) {
         rgba(255,255,255,0) 100%
       )
     `,
-    backgroundSize: isCoppie
-  ? "100% 100%, 3px 3px, 100% 100%, 100% 100%, 100% 100%"
-  : "3px 3px, 100% 100%, 100% 100%, 100% 100%",
+    backgroundSize: "3px 3px, 100% 100%, 100% 100%, 100% 100%",
     backgroundPosition: "0 0, 0 0, 0 0, 0 0",
     opacity: 1,
   } as const;
 }
 
-function categoryAccent(cat: string) {
-  const c = String(cat ?? "").toLowerCase();
-  if (c === "maschile") return "#1d4ed8";
-  if (c === "femminile") return "#db2777";
-  if (c === "misto") return "#16a34a";
-  return "#7c3aed"; // libero/default
+/** Palette icone categoria (outline) */
+function catColor(key: CatKey) {
+  if (key === "maschile") return "#2563eb"; // blue
+  if (key === "femminile") return "#db2777"; // pink
+  if (key === "open") return "#059669"; // green
+  // misto gestito a parte (blu+rosa)
+  return "#0f172a";
 }
 
-function levelAccent(level: string) {
-  const l = String(level ?? "").toLowerCase();
-  if (l === "principiante") return "#f59e0b";
-  if (l === "intermedio") return "#0ea5e9";
-  if (l === "avanzato") return "#7c3aed";
-  return "#0ea5e9";
+function catLabel(key: CatKey) {
+  if (key === "open") return "OPEN";
+  if (key === "maschile") return "MASCHILE";
+  if (key === "femminile") return "FEMMINILE";
+  return "MISTO";
 }
 
-function hexToRgba(hex: string, alpha: number) {
-  const h = String(hex || "").replace("#", "").trim();
-  if (h.length !== 6) return `rgba(15,23,42,${alpha})`;
-  const r = parseInt(h.slice(0, 2), 16);
-  const g = parseInt(h.slice(2, 4), 16);
-  const b = parseInt(h.slice(4, 6), 16);
-  return `rgba(${r},${g},${b},${alpha})`;
+function lvlLabel(key: string) {
+  const k = String(key ?? "").toLowerCase();
+  if (k === "principiante") return "PRINCIPIANTE";
+  if (k === "intermedio") return "INTERMEDIO";
+  if (k === "avanzato") return "AVANZATO";
+  return "INTERMEDIO";
 }
 
+function categoryPillStyle(cat: CatKey) {
+  // pill leggermente più scure delle icone (come nel mock)
+  if (cat === "maschile") {
+    return {
+      bg: "linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%)",
+      border: "1px solid rgba(255,255,255,0.25)",
+    };
+  }
+
+  if (cat === "femminile") {
+    return {
+      bg: "linear-gradient(135deg, #be185d 0%, #9d174d 100%)",
+      border: "1px solid rgba(255,255,255,0.25)",
+    };
+  }
+
+  if (cat === "open") {
+  return {
+    bg: "linear-gradient(135deg, #059669 0%, #047857 100%)",
+    border: "1px solid rgba(255,255,255,0.25)",
+  };
+}
+
+  // misto: giallo caldo più scuro (testo bianco leggibile)
+return {
+  bg: "linear-gradient(135deg, #eab308 0%, #b45309 100%)",
+  border: "1px solid rgba(255,255,255,0.25)",
+};
+}
+
+function FullUser({
+  color,
+  size = 16,
+}: {
+  color: string;
+  size?: number;
+}) {
+ return (
+  <span
+    style={{
+      display: "inline-flex",
+      alignItems: "center",
+      justifyContent: "center",
+      filter: "drop-shadow(0 1px 1px rgba(0,0,0,0.25))",
+    }}
+  >
+    <UserRound width={size} height={size} fill={color} stroke="none" />
+  </span>
+);
+}
+
+function OverlapTwo({
+  left,
+  right,
+}: {
+  left: React.ReactNode;
+  right: React.ReactNode;
+}) {
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center" }}>
+      <span style={{ display: "inline-flex", alignItems: "center" }}>{left}</span>
+      <span
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          marginLeft: -10,
+        }}
+      >
+        {right}
+      </span>
+    </span>
+  );
+}
 function formatPrettyDate(dateStr: string) {
   const d = new Date(`${dateStr}T00:00:00`);
   if (Number.isNaN(d.getTime())) return dateStr;
@@ -172,23 +236,24 @@ function formatPrettyDate(dateStr: string) {
 export default function TournamentCard({ tournament, onRegister, status, onCancel, hasLive }: Props) {
   const counts = tournament.counts ?? { main: 0, reserve: 0, male: 0, female: 0 };
 
-  const isMixedBaraonda =
-    tournament.type === "Baraonda" && String(tournament.category).toLowerCase() === "misto";
+  const cat = catKey(tournament.category);
+  const lvl = lvlKey(tournament.level);
+
+  const isBaraonda = String(tournament.type).toLowerCase().includes("baraonda");
+  const isMixed = cat === "misto";
+
+  // Baraonda misto: iscrizioni singole (contatori separati)
+  const isMixedBaraonda = isBaraonda && isMixed;
   const maxPerGender = isMixedBaraonda ? Math.floor(tournament.max_participants / 2) : 0;
 
   const spotsLeft = tournament.max_participants - counts.main;
   const isFull = spotsLeft <= 0;
 
-  const cat = catKey(tournament.category);
-  const lvl = lvlKey(tournament.level);
-
   // fonte unica
   const live = Boolean(hasLive ?? tournament.hasLive);
   const showParticipants = Boolean(tournament.show_participants);
 
-  const catAccent = categoryAccent(cat);
-  const lvlAccent = levelAccent(lvl);
-
+  // participants state
   const [participantsLoading, setParticipantsLoading] = useState(false);
   const [participantsLoaded, setParticipantsLoaded] = useState(false);
   const [participantNames, setParticipantNames] = useState<string[]>([]);
@@ -221,22 +286,27 @@ export default function TournamentCard({ tournament, onRegister, status, onCance
     }
   }
 
-  function BadgePill({
-    label,
-    accent,
-    weight,
-  }: {
-    label: string;
-    accent: string;
-    weight: number;
-  }) {
+  /** Pill premium quasi bianca */
+  function Pill({
+  children,
+  weight,
+  bg,
+  fg,
+  border,
+}: {
+  children: React.ReactNode;
+  weight: number;
+  bg?: string;
+  fg?: string;
+  border?: string;
+}) {
     return (
       <span
         className="base44-pill"
         style={{
-          background: "rgba(255,255,255,0.90)", // quasi bianca
-          border: "1px solid rgba(15,23,42,0.08)",
-          color: "#0f172a",
+          background: bg ?? "rgba(255,255,255,0.90)",
+          border: border ?? "1px solid rgba(15,23,42,0.08)",
+          color: fg ?? "#0f172a",
           display: "inline-flex",
           alignItems: "center",
           gap: 8,
@@ -247,25 +317,82 @@ export default function TournamentCard({ tournament, onRegister, status, onCance
           lineHeight: 1,
           letterSpacing: "0.08em",
           textTransform: "uppercase",
-          boxShadow: "0 1px 2px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.6)",
+          boxShadow: `
+  0 2px 4px rgba(0,0,0,0.18),
+  inset 0 1px 0 rgba(255,255,255,0.35),
+  inset 0 -1px 0 rgba(0,0,0,0.15)
+`,
+          whiteSpace: "nowrap",
         }}
       >
-        <span
-          aria-hidden="true"
-          style={{
-            width: 10,
-            height: 10,
-            borderRadius: 999,
-            background: accent,
-            boxShadow: `0 0 0 4px ${hexToRgba(accent, 0.18)}`,
-            display: "inline-block",
-            flexShrink: 0,
-          }}
-        />
-        <span>{label}</span>
+        {children}
       </span>
     );
   }
+
+  function CategoryIcons({ cat }: { cat: CatKey }) {
+ const blueDefault = "#3b82f6";
+const pinkDefault = "#ec4899";
+const green = "#10b981";
+
+// colori leggermente più profondi SOLO per misto
+const blueMisto = "#2563eb";
+const pinkMisto = "#db2777";
+
+  const size = 16;
+
+ if (cat === "misto") {
+  return (
+    <OverlapTwo
+      left={<FullUser color={blueMisto} size={size} />}
+      right={<FullUser color={pinkMisto} size={size} />}
+    />
+  );
+}
+
+  const color = cat === "maschile" ? blueDefault : cat === "femminile" ? pinkDefault : green;
+
+  return (
+    <OverlapTwo
+      left={<FullUser color={color} size={size} />}
+      right={<FullUser color={color} size={size} />}
+    />
+  );
+}
+
+  function CountIconsDouble({ cat }: { cat: CatKey }) {
+ const blueDefault = "#3b82f6";
+const pinkDefault = "#ec4899";
+const green = "#10b981";
+
+// colori leggermente più profondi SOLO per misto
+const blueMisto = "#2563eb";
+const pinkMisto = "#db2777";
+
+  const size = 18;
+
+  if (cat === "misto") {
+    return (
+      <OverlapTwo
+        left={<FullUser color={blueMisto} size={size} />}
+        right={<FullUser color={pinkMisto} size={size} />}
+      />
+    );
+  }
+
+  const color = cat === "maschile" ? blueDefault : cat === "femminile" ? pinkDefault : green;
+
+  return (
+    <OverlapTwo
+      left={<FullUser color={color} size={size} />}
+      right={<FullUser color={color} size={size} />}
+    />
+  );
+}
+
+  function CountIconSingle({ color }: { color: string }) {
+  return <FullUser color={color} size={18} />;
+}
 
   return (
     <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }}>
@@ -280,7 +407,7 @@ export default function TournamentCard({ tournament, onRegister, status, onCance
           background: "#ffffff",
         }}
       >
-        {/* HEADER GRADIENT + TEXTURE */}
+        {/* HEADER */}
         <div
           style={{
             background: getHeaderGradient(tournament.type),
@@ -305,7 +432,7 @@ export default function TournamentCard({ tournament, onRegister, status, onCance
                 <div
                   className="base44-tcard-name"
                   style={{
-                    fontWeight: 750,
+                    fontWeight: 700,
                     fontSize: 20,
                     letterSpacing: "-0.01em",
                     color: "#0f172a",
@@ -314,12 +441,11 @@ export default function TournamentCard({ tournament, onRegister, status, onCance
                   {tournament.name}
                 </div>
 
-                {/* Tipo torneo: bianco, più leggibile */}
                 <div
                   className="base44-tcard-type"
                   style={{
                     color: "rgba(255,255,255,0.85)",
-                    fontWeight: 650,
+                    fontWeight: 600,
                     fontSize: 15,
                     letterSpacing: "0.02em",
                     marginTop: 2,
@@ -329,7 +455,7 @@ export default function TournamentCard({ tournament, onRegister, status, onCance
                 </div>
               </div>
 
-              {/* BADGES: categoria + livello (gerarchia B: cat più forte del level) */}
+              {/* BADGES */}
               <div
                 className="base44-tcard-badges"
                 style={{
@@ -340,51 +466,80 @@ export default function TournamentCard({ tournament, onRegister, status, onCance
                   flexShrink: 0,
                 }}
               >
-                <BadgePill label={capitalize(cat)} accent={catAccent} weight={900} />
-                <BadgePill label={capitalize(lvl)} accent={lvlAccent} weight={750} />
+                {/* Categoria: icone omini + testo */}
+                {(() => {
+  const s = categoryPillStyle(cat);
+  return (
+    <Pill weight={900} bg={s.bg} fg="#ffffff" border={s.border}>
+      <CategoryIcons cat={cat} />
+      <span>{catLabel(cat)}</span>
+    </Pill>
+  );
+})()}
+
+                {/* Livello: testo (nessun pallino multicolor) */}
+                <Pill
+  weight={750}
+  bg="linear-gradient(135deg, #334155 0%, #1e293b 100%)"
+  fg="#ffffff"
+  border="1px solid rgba(255,255,255,0.15)"
+>
+  <span>{lvlLabel(lvl)}</span>
+</Pill>
               </div>
             </div>
           </div>
         </div>
 
-        {/* opzionale: immagine */}
+        {/* immagine eventuale */}
         {tournament.image_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img className="base44-tcard-img" src={tournament.image_url} alt={tournament.name} />
         ) : null}
 
-        {/* BODY neutro */}
-        <div
-          className="base44-tcard-body"
-          style={{
-            padding: "12px 20px 20px 20px",
-            background: "#ffffff",
-          }}
-        >
-          <div className="base44-tcard-info">
-            <div className="base44-info-row">
-              <Calendar className="w-4 h-4" style={{ color: "#6366f1" }} />
-              <span>{formatPrettyDate(tournament.date)}</span>
-            </div>
+        {/* BODY */}
+<div
+  className="base44-tcard-body"
+  style={{
+    padding: "12px 20px 20px 20px",
+    backgroundImage: `
+      radial-gradient(circle at 1px 1px, rgba(15,23,42,0.05) 0.6px, rgba(0,0,0,0) 0.7px),
+      linear-gradient(to bottom, #ffffff 0%, #eef2ff 100%)
+    `,
+    backgroundSize: "3px 3px, 100% 100%",
+    backgroundPosition: "0 0, 0 0",
+  }}
+>
+  <div className="base44-tcard-info">
+    <div className="base44-info-row">
+      <Calendar className="w-4 h-4" style={{ color: "#4f46e5" }} />
+      <span style={{ fontSize: 15, fontWeight: 600, color: "#0f172a" }}>
+        {formatPrettyDate(tournament.date)}
+        </span>
+    </div>
 
             <div className="base44-info-row">
-              <Clock className="w-4 h-4" style={{ color: "#6366f1" }} />
-              <span>{tournament.time}</span>
+              <Clock className="w-4 h-4" style={{ color: "#4f46e5" }} />
+              <span style={{ fontSize: 15, fontWeight: 600, color: "#0f172a" }}>
+                {tournament.time}
+                </span>
             </div>
 
             <div className="base44-info-row full">
-              <MapPin className="w-4 h-4" style={{ color: "#6366f1" }} />
-              <span>{tournament.location}</span>
+              <MapPin className="w-4 h-4" style={{ color: "#4f46e5" }} />
+              <span style={{ fontSize: 15, fontWeight: 600, color: "#0f172a" }}>
+                {tournament.location}
+                </span>
             </div>
           </div>
 
           {showParticipants ? (
             <div style={{ marginTop: 10 }}>
-              <div style={{ fontWeight: 800, color: "#334155", marginBottom: 6, fontSize: 13 }}>Iscritti</div>
+              <div style={{ fontWeight: 700, color: "#334155", marginBottom: 6, fontSize: 13 }}>Iscritti</div>
 
               {participantsLoading && !participantsLoaded ? (
                 <div style={{ color: "#64748b", fontSize: 13 }}>Caricamento...</div>
-              ) : tournament.type === "Baraonda" ? (
+              ) : String(tournament.type).toLowerCase().includes("baraonda") ? (
                 participantNames.length ? (
                   <div
                     style={{
@@ -442,50 +597,48 @@ export default function TournamentCard({ tournament, onRegister, status, onCance
             </div>
           ) : null}
 
+          {/* FOOTER */}
           <div
             className="base44-tcard-bottom"
             style={{
               marginTop: 14,
               paddingTop: 14,
-              borderTop: "1px solid #f1f5f9",
+              borderTop: "1px solid #e2e8f0",
             }}
           >
-            <div className="base44-counts">
+            <div className="base44-counts" style={{ display: "flex", alignItems: "center", gap: 10 }}>
               {isMixedBaraonda ? (
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                    flexWrap: "nowrap",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  <div style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-                    <Users className="w-4 h-4" style={{ color: "#94a3b8" }} />
-                    <span className="base44-gender-icon male">♂</span>
-                    <span style={{ fontWeight: 800 }}>
+                // ✅ Baraonda misto: iscrizioni singole separate (icona singola)
+                <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "nowrap", whiteSpace: "nowrap" }}>
+                  <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                    {CountIconSingle({ color: "#2563eb" })}
+                    <span style={{ fontWeight: 900, color: "#0f172a" }}>
                       {counts.male}/{maxPerGender}
                     </span>
                   </div>
 
-                  <div style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-                    <Users className="w-4 h-4" style={{ color: "#94a3b8" }} />
-                    <span className="base44-gender-icon female">♀</span>
-                    <span style={{ fontWeight: 800 }}>
+                  <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                    {CountIconSingle({ color: "#db2777" })}
+                    <span style={{ fontWeight: 900, color: "#0f172a" }}>
                       {counts.female}/{maxPerGender}
                     </span>
                   </div>
                 </div>
               ) : (
-                <span className="base44-info-row">
-                  <Users className="w-4 h-4" style={{ color: "#94a3b8" }} />
-                  {counts.main}/{tournament.max_participants} {tournament.type === "Coppie fisse" ? "coppie" : "iscritti"}
+                // ✅ Tutti gli altri: omini doppi colorati (misto = blu+rosa)
+                <span className="base44-info-row" style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                  <CountIconsDouble cat={cat} />
+                  <span style={{ color: "#0f172a", fontWeight: 800 }}>
+                    {counts.main}/{tournament.max_participants} {String(tournament.type) === "Coppie fisse" ? "coppie" : "iscritti"}
+                  </span>
                 </span>
               )}
 
               {counts.reserve > 0 ? (
-                <span className="base44-pill" style={{ background: "#fffbeb", borderColor: "#fde68a", color: "#b45309" }}>
+                <span
+                  className="base44-pill"
+                  style={{ background: "#fffbeb", borderColor: "#fde68a", color: "#b45309" }}
+                >
                   +{counts.reserve} {counts.reserve === 1 ? "riserva" : "riserve"}
                 </span>
               ) : null}
@@ -505,7 +658,7 @@ export default function TournamentCard({ tournament, onRegister, status, onCance
                 type="button"
                 onClick={() => onRegister(tournament)}
                 style={{
-                  fontWeight: 650,
+                  fontWeight: 600,
                   padding: "10px 14px",
                   fontSize: 14,
                   gap: 6,
