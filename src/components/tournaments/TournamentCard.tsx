@@ -1,9 +1,17 @@
 "use client";
 
-import { Calendar, Clock, MapPin, Users, UserPlus, X, UserRound } from "lucide-react";
+import { Calendar, Clock, MapPin, X, UserPlus, UserRound, Search } from "lucide-react";
 import { motion } from "framer-motion";
 import TournamentLiveDialog from "./TournamentLiveDialog";
-import { useState } from "react";
+import React, { useState } from "react";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 export type PublicTournament = {
   id: string;
@@ -61,7 +69,6 @@ function getHeaderGradient(type: string) {
   }
 
   if (t.includes("coppie")) {
-    // ✅ verde acqua (scelta B)
     return "linear-gradient(135deg, #2dd4bf 0%, #0ea5a4 100%)";
   }
 
@@ -70,8 +77,6 @@ function getHeaderGradient(type: string) {
 
 /**
  * Texture header (premium minimal)
- * - grana leggera
- * - diagonali/streak soft (satin)
  */
 function getHeaderOverlayStyle(type: string) {
   const t = String(type).toLowerCase();
@@ -80,15 +85,16 @@ function getHeaderOverlayStyle(type: string) {
 
   if (!isBaraonda && !isCoppie) {
     return {
-      backgroundImage: "linear-gradient(135deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0) 55%)",
+      backgroundImage:
+        "linear-gradient(135deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0) 55%)",
       backgroundSize: "100% 100%",
       backgroundPosition: "0 0",
       opacity: 1,
     } as const;
   }
 
-  const grainOpacity = isCoppie ? 0.10 : 0.12;
-  const stripeOpacity = isCoppie ? 0.10 : 0.09;
+  const grainOpacity = isCoppie ? 0.1 : 0.12;
+  const stripeOpacity = isCoppie ? 0.1 : 0.09;
 
   return {
     backgroundImage: `
@@ -123,15 +129,6 @@ function getHeaderOverlayStyle(type: string) {
   } as const;
 }
 
-/** Palette icone categoria (outline) */
-function catColor(key: CatKey) {
-  if (key === "maschile") return "#2563eb"; // blue
-  if (key === "femminile") return "#db2777"; // pink
-  if (key === "open") return "#059669"; // green
-  // misto gestito a parte (blu+rosa)
-  return "#0f172a";
-}
-
 function catLabel(key: CatKey) {
   if (key === "open") return "OPEN";
   if (key === "maschile") return "MASCHILE";
@@ -148,7 +145,6 @@ function lvlLabel(key: string) {
 }
 
 function categoryPillStyle(cat: CatKey) {
-  // pill leggermente più scure delle icone (come nel mock)
   if (cat === "maschile") {
     return {
       bg: "linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%)",
@@ -164,73 +160,56 @@ function categoryPillStyle(cat: CatKey) {
   }
 
   if (cat === "open") {
+    return {
+      bg: "linear-gradient(135deg, #059669 0%, #047857 100%)",
+      border: "1px solid rgba(255,255,255,0.25)",
+    };
+  }
+
   return {
-    bg: "linear-gradient(135deg, #059669 0%, #047857 100%)",
+    bg: "linear-gradient(135deg, #eab308 0%, #b45309 100%)",
     border: "1px solid rgba(255,255,255,0.25)",
   };
 }
 
-  // misto: giallo caldo più scuro (testo bianco leggibile)
-return {
-  bg: "linear-gradient(135deg, #eab308 0%, #b45309 100%)",
-  border: "1px solid rgba(255,255,255,0.25)",
-};
-}
-
-function FullUser({
-  color,
-  size = 16,
-}: {
-  color: string;
-  size?: number;
-}) {
- return (
-  <span
-    style={{
-      display: "inline-flex",
-      alignItems: "center",
-      justifyContent: "center",
-      filter: "drop-shadow(0 1px 1px rgba(0,0,0,0.25))",
-    }}
-  >
-    <UserRound width={size} height={size} fill={color} stroke="none" />
-  </span>
-);
-}
-
-function OverlapTwo({
-  left,
-  right,
-}: {
-  left: React.ReactNode;
-  right: React.ReactNode;
-}) {
+function FullUser({ color, size = 16 }: { color: string; size?: number }) {
   return (
-    <span style={{ display: "inline-flex", alignItems: "center" }}>
-      <span style={{ display: "inline-flex", alignItems: "center" }}>{left}</span>
-      <span
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          marginLeft: -10,
-        }}
-      >
-        {right}
-      </span>
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        filter: "drop-shadow(0 1px 1px rgba(0,0,0,0.25))",
+      }}
+    >
+      <UserRound width={size} height={size} fill={color} stroke="none" />
     </span>
   );
 }
+
+function OverlapTwo({ left, right }: { left: React.ReactNode; right: React.ReactNode }) {
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center" }}>
+      <span style={{ display: "inline-flex", alignItems: "center" }}>{left}</span>
+      <span style={{ display: "inline-flex", alignItems: "center", marginLeft: -10 }}>{right}</span>
+    </span>
+  );
+}
+
 function formatPrettyDate(dateStr: string) {
   const d = new Date(`${dateStr}T00:00:00`);
   if (Number.isNaN(d.getTime())) return dateStr;
 
-  const s = d.toLocaleDateString("it-IT", {
+  const raw = d.toLocaleDateString("it-IT", {
     weekday: "long",
     day: "numeric",
     month: "long",
   });
 
-  return s.charAt(0).toUpperCase() + s.slice(1);
+  return raw
+    .split(" ")
+    .map((w) => (w ? w.charAt(0).toUpperCase() + w.slice(1) : w))
+    .join(" ");
 }
 
 export default function TournamentCard({ tournament, onRegister, status, onCancel, hasLive }: Props) {
@@ -253,15 +232,18 @@ export default function TournamentCard({ tournament, onRegister, status, onCance
   const live = Boolean(hasLive ?? tournament.hasLive);
   const showParticipants = Boolean(tournament.show_participants);
 
-  // participants state
+  // dialog state
+  const [participantsOpen, setParticipantsOpen] = useState(false);
+
+  // participants state (usiamo SOLO nel dialog)
   const [participantsLoading, setParticipantsLoading] = useState(false);
   const [participantsLoaded, setParticipantsLoaded] = useState(false);
   const [participantNames, setParticipantNames] = useState<string[]>([]);
   const [participantPairs, setParticipantPairs] = useState<{ p1: string; p2: string }[]>([]);
 
-  async function loadParticipantsOnce() {
+  async function loadParticipants(force?: boolean) {
     if (!showParticipants) return;
-    if (participantsLoaded || participantsLoading) return;
+    if (!force && (participantsLoaded || participantsLoading)) return;
 
     setParticipantsLoading(true);
     try {
@@ -270,7 +252,7 @@ export default function TournamentCard({ tournament, onRegister, status, onCance
       if (!res.ok) throw new Error((json as any).error || "Errore caricamento iscritti");
 
       const type = String((json as any).type ?? tournament.type ?? "");
-      if (type.toLowerCase() === "baraonda") {
+      if (type.toLowerCase().includes("baraonda")) {
         setParticipantNames(Array.isArray((json as any).names) ? (json as any).names : []);
         setParticipantPairs([]);
       } else {
@@ -286,20 +268,20 @@ export default function TournamentCard({ tournament, onRegister, status, onCance
     }
   }
 
-  /** Pill premium quasi bianca */
+  /** Pill premium */
   function Pill({
-  children,
-  weight,
-  bg,
-  fg,
-  border,
-}: {
-  children: React.ReactNode;
-  weight: number;
-  bg?: string;
-  fg?: string;
-  border?: string;
-}) {
+    children,
+    weight,
+    bg,
+    fg,
+    border,
+  }: {
+    children: React.ReactNode;
+    weight: number;
+    bg?: string;
+    fg?: string;
+    border?: string;
+  }) {
     return (
       <span
         className="base44-pill"
@@ -318,10 +300,10 @@ export default function TournamentCard({ tournament, onRegister, status, onCance
           letterSpacing: "0.08em",
           textTransform: "uppercase",
           boxShadow: `
-  0 2px 4px rgba(0,0,0,0.18),
-  inset 0 1px 0 rgba(255,255,255,0.35),
-  inset 0 -1px 0 rgba(0,0,0,0.15)
-`,
+            0 2px 4px rgba(0,0,0,0.18),
+            inset 0 1px 0 rgba(255,255,255,0.35),
+            inset 0 -1px 0 rgba(0,0,0,0.15)
+          `,
           whiteSpace: "nowrap",
         }}
       >
@@ -331,75 +313,99 @@ export default function TournamentCard({ tournament, onRegister, status, onCance
   }
 
   function CategoryIcons({ cat }: { cat: CatKey }) {
- const blueDefault = "#3b82f6";
-const pinkDefault = "#ec4899";
-const green = "#10b981";
+    const blueDefault = "#3b82f6";
+    const pinkDefault = "#ec4899";
+    const green = "#10b981";
 
-// colori leggermente più profondi SOLO per misto
-const blueMisto = "#2563eb";
-const pinkMisto = "#db2777";
+    const blueMisto = "#2563eb";
+    const pinkMisto = "#db2777";
 
-  const size = 16;
+    const size = 16;
 
- if (cat === "misto") {
-  return (
-    <OverlapTwo
-      left={<FullUser color={blueMisto} size={size} />}
-      right={<FullUser color={pinkMisto} size={size} />}
-    />
-  );
-}
+    if (cat === "misto") {
+      return (
+        <OverlapTwo
+          left={<FullUser color={blueMisto} size={size} />}
+          right={<FullUser color={pinkMisto} size={size} />}
+        />
+      );
+    }
 
-  const color = cat === "maschile" ? blueDefault : cat === "femminile" ? pinkDefault : green;
+    const color = cat === "maschile" ? blueDefault : cat === "femminile" ? pinkDefault : green;
 
-  return (
-    <OverlapTwo
-      left={<FullUser color={color} size={size} />}
-      right={<FullUser color={color} size={size} />}
-    />
-  );
-}
-
-  function CountIconsDouble({ cat }: { cat: CatKey }) {
- const blueDefault = "#3b82f6";
-const pinkDefault = "#ec4899";
-const green = "#10b981";
-
-// colori leggermente più profondi SOLO per misto
-const blueMisto = "#2563eb";
-const pinkMisto = "#db2777";
-
-  const size = 18;
-
-  if (cat === "misto") {
-    return (
-      <OverlapTwo
-        left={<FullUser color={blueMisto} size={size} />}
-        right={<FullUser color={pinkMisto} size={size} />}
-      />
-    );
+    return <OverlapTwo left={<FullUser color={color} size={size} />} right={<FullUser color={color} size={size} />} />;
   }
 
-  const color = cat === "maschile" ? blueDefault : cat === "femminile" ? pinkDefault : green;
+  function CountIconsDouble({ cat }: { cat: CatKey }) {
+    const blueDefault = "#3b82f6";
+    const pinkDefault = "#ec4899";
+    const green = "#10b981";
 
-  return (
-    <OverlapTwo
-      left={<FullUser color={color} size={size} />}
-      right={<FullUser color={color} size={size} />}
-    />
-  );
-}
+    const blueMisto = "#2563eb";
+    const pinkMisto = "#db2777";
+
+    const size = 18;
+
+    if (cat === "misto") {
+      return (
+        <OverlapTwo
+          left={<FullUser color={blueMisto} size={size} />}
+          right={<FullUser color={pinkMisto} size={size} />}
+        />
+      );
+    }
+
+    const color = cat === "maschile" ? blueDefault : cat === "femminile" ? pinkDefault : green;
+
+    return <OverlapTwo left={<FullUser color={color} size={size} />} right={<FullUser color={color} size={size} />} />;
+  }
 
   function CountIconSingle({ color }: { color: string }) {
-  return <FullUser color={color} size={18} />;
-}
+    return <FullUser color={color} size={18} />;
+  }
+
+  const countText = `${counts.main}/${tournament.max_participants} ${
+  String(tournament.type) === "Coppie fisse" ? "coppie" : "iscritti"
+}`;
+
+  const lensAccent =
+    String(tournament.type).toLowerCase().includes("baraonda")
+      ? "rgba(245,158,11,0.55)" // arancio
+      : String(tournament.type).toLowerCase().includes("coppie")
+      ? "rgba(45,212,191,0.55)" // teal
+      : "rgba(99,102,241,0.45)"; // fallback indigo
+
+  const lensBtnStyle: React.CSSProperties = {
+    width: 34,
+    height: 34,
+    borderRadius: 999,
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    background:
+      "linear-gradient(180deg, rgba(255,255,255,0.92) 0%, rgba(255,255,255,0.78) 100%)",
+    border: "1px solid rgba(15,23,42,0.14)",
+    boxShadow: `
+      0 6px 16px rgba(15,23,42,0.10),
+      inset 0 1px 0 rgba(255,255,255,0.65),
+      0 0 0 2px ${lensAccent}
+    `,
+    cursor: "pointer",
+    padding: 0,
+    flex: "0 0 auto",
+  };
 
   return (
     <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }}>
       <div
         className="base44-tcard"
-        onMouseEnter={() => loadParticipantsOnce()}
-        onTouchStart={() => loadParticipantsOnce()}
+        onMouseEnter={() => {
+          // opzionale: carica in anticipo per renderlo istantaneo al click
+          if (showParticipants) loadParticipants();
+        }}
+        onTouchStart={() => {
+          if (showParticipants) loadParticipants();
+        }}
         style={{
           overflow: "hidden",
           borderRadius: 20,
@@ -466,26 +472,24 @@ const pinkMisto = "#db2777";
                   flexShrink: 0,
                 }}
               >
-                {/* Categoria: icone omini + testo */}
                 {(() => {
-  const s = categoryPillStyle(cat);
-  return (
-    <Pill weight={900} bg={s.bg} fg="#ffffff" border={s.border}>
-      <CategoryIcons cat={cat} />
-      <span>{catLabel(cat)}</span>
-    </Pill>
-  );
-})()}
+                  const s = categoryPillStyle(cat);
+                  return (
+                    <Pill weight={900} bg={s.bg} fg="#ffffff" border={s.border}>
+                      <CategoryIcons cat={cat} />
+                      <span>{catLabel(cat)}</span>
+                    </Pill>
+                  );
+                })()}
 
-                {/* Livello: testo (nessun pallino multicolor) */}
                 <Pill
-  weight={750}
-  bg="linear-gradient(135deg, #334155 0%, #1e293b 100%)"
-  fg="#ffffff"
-  border="1px solid rgba(255,255,255,0.15)"
->
-  <span>{lvlLabel(lvl)}</span>
-</Pill>
+                  weight={750}
+                  bg="linear-gradient(135deg, #334155 0%, #1e293b 100%)"
+                  fg="#ffffff"
+                  border="1px solid rgba(255,255,255,0.15)"
+                >
+                  <span>{lvlLabel(lvl)}</span>
+                </Pill>
               </div>
             </div>
           </div>
@@ -498,104 +502,70 @@ const pinkMisto = "#db2777";
         ) : null}
 
         {/* BODY */}
-<div
-  className="base44-tcard-body"
+        <div
+          className="base44-tcard-body"
+          style={{
+            padding: "12px 20px 20px 20px",
+            backgroundImage: `
+              radial-gradient(circle at 1px 1px, rgba(15,23,42,0.05) 0.6px, rgba(0,0,0,0) 0.7px),
+              linear-gradient(to bottom, #ffffff 0%, #eef2ff 100%)
+            `,
+            backgroundSize: "3px 3px, 100% 100%",
+            backgroundPosition: "0 0, 0 0",
+          }}
+        >
+          <div
+  className="base44-tcard-info"
   style={{
-    padding: "12px 20px 20px 20px",
-    backgroundImage: `
-      radial-gradient(circle at 1px 1px, rgba(15,23,42,0.05) 0.6px, rgba(0,0,0,0) 0.7px),
-      linear-gradient(to bottom, #ffffff 0%, #eef2ff 100%)
-    `,
-    backgroundSize: "3px 3px, 100% 100%",
-    backgroundPosition: "0 0, 0 0",
+    display: "grid",
+    gridTemplateColumns: "minmax(0,1fr) auto",
+    columnGap: 18,
+    rowGap: 10,
+    alignItems: "center",
   }}
 >
-  <div className="base44-tcard-info">
-    <div className="base44-info-row">
-      <Calendar className="w-4 h-4" style={{ color: "#4f46e5" }} />
-      <span style={{ fontSize: 15, fontWeight: 600, color: "#0f172a" }}>
-        {formatPrettyDate(tournament.date)}
-        </span>
-    </div>
+  {/* DATA (sinistra) */}
+  <div className="base44-info-row" style={{ minWidth: 0 }}>
+    <Calendar className="w-4 h-4" style={{ color: "#4f46e5" }} />
+    <span
+      style={{
+        fontSize: 15,
+        fontWeight: 600,
+        color: "#0f172a",
+        whiteSpace: "nowrap",
+        overflow: "hidden",
+        textOverflow: "ellipsis",
+        display: "block",
+      }}
+    >
+      {formatPrettyDate(tournament.date)}
+    </span>
+  </div>
 
-            <div className="base44-info-row">
-              <Clock className="w-4 h-4" style={{ color: "#4f46e5" }} />
-              <span style={{ fontSize: 15, fontWeight: 600, color: "#0f172a" }}>
-                {tournament.time}
-                </span>
-            </div>
+  {/* ORA (destra) */}
+  <div
+    className="base44-info-row"
+    style={{
+      justifyContent: "flex-end",
+      justifySelf: "end",
+      whiteSpace: "nowrap",
+    }}
+  >
+    <Clock className="w-4 h-4" style={{ color: "#4f46e5" }} />
+    <span style={{ fontSize: 15, fontWeight: 600, color: "#0f172a" }}>
+      {tournament.time}
+    </span>
+  </div>
 
-            <div className="base44-info-row full">
-              <MapPin className="w-4 h-4" style={{ color: "#4f46e5" }} />
-              <span style={{ fontSize: 15, fontWeight: 600, color: "#0f172a" }}>
-                {tournament.location}
-                </span>
-            </div>
-          </div>
-
-          {showParticipants ? (
-            <div style={{ marginTop: 10 }}>
-              <div style={{ fontWeight: 700, color: "#334155", marginBottom: 6, fontSize: 13 }}>Iscritti</div>
-
-              {participantsLoading && !participantsLoaded ? (
-                <div style={{ color: "#64748b", fontSize: 13 }}>Caricamento...</div>
-              ) : String(tournament.type).toLowerCase().includes("baraonda") ? (
-                participantNames.length ? (
-                  <div
-                    style={{
-                      border: "1px solid #e2e8f0",
-                      borderRadius: 12,
-                      overflow: "hidden",
-                      background: "white",
-                    }}
-                  >
-                    {participantNames.map((n, idx) => (
-                      <div
-                        key={`${n}-${idx}`}
-                        style={{
-                          padding: "8px 10px",
-                          fontSize: 13,
-                          borderTop: idx === 0 ? "none" : "1px solid #f1f5f9",
-                        }}
-                      >
-                        {n}
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div style={{ color: "#64748b", fontSize: 13 }}>Nessun iscritto</div>
-                )
-              ) : participantPairs.length ? (
-                <div
-                  style={{
-                    border: "1px solid #e2e8f0",
-                    borderRadius: 12,
-                    overflow: "hidden",
-                    background: "white",
-                  }}
-                >
-                  {participantPairs.map((p, idx) => (
-                    <div
-                      key={`${p.p1}-${p.p2}-${idx}`}
-                      style={{
-                        padding: "8px 10px",
-                        fontSize: 13,
-                        background: idx % 2 === 0 ? "#ffffff" : "#f8fafc",
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: 2,
-                      }}
-                    >
-                      <div>{p.p1}</div>
-                      <div>{p.p2}</div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div style={{ color: "#64748b", fontSize: 13 }}>Nessuna coppia completa</div>
-              )}
-            </div>
-          ) : null}
+  {/* LOCATION (riga sotto full width) */}
+  <div className="base44-info-row full" style={{ gridColumn: "1 / -1" }}>
+    <MapPin className="w-4 h-4" style={{ color: "#4f46e5" }} />
+    <span style={{ fontSize: 15, fontWeight: 600, color: "#0f172a" }}>
+      {tournament.location}
+    </span>
+  </div>
+</div>
+          {/* ✅ QUI: ELIMINATA LA LISTA ISCRITTI DALLA CARD */}
 
           {/* FOOTER */}
           <div
@@ -608,7 +578,6 @@ const pinkMisto = "#db2777";
           >
             <div className="base44-counts" style={{ display: "flex", alignItems: "center", gap: 10 }}>
               {isMixedBaraonda ? (
-                // ✅ Baraonda misto: iscrizioni singole separate (icona singola)
                 <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "nowrap", whiteSpace: "nowrap" }}>
                   <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
                     {CountIconSingle({ color: "#2563eb" })}
@@ -625,20 +594,122 @@ const pinkMisto = "#db2777";
                   </div>
                 </div>
               ) : (
-                // ✅ Tutti gli altri: omini doppi colorati (misto = blu+rosa)
-                <span className="base44-info-row" style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-                  <CountIconsDouble cat={cat} />
-                  <span style={{ color: "#0f172a", fontWeight: 800 }}>
-                    {counts.main}/{tournament.max_participants} {String(tournament.type) === "Coppie fisse" ? "coppie" : "iscritti"}
-                  </span>
-                </span>
-              )}
+  <div
+  className="base44-info-row"
+  style={{
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 10,
+    whiteSpace: "nowrap",
+  }}
+>
+   <CountIconsDouble cat={cat} />
+
+  <span style={{ fontWeight: 800, color: "#0f172a" }}>
+    {countText}
+  </span>
+    {/* Riga 2: bottone sotto (solo se consentito) */}
+    {showParticipants ? (
+      <Dialog
+        open={participantsOpen}
+        onOpenChange={(v) => {
+          setParticipantsOpen(v);
+          if (v) loadParticipants();
+        }}
+      >
+        <DialogTrigger asChild>
+          <button
+  type="button"
+  aria-label="Mostra iscritti"
+  style={lensBtnStyle}
+>
+  <Search className="w-4 h-4" style={{ color: "#0f172a" }} />
+</button>
+        </DialogTrigger>
+
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle style={{ fontWeight: 900 }}>Iscritti — {tournament.name}</DialogTitle>
+          </DialogHeader>
+
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+            <div style={{ color: "#64748b", fontWeight: 700 }}>{countText}</div>
+
+            <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+              <button
+                type="button"
+                className="base44-csv-btn"
+                onClick={() => loadParticipants(true)}
+                disabled={participantsLoading}
+              >
+                Aggiorna
+              </button>
+
+              <DialogClose asChild>
+                <button type="button" className="base44-csv-btn">
+                  Chiudi
+                </button>
+              </DialogClose>
+            </div>
+          </div>
+
+          <div style={{ marginTop: 14 }}>
+            {participantsLoading && !participantsLoaded ? (
+              <div style={{ color: "#64748b", fontSize: 14 }}>Caricamento...</div>
+            ) : String(tournament.type).toLowerCase().includes("baraonda") ? (
+              participantNames.length ? (
+                <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, overflow: "hidden", background: "white" }}>
+                  {participantNames.map((n, idx) => (
+                    <div
+                      key={`${n}-${idx}`}
+                      style={{
+                        padding: "10px 12px",
+                        fontSize: 14,
+                        borderTop: idx === 0 ? "none" : "1px solid #f1f5f9",
+                        fontWeight: 650,
+                        color: "#0f172a",
+                      }}
+                    >
+                      {n}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ color: "#64748b", fontSize: 14 }}>Nessun iscritto.</div>
+              )
+            ) : participantPairs.length ? (
+              <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, overflow: "hidden", background: "white" }}>
+                {participantPairs.map((p, idx) => (
+                  <div
+                    key={`${p.p1}-${p.p2}-${idx}`}
+                    style={{
+                      padding: "10px 12px",
+                      fontSize: 14,
+                      background: idx % 2 === 0 ? "#ffffff" : "#f8fafc",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 3,
+                      fontWeight: 650,
+                      color: "#0f172a",
+                    }}
+                  >
+                    <div>{p.p1}</div>
+                    <div>{p.p2}</div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{ color: "#64748b", fontSize: 14 }}>Nessuna coppia completa.</div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+    ) : null}
+  </div>
+)}
 
               {counts.reserve > 0 ? (
-                <span
-                  className="base44-pill"
-                  style={{ background: "#fffbeb", borderColor: "#fde68a", color: "#b45309" }}
-                >
+                <span className="base44-pill" style={{ background: "#fffbeb", borderColor: "#fde68a", color: "#b45309" }}>
                   +{counts.reserve} {counts.reserve === 1 ? "riserva" : "riserve"}
                 </span>
               ) : null}
@@ -649,8 +720,28 @@ const pinkMisto = "#db2777";
               <TournamentLiveDialog
                 tournamentId={tournament.id}
                 tournamentName={tournament.name}
-                triggerLabel="LIVE"
-                triggerVariant="live"
+                trigger={
+                  <button
+                    type="button"
+                    aria-label="Apri avanzamento torneo"
+                    style={{
+                      background: "linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)",
+                      color: "white",
+                      fontWeight: 900,
+                      padding: "10px 14px",
+                      fontSize: 14,
+                      borderRadius: 999,
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 8,
+                      minWidth: "unset",
+                      border: "1px solid rgba(255,255,255,0.25)",
+                      boxShadow: "0 12px 26px rgba(239, 68, 68, 0.25)",
+                    }}
+                  >
+                    LIVE
+                  </button>
+                }
               />
             ) : status === "none" ? (
               <button
