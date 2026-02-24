@@ -4,6 +4,7 @@ import { Calendar, Clock, MapPin, X, UserPlus, UserRound, Search } from "lucide-
 import { motion } from "framer-motion";
 import TournamentLiveDialog from "./TournamentLiveDialog";
 import React, { useState } from "react";
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import {
   Dialog,
   DialogClose,
@@ -627,82 +628,186 @@ export default function TournamentCard({ tournament, onRegister, status, onCance
 </button>
         </DialogTrigger>
 
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle style={{ fontWeight: 900 }}>Iscritti — {tournament.name}</DialogTitle>
-          </DialogHeader>
+        <DialogContent className="max-w-2xl p-0 overflow-hidden [&>button[aria-label='Close']]:hidden">
+  <DialogHeader>
+  <VisuallyHidden>
+    <DialogTitle>Iscritti — {tournament.name}</DialogTitle>
+  </VisuallyHidden>
+</DialogHeader>
+  {/* HEADER stile card */}
+  <div
+    style={{
+      padding: "16px 16px 14px",
+      color: "white",
+      background: getHeaderGradient(tournament.type),
+      position: "relative",
+    }}
+  >
+    <div
+      aria-hidden
+      style={{
+        position: "absolute",
+        inset: 0,
+        pointerEvents: "none",
+        ...getHeaderOverlayStyle(tournament.type),
+      }}
+    />
 
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-            <div style={{ color: "#64748b", fontWeight: 700 }}>{countText}</div>
+    <div style={{ position: "relative", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+      <div style={{ minWidth: 0 }}>
+        <div
+          style={{
+            fontSize: 18,
+            fontWeight: 950,
+            letterSpacing: "0.04em",
+            textTransform: "uppercase",
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+          }}
+        >
+          Iscritti
+        </div>
 
-            <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-              <button
-                type="button"
-                className="base44-csv-btn"
-                onClick={() => loadParticipants(true)}
-                disabled={participantsLoading}
-              >
-                Aggiorna
-              </button>
+        <div
+          style={{
+            marginTop: 4,
+            fontSize: 13,
+            fontWeight: 800,
+            opacity: 0.92,
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+          }}
+        >
+          {tournament.name}
+        </div>
+      </div>
 
-              <DialogClose asChild>
-                <button type="button" className="base44-csv-btn">
-                  Chiudi
-                </button>
-              </DialogClose>
+      <DialogClose asChild>
+        <button
+          type="button"
+          style={{
+            background: "rgba(255,255,255,0.18)",
+            border: "1px solid rgba(255,255,255,0.28)",
+            color: "white",
+            fontWeight: 900,
+            padding: "10px 14px",
+            borderRadius: 999,
+            lineHeight: 1,
+            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.25)",
+            flex: "0 0 auto",
+            cursor: "pointer",
+          }}
+        >
+          Chiudi
+        </button>
+      </DialogClose>
+    </div>
+
+    {/* sottoheader: conteggio */}
+    <div
+      style={{
+        position: "relative",
+        marginTop: 12,
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 10,
+        padding: "6px 10px",
+        borderRadius: 999,
+        background: "rgba(255,255,255,0.18)",
+        border: "1px solid rgba(255,255,255,0.22)",
+        fontWeight: 900,
+        letterSpacing: "0.06em",
+        textTransform: "uppercase",
+        fontSize: 12,
+        width: "fit-content",
+      }}
+    >
+      {countText}
+    </div>
+  </div>
+
+  {/* BODY stile card */}
+  <div
+    style={{
+      padding: 16,
+      backgroundImage: `
+        radial-gradient(circle at 1px 1px, rgba(15,23,42,0.05) 0.6px, rgba(0,0,0,0) 0.7px),
+        linear-gradient(to bottom, #ffffff 0%, #eef2ff 100%)
+      `,
+      backgroundSize: "3px 3px, 100% 100%",
+      backgroundPosition: "0 0, 0 0",
+    }}
+  >
+    {participantsLoading && !participantsLoaded ? (
+      <div style={{ color: "#64748b", fontSize: 14, fontWeight: 700 }}>Caricamento...</div>
+    ) : String(tournament.type).toLowerCase().includes("baraonda") ? (
+      participantNames.length ? (
+        <div
+          style={{
+            borderRadius: 14,
+            overflow: "hidden",
+            border: "1px solid rgba(226,232,240,0.9)",
+            background: "rgba(255,255,255,0.85)",
+            boxShadow: "0 10px 24px rgba(15,23,42,0.10)",
+          }}
+        >
+          {participantNames.map((n, idx) => (
+            <div
+              key={`${n}-${idx}`}
+              style={{
+                padding: "12px 14px",
+                borderTop: idx === 0 ? "none" : "1px solid rgba(226,232,240,0.75)",
+                fontWeight: 850,
+                color: "#0f172a",
+                letterSpacing: "0.02em",
+                textTransform: "uppercase",
+              }}
+            >
+              {n}
             </div>
+          ))}
+        </div>
+      ) : (
+        <div style={{ color: "#64748b", fontSize: 14, fontWeight: 700 }}>Nessun iscritto.</div>
+      )
+    ) : participantPairs.length ? (
+      <div
+        style={{
+          borderRadius: 14,
+          overflow: "hidden",
+          border: "1px solid rgba(226,232,240,0.9)",
+          background: "rgba(255,255,255,0.85)",
+          boxShadow: "0 10px 24px rgba(15,23,42,0.10)",
+        }}
+      >
+        {participantPairs.map((p, idx) => (
+          <div
+            key={`${p.p1}-${p.p2}-${idx}`}
+            style={{
+              padding: "12px 14px",
+              borderTop: idx === 0 ? "none" : "1px solid rgba(226,232,240,0.75)",
+              background: idx % 2 === 0 ? "rgba(255,255,255,0.75)" : "rgba(248,250,252,0.85)",
+              display: "flex",
+              flexDirection: "column",
+              gap: 4,
+              fontWeight: 850,
+              color: "#0f172a",
+              letterSpacing: "0.02em",
+              textTransform: "uppercase",
+            }}
+          >
+            <div>{p.p1}</div>
+            <div>{p.p2}</div>
           </div>
-
-          <div style={{ marginTop: 14 }}>
-            {participantsLoading && !participantsLoaded ? (
-              <div style={{ color: "#64748b", fontSize: 14 }}>Caricamento...</div>
-            ) : String(tournament.type).toLowerCase().includes("baraonda") ? (
-              participantNames.length ? (
-                <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, overflow: "hidden", background: "white" }}>
-                  {participantNames.map((n, idx) => (
-                    <div
-                      key={`${n}-${idx}`}
-                      style={{
-                        padding: "10px 12px",
-                        fontSize: 14,
-                        borderTop: idx === 0 ? "none" : "1px solid #f1f5f9",
-                        fontWeight: 650,
-                        color: "#0f172a",
-                      }}
-                    >
-                      {n}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div style={{ color: "#64748b", fontSize: 14 }}>Nessun iscritto.</div>
-              )
-            ) : participantPairs.length ? (
-              <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, overflow: "hidden", background: "white" }}>
-                {participantPairs.map((p, idx) => (
-                  <div
-                    key={`${p.p1}-${p.p2}-${idx}`}
-                    style={{
-                      padding: "10px 12px",
-                      fontSize: 14,
-                      background: idx % 2 === 0 ? "#ffffff" : "#f8fafc",
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: 3,
-                      fontWeight: 650,
-                      color: "#0f172a",
-                    }}
-                  >
-                    <div>{p.p1}</div>
-                    <div>{p.p2}</div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div style={{ color: "#64748b", fontSize: 14 }}>Nessuna coppia completa.</div>
-            )}
-          </div>
-        </DialogContent>
+        ))}
+      </div>
+    ) : (
+      <div style={{ color: "#64748b", fontSize: 14, fontWeight: 700 }}>Nessuna coppia completa.</div>
+    )}
+  </div>
+</DialogContent>
       </Dialog>
     ) : null}
   </div>
