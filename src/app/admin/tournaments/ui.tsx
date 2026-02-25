@@ -115,6 +115,65 @@ function maxBaraondaCourtsSupported(players: number) {
   return Math.min(3, Math.max(1, physical));
 }
 
+function computeBaraondaSummary(params: {
+  players: number;
+  matchesPerTurn: number;
+  category: string; // "misto" | "maschile" | "femminile" | "libero" (lower)
+}) {
+  const { players, matchesPerTurn, category } = params;
+
+  const denom = matchesPerTurn * 4;
+  if (players < 4 || matchesPerTurn < 1 || denom <= 0) return null;
+
+  // matchesPerPlayer (replica la logica server)
+  let matchesPerPlayer: number;
+
+  if (category === "misto") {
+    if (players === 10 && matchesPerTurn === 2) matchesPerPlayer = 6;
+    else if (players === 12) matchesPerPlayer = 6;
+    else matchesPerPlayer = 4;
+  } else {
+    if (players === 4) matchesPerPlayer = 3;
+    else if (players === 9) matchesPerPlayer = 8;
+    else if (players === 11) matchesPerPlayer = 8;
+    else if (players === 12 && matchesPerTurn === 3) matchesPerPlayer = 8;
+    else if (players === 10 && matchesPerTurn === 2) matchesPerPlayer = 8; // full equo
+    else matchesPerPlayer = 4;
+  }
+
+  const totalSlots = players * matchesPerPlayer;
+
+  // turns must be integer for "equità hard"
+  if (totalSlots % denom !== 0) {
+    return {
+      ok: false as const,
+      message: `Combinazione non equa: ${players} giocatori × ${matchesPerPlayer} partite = ${totalSlots} slot non divisibili per ${denom} slot/turno.`,
+    };
+  }
+
+  const turns = totalSlots / denom;
+  const totalMatches = turns * matchesPerTurn;
+
+  const activePerTurn = denom; // players playing per turn
+  const restingPerTurn = Math.max(0, players - activePerTurn);
+
+  // Total rests across whole schedule = turns * restingPerTurn.
+  // With equity hard: each player plays exactly matchesPerPlayer matches, at most 1 per turn.
+  // So rests per player = turns - matchesPerPlayer.
+  const restsPerPlayer = turns - matchesPerPlayer;
+
+  return {
+    ok: true as const,
+    players,
+    matchesPerTurn,
+    turns,
+    matchesPerPlayer,
+    totalMatches,
+    restingPerTurn,
+    restsPerPlayer,
+  };
+}
+
 export default function AdminTournamentsUI() {
   const router = useRouter();
 
@@ -1000,6 +1059,64 @@ const [baraondaCourtsById, setBaraondaCourtsById] = useState<Record<string, numb
         Iscritti: <b>{mainCount}</b> · Max campi possibili: <b>{maxCourts}</b> · Scelta:{" "}
         <b>{selectedCourts === 0 ? `Auto (${autoCourts})` : selectedCourts}</b> · Partite/turno: <b>{effectiveCourts}</b>
       </div>
+    {(() => {
+  const summary = computeBaraondaSummary({
+    players: mainCount,
+    matchesPerTurn: effectiveCourts,
+    category: String(t.category ?? "libero").toLowerCase(),
+  });
+
+  if (!summary) return null;
+
+  if (!summary.ok) {
+    return (
+      <div
+        style={{
+          marginTop: 10,
+          padding: "10px 12px",
+          borderRadius: 14,
+          border: "1px solid #fecaca",
+          background: "#fff1f2",
+          color: "#991b1b",
+          fontSize: 12,
+          lineHeight: 1.35,
+          fontWeight: 700,
+        }}
+      >
+        ⚠️ {summary.message}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      style={{
+        marginTop: 10,
+        padding: "10px 12px",
+        borderRadius: 14,
+        border: "1px solid #e2e8f0",
+        background: "#f8fafc",
+        color: "#0f172a",
+        fontSize: 12,
+        lineHeight: 1.35,
+      }}
+    >
+      <div style={{ fontWeight: 900, marginBottom: 4 }}>Riepilogo generazione</div>
+      <div>
+        Con <b>{summary.players}</b> iscritti e <b>{summary.matchesPerTurn}</b> {summary.matchesPerTurn === 1 ? "campo" : "campi"} →{" "}
+        <b>{summary.turns}</b> turni, <b>{summary.matchesPerPlayer}</b> partite a testa (<b>{summary.totalMatches}</b> match totali)
+      </div>
+
+      {summary.restingPerTurn > 0 ? (
+        <div style={{ marginTop: 4, color: "#334155" }}>
+          Riposi: <b>{summary.restingPerTurn}</b> per turno · <b>{summary.restsPerPlayer}</b> per giocatore
+        </div>
+      ) : (
+        <div style={{ marginTop: 4, color: "#334155" }}>Riposi: <b>nessuno</b> (giocano tutti ogni turno)</div>
+      )}
+    </div>
+  );
+})()}
     </div>
   );
 })()}

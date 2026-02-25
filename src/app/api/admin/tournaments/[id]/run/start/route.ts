@@ -201,8 +201,26 @@ if (main.length > MAX_BARAONDA_SUPPORTED)
    const players = main.length;
 const category = mapCategory(tr.category);
 
-// ✅ finché non abbiamo "courts", cappiamo a 2 campi
-const matchesPerTurn = players >= 8 ? 2 : 1;
+// --- courts (UI) -> matchesPerTurn (engine) ---
+// UI invia { courts: 1..3 } oppure {} per Auto
+const body = await req.json().catch(() => ({} as any));
+const requestedCourts = Number((body as any)?.courts);
+
+// max fisico: ogni match usa 4 giocatori
+const maxMatchesPerTurn = Math.floor(players / 4);
+
+// default "Auto" coerente con UI (defaultBaraondaCourts)
+const autoCourts = players >= 12 ? 3 : players >= 8 ? 2 : 1;
+
+// matchesPerTurn effettivo: se courts valido usa quello, altrimenti Auto
+const matchesPerTurn =
+  Number.isFinite(requestedCourts) && requestedCourts >= 1
+    ? Math.min(requestedCourts, maxMatchesPerTurn)
+    : Math.min(autoCourts, maxMatchesPerTurn);
+
+if (matchesPerTurn < 1) {
+  return NextResponse.json({ error: "Campi non validi per il numero di partecipanti" }, { status: 400 });
+}
 
 // ✅ MISTO: numero pari + M/F uguali (una sola volta, niente duplicati)
 if (category === "misto") {
@@ -236,13 +254,23 @@ function computeStandardTurns(players: number, matchesPerTurn: number, matchesPe
   return totalSlots / denom;
 }
 
-function targetMatchesPerPlayer(players: number, category: string) {
-  if (category !== "misto") return 4;
+function targetMatchesPerPlayer(players: number, category: string, matchesPerTurn: number) {
+  // NON-MISTO
+  if (category !== "misto") {
+    if (players === 4) return 3; // 3 turni logici (3 match/player) con 1 campo
+    if (players === 9) return 8; // necessario per equità con 2 campi -> turns=9
+    if (players === 11) return 8; // necessario per equità con 2 campi -> turns=11
 
-  // preset misto “forte”
-  if (players === 10) return 6;
-  if (players === 12) return 6;
+    // 12 NON-MISTO: se giochi a 3 campi vuoi "super piena"
+    if (players === 12 && matchesPerTurn === 3) return 8; // 8 turni, 8 match/player, 24 match totali
 
+    // default
+    return 4;
+  }
+
+  // MISTO
+  if (players === 10) return 6; // preset deterministico
+  if (players === 12) return 6; // preset qualità (6+6)
   return 4;
 }
 
@@ -254,8 +282,8 @@ if (category === "misto" && players === 10 && matchesPerTurn === 2) {
   turns = 8;
   matchesPerPlayer = 6;
 } else {
-  matchesPerPlayer = targetMatchesPerPlayer(players, category);
-  turns = computeStandardTurns(players, matchesPerTurn, matchesPerPlayer);
+  matchesPerPlayer = targetMatchesPerPlayer(players, category, matchesPerTurn);
+turns = computeStandardTurns(players, matchesPerTurn, matchesPerPlayer);
 }
 
 // eccezione NON-MISTO 10 “full equo” (preset deterministico N=10)
