@@ -174,6 +174,16 @@ if (denied) return denied;
         if (uerr) return NextResponse.json({ error: uerr.message }, { status: 500 });
       }
 
+            // 🔒 chiudi iscrizioni quando c'è una run attiva
+      const { error: closeErr } = await sb
+        .from("tournaments")
+        .update({ registrations_open: false })
+        .eq("id", tournamentId);
+
+      if (closeErr) {
+        return NextResponse.json({ error: closeErr.message }, { status: 500 });
+      }
+
       return NextResponse.json({ tournamentId, runId, reused: true });
     }
 
@@ -341,6 +351,14 @@ const { error: uerr } = await sb
   .eq("id", runId);
 
 if (uerr) return NextResponse.json({ error: uerr.message }, { status: 500 });
+
+// 🔒 chiudi iscrizioni quando il torneo viene generato
+const { error: closeErr2 } = await sb
+  .from("tournaments")
+  .update({ registrations_open: false })
+  .eq("id", tournamentId);
+
+if (closeErr2) return NextResponse.json({ error: closeErr2.message }, { status: 500 });
 
 return NextResponse.json({ tournamentId, runId, reused: false });
 } catch (e: any) {

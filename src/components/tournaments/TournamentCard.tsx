@@ -27,6 +27,7 @@ export type PublicTournament = {
   image_url?: string | null;
   counts?: { main: number; reserve: number; male: number; female: number };
   hasLive?: boolean; // se true, CTA diventa "LIVE"
+  registrations_open?: boolean; // ✅ nuovo: blocco iscrizioni pubblico
   show_participants?: boolean; // ✅ nuovo flag pubblico
 };
 
@@ -232,6 +233,7 @@ export default function TournamentCard({ tournament, onRegister, status, onCance
   // fonte unica
   const live = Boolean(hasLive ?? tournament.hasLive);
   const showParticipants = Boolean(tournament.show_participants);
+  const registrationsOpen = tournament.registrations_open !== false;
 
   // dialog state
   const [participantsOpen, setParticipantsOpen] = useState(false);
@@ -821,68 +823,78 @@ export default function TournamentCard({ tournament, onRegister, status, onCance
             </div>
 
             {/* CTA */}
-            {live ? (
-              <TournamentLiveDialog
-                tournamentId={tournament.id}
-                tournamentName={tournament.name}
-                trigger={
-                  <button
-                    type="button"
-                    aria-label="Apri avanzamento torneo"
-                    style={{
-                      background: "linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)",
-                      color: "white",
-                      fontWeight: 900,
-                      padding: "10px 14px",
-                      fontSize: 14,
-                      borderRadius: 999,
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 8,
-                      minWidth: "unset",
-                      border: "1px solid rgba(255,255,255,0.25)",
-                      boxShadow: "0 12px 26px rgba(239, 68, 68, 0.25)",
-                    }}
-                  >
-                    LIVE
-                  </button>
-                }
-              />
-            ) : status === "none" ? (
-              <button
-                className={`base44-cta ${isFull ? "base44-cta-amber" : "base44-cta-indigo"}`}
-                type="button"
-                onClick={() => onRegister(tournament)}
-                style={{
-                  fontWeight: 600,
-                  padding: "10px 14px",
-                  fontSize: 14,
-                  gap: 6,
-                  minWidth: "unset",
-                }}
-              >
-                <UserPlus className="w-3.5 h-3.5" />
-                {isFull ? "Lista riserva" : "Iscriviti"}
-              </button>
-            ) : (
-              <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-                <button className="base44-cta base44-cta-disabled" type="button" disabled>
-                  {status === "reserve" ? "In riserva" : "Iscritto"}
-                </button>
+{status !== "none" ? (
+  <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+    <button className="base44-cta base44-cta-disabled" type="button" disabled>
+      {status === "reserve" ? "In riserva" : "Iscritto"}
+    </button>
 
-                {onCancel ? (
-                  <button
-                    type="button"
-                    title="Cancella iscrizione"
-                    onClick={onCancel}
-                    className="base44-icon-btn"
-                    style={{ width: 40, height: 40, borderRadius: 999, color: "#dc2626" }}
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                ) : null}
-              </div>
-            )}
+    {onCancel ? (
+      <button
+        type="button"
+        title="Cancella iscrizione"
+        onClick={onCancel}
+        className="base44-icon-btn"
+        style={{ width: 40, height: 40, borderRadius: 999, color: "#dc2626" }}
+      >
+        <X className="w-4 h-4" />
+      </button>
+    ) : null}
+  </div>
+) : registrationsOpen ? (
+  <button
+    className={`base44-cta ${isFull ? "base44-cta-amber" : "base44-cta-indigo"}`}
+    type="button"
+    onClick={() => onRegister(tournament)}
+    style={{
+      fontWeight: 600,
+      padding: "10px 14px",
+      fontSize: 14,
+      gap: 6,
+      minWidth: "unset",
+    }}
+  >
+    <UserPlus className="w-3.5 h-3.5" />
+    {isFull ? "Lista riserva" : "Iscriviti"}
+  </button>
+) : live ? (
+  <TournamentLiveDialog
+    tournamentId={tournament.id}
+    tournamentName={tournament.name}
+    trigger={
+      <button
+        type="button"
+        aria-label="Apri avanzamento torneo"
+        style={{
+          background: "linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)",
+          color: "white",
+          fontWeight: 900,
+          padding: "10px 14px",
+          fontSize: 14,
+          borderRadius: 999,
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 8,
+          minWidth: "unset",
+          border: "1px solid rgba(255,255,255,0.25)",
+          boxShadow: "0 12px 26px rgba(239, 68, 68, 0.25)",
+        }}
+      >
+        LIVE
+      </button>
+    }
+  />
+) : (
+  <button
+    className="base44-cta base44-cta-disabled"
+    type="button"
+    disabled
+    style={{ fontWeight: 800, padding: "10px 14px", fontSize: 14, minWidth: "unset" }}
+    title="Iscrizioni chiuse"
+  >
+    Iscrizioni chiuse
+  </button>
+)}
           </div>
         </div>
       </div>

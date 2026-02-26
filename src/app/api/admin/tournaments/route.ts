@@ -74,7 +74,7 @@ export async function GET(req: Request) {
   // 1) tornei
   const { data, error } = await sb
     .from("tournaments")
-    .select("id,name,type,category,date,time,location,max_participants,image_url,level,show_participants,created_at,updated_at")
+    .select("id,name,type,category,date,time,location,max_participants,registrations_open,image_url,level,show_participants,created_at,updated_at")
     .order("date", { ascending: true })
     .order("time", { ascending: true });
 

@@ -357,6 +357,24 @@ const [baraondaCourtsById, setBaraondaCourtsById] = useState<Record<string, numb
   }
 }
 
+async function reopenTournamentRegistrations(tournamentId: string) {
+  setStartingById((p) => ({ ...p, [tournamentId]: true }));
+  try {
+    const res = await fetch(`/api/admin/tournaments/${tournamentId}/run/reopen`, {
+      method: "POST",
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error((json as any).error || "Errore riapertura iscrizioni");
+
+    toast.success("Iscrizioni riaperte");
+    await loadList(); // 🔥 fondamentale: fa tornare bottone blu
+  } catch (e: any) {
+    toast.error(e?.message ?? "Errore");
+  } finally {
+    setStartingById((p) => ({ ...p, [tournamentId]: false }));
+  }
+}
+
   async function openFixedPairsWizardFromServer(t: any, tid: string) {
     if (fixedWizardLoading) return;
 
@@ -629,11 +647,15 @@ const [baraondaCourtsById, setBaraondaCourtsById] = useState<Record<string, numb
   }}
 >
 
-                        <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-                          <div className="base44-name">{t.name}</div>
-                          <span className={`base44-chip base44-chip-cat-${catKey(t.category)}`}>{capitalize(t.category)}</span>
-                          <span className={`base44-chip base44-chip-lvl-${lvlKey(t.level)}`}>{capitalize(t.level)}</span>
-                        </div>
+  <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+  <div className="base44-name">{t.name}</div>
+  <span className={`base44-chip base44-chip-cat-${catKey(t.category)}`}>
+    {capitalize(t.category)}
+  </span>
+  <span className={`base44-chip base44-chip-lvl-${lvlKey(t.level)}`}>
+    {capitalize(t.level)}
+  </span>
+</div>
 
                         <div className="base44-meta">{typeLabel(t.type)}</div>
 
@@ -931,9 +953,22 @@ const [baraondaCourtsById, setBaraondaCourtsById] = useState<Record<string, numb
                     {/* Gestione torneo */}
                     {(isBaraonda || isFixedPairs) && (
                       <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 12 }}>
-                        <button className="base44-csv-btn" onClick={() => router.push(`/admin/tournaments/${tid}/run`)} style={{ padding: "8px 14px", borderRadius: 999 }}>
-                          Gestisci torneo
-                        </button>
+                        <button
+  className={hasRun ? "base44-primary-btn" : "base44-csv-btn"}
+  onClick={() => router.push(`/admin/tournaments/${tid}/run`)}
+  style={{
+    padding: "8px 14px",
+    borderRadius: 999,
+    ...(hasRun
+      ? {
+          backgroundColor: "#4f46e5",
+          borderColor: "#4f46e5",
+        }
+      : {}),
+  }}
+>
+  Gestisci torneo
+</button>
 
                         {/* Baraonda */}
                         {isBaraonda && (
@@ -960,7 +995,7 @@ const [baraondaCourtsById, setBaraondaCourtsById] = useState<Record<string, numb
                                  : "Genera il torneo"
                                }
                               >
-                                {isStarting ? "..." : hasRun ? "Rigenera torneo" : "Genera torneo"}
+                                {isStarting ? "..." : hasRun ? "Modifica torneo" : "Genera torneo"}
                               </button>
                             </AlertDialogTrigger>
 
@@ -1121,7 +1156,7 @@ const [baraondaCourtsById, setBaraondaCourtsById] = useState<Record<string, numb
   );
 })()}
 
-                              <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 14 }}>
+ <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 14 }}>
   <button
     className="base44-primary-btn"
     style={{
@@ -1144,8 +1179,31 @@ const [baraondaCourtsById, setBaraondaCourtsById] = useState<Record<string, numb
     }}
     disabled={!canGenerateBaraonda || isStarting}
   >
-    {hasRun ? "Rigenera (reset + genera)" : "Genera torneo"}
+    {hasRun ? "Rigenera torneo" : "Genera torneo"}
   </button>
+
+  {hasRun && (
+  <AlertDialogAction asChild>
+    <button
+      className="base44-csv-btn"
+      style={{
+        width: "100%",
+        padding: "12px 14px",
+        borderRadius: 14,
+        borderColor: "#93c5fd",
+        background: "#eff6ff",
+        color: "#1d4ed8",
+        fontWeight: 900,
+      }}
+      onClick={async () => {
+        await reopenTournamentRegistrations(tid);
+      }}
+      disabled={isStarting}
+    >
+      Riapri iscrizioni
+    </button>
+  </AlertDialogAction>
+)}
 
   <AlertDialogCancel asChild>
     <button className="base44-csv-btn" style={{ width: "100%", padding: "12px 14px", borderRadius: 14 }}>
@@ -1181,7 +1239,7 @@ const [baraondaCourtsById, setBaraondaCourtsById] = useState<Record<string, numb
                                 : "Configura e genera il torneo"
                               }
                               >
-                                {fixedWizardLoading || isStarting ? "..." : hasRun ? "Rigenera torneo" : "Genera torneo"}
+                                {fixedWizardLoading || isStarting ? "..." : hasRun ? "Modifica torneo" : "Genera torneo"}
                               </button>
                             </AlertDialogTrigger>
 
@@ -1217,8 +1275,31 @@ const [baraondaCourtsById, setBaraondaCourtsById] = useState<Record<string, numb
     }}
     disabled={!canGenerateFixedPairs || fixedWizardLoading || isStarting}
   >
-    {hasRun ? "Rigenera (reset) + configura" : "Configura e crea"}
+    {hasRun ? "Rigenera torneo" : "Configura e crea"}
   </button>
+
+  {hasRun && (
+  <AlertDialogAction asChild>
+    <button
+      className="base44-csv-btn"
+      style={{
+        width: "100%",
+        padding: "12px 14px",
+        borderRadius: 14,
+        borderColor: "#93c5fd",
+        background: "#eff6ff",
+        color: "#1d4ed8",
+        fontWeight: 900,
+      }}
+      onClick={async () => {
+        await reopenTournamentRegistrations(tid);
+      }}
+      disabled={isStarting}
+    >
+      Riapri iscrizioni
+    </button>
+  </AlertDialogAction>
+)}
 
   <AlertDialogCancel asChild>
     <button className="base44-csv-btn" style={{ width: "100%", padding: "12px 14px", borderRadius: 14 }}>

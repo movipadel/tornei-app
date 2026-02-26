@@ -26,12 +26,17 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   // torneo
   const { data: t, error: terr } = await sb
     .from("tournaments")
-    .select("id,type,category,max_participants")
+    .select("id,type,category,max_participants,registrations_open")
     .eq("id", id)
     .single();
 
   if (terr || !t) {
     return NextResponse.json({ error: terr?.message ?? "Torneo non trovato" }, { status: 404 });
+  }
+
+    // 🔒 blocco iscrizioni lato pubblico
+  if ((t as any).registrations_open === false) {
+    return NextResponse.json({ error: "Iscrizioni chiuse" }, { status: 403 });
   }
 
   const tournamentType = String((t as any).type); // "Baraonda" | "Coppie fisse"

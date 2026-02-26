@@ -34,6 +34,7 @@ export async function GET(_req: Request) {
       time,
       location,
       max_participants,
+      registrations_open,
       image_url,
       notes,
       show_participants,
