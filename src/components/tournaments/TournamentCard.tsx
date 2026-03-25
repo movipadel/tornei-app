@@ -368,15 +368,15 @@ export default function TournamentCard({ tournament, onRegister, status, onCance
   }
 
   const countText = `${counts.main}/${tournament.max_participants} ${
-  String(tournament.type) === "Coppie fisse" ? "coppie" : "iscritti"
-}`;
+    String(tournament.type) === "Coppie fisse" ? "coppie" : "iscritti"
+  }`;
 
   const lensAccent =
     String(tournament.type).toLowerCase().includes("baraonda")
-      ? "rgba(245,158,11,0.55)" // arancio
+      ? "rgba(245,158,11,0.55)"
       : String(tournament.type).toLowerCase().includes("coppie")
-      ? "rgba(45,212,191,0.55)" // teal
-      : "rgba(99,102,241,0.45)"; // fallback indigo
+      ? "rgba(45,212,191,0.55)"
+      : "rgba(99,102,241,0.45)";
 
   const lensBtnStyle: React.CSSProperties = {
     width: 34,
@@ -398,7 +398,7 @@ export default function TournamentCard({ tournament, onRegister, status, onCance
     flex: "0 0 auto",
   };
 
-    const LensDialog = showParticipants ? (
+  const LensDialog = showParticipants ? (
     <Dialog
       open={participantsOpen}
       onOpenChange={(v) => {
@@ -419,7 +419,6 @@ export default function TournamentCard({ tournament, onRegister, status, onCance
           </VisuallyHidden>
         </DialogHeader>
 
-        {/* HEADER stile card */}
         <div
           style={{
             padding: "16px 16px 14px",
@@ -498,7 +497,6 @@ export default function TournamentCard({ tournament, onRegister, status, onCance
             </DialogClose>
           </div>
 
-          {/* sottoheader: conteggio */}
           <div
             style={{
               position: "relative",
@@ -521,7 +519,6 @@ export default function TournamentCard({ tournament, onRegister, status, onCance
           </div>
         </div>
 
-        {/* BODY stile card */}
         <div
           style={{
             padding: 16,
@@ -609,7 +606,6 @@ export default function TournamentCard({ tournament, onRegister, status, onCance
       <div
         className="base44-tcard"
         onMouseEnter={() => {
-          // opzionale: carica in anticipo per renderlo istantaneo al click
           if (showParticipants) loadParticipants();
         }}
         onTouchStart={() => {
@@ -622,7 +618,6 @@ export default function TournamentCard({ tournament, onRegister, status, onCance
           background: "#ffffff",
         }}
       >
-        {/* HEADER */}
         <div
           style={{
             background: getHeaderGradient(tournament.type),
@@ -670,7 +665,6 @@ export default function TournamentCard({ tournament, onRegister, status, onCance
                 </div>
               </div>
 
-              {/* BADGES */}
               <div
                 className="base44-tcard-badges"
                 style={{
@@ -704,13 +698,11 @@ export default function TournamentCard({ tournament, onRegister, status, onCance
           </div>
         </div>
 
-        {/* immagine eventuale */}
         {tournament.image_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img className="base44-tcard-img" src={tournament.image_url} alt={tournament.name} />
         ) : null}
 
-        {/* BODY */}
         <div
           className="base44-tcard-body"
           style={{
@@ -724,59 +716,54 @@ export default function TournamentCard({ tournament, onRegister, status, onCance
           }}
         >
           <div
-  className="base44-tcard-info"
-  style={{
-    display: "grid",
-    gridTemplateColumns: "minmax(0,1fr) auto",
-    columnGap: 18,
-    rowGap: 10,
-    alignItems: "center",
-  }}
->
-  {/* DATA (sinistra) */}
-  <div className="base44-info-row" style={{ minWidth: 0 }}>
-    <Calendar className="w-4 h-4" style={{ color: "#4f46e5" }} />
-    <span
-      style={{
-        fontSize: 15,
-        fontWeight: 600,
-        color: "#0f172a",
-        whiteSpace: "nowrap",
-        overflow: "hidden",
-        textOverflow: "ellipsis",
-        display: "block",
-      }}
-    >
-      {formatPrettyDate(tournament.date)}
-    </span>
-  </div>
+            className="base44-tcard-info"
+            style={{
+              display: "grid",
+              gridTemplateColumns: "minmax(0,1fr) auto",
+              columnGap: 18,
+              rowGap: 10,
+              alignItems: "center",
+            }}
+          >
+            <div className="base44-info-row" style={{ minWidth: 0 }}>
+              <Calendar className="w-4 h-4" style={{ color: "#4f46e5" }} />
+              <span
+                style={{
+                  fontSize: 15,
+                  fontWeight: 600,
+                  color: "#0f172a",
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  display: "block",
+                }}
+              >
+                {formatPrettyDate(tournament.date)}
+              </span>
+            </div>
 
-  {/* ORA (destra) */}
-  <div
-    className="base44-info-row"
-    style={{
-      justifyContent: "flex-end",
-      justifySelf: "end",
-      whiteSpace: "nowrap",
-    }}
-  >
-    <Clock className="w-4 h-4" style={{ color: "#4f46e5" }} />
-    <span style={{ fontSize: 15, fontWeight: 600, color: "#0f172a" }}>
-      {tournament.time}
-    </span>
-  </div>
+            <div
+              className="base44-info-row"
+              style={{
+                justifyContent: "flex-end",
+                justifySelf: "end",
+                whiteSpace: "nowrap",
+              }}
+            >
+              <Clock className="w-4 h-4" style={{ color: "#4f46e5" }} />
+              <span style={{ fontSize: 15, fontWeight: 600, color: "#0f172a" }}>
+                {tournament.time}
+              </span>
+            </div>
 
-  {/* LOCATION (riga sotto full width) */}
-  <div className="base44-info-row full" style={{ gridColumn: "1 / -1" }}>
-    <MapPin className="w-4 h-4" style={{ color: "#4f46e5" }} />
-    <span style={{ fontSize: 15, fontWeight: 600, color: "#0f172a" }}>
-      {tournament.location}
-    </span>
-  </div>
-</div>
-          {/* ✅ QUI: ELIMINATA LA LISTA ISCRITTI DALLA CARD */}
+            <div className="base44-info-row full" style={{ gridColumn: "1 / -1" }}>
+              <MapPin className="w-4 h-4" style={{ color: "#4f46e5" }} />
+              <span style={{ fontSize: 15, fontWeight: 600, color: "#0f172a" }}>
+                {tournament.location}
+              </span>
+            </div>
+          </div>
 
-          {/* FOOTER */}
           <div
             className="base44-tcard-bottom"
             style={{
@@ -804,24 +791,24 @@ export default function TournamentCard({ tournament, onRegister, status, onCance
                   {LensDialog}
                 </div>
               ) : (
-  <div
-  className="base44-info-row"
-  style={{
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 10,
-    whiteSpace: "nowrap",
-  }}
->
-   <CountIconsDouble cat={cat} />
+                <div
+                  className="base44-info-row"
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 10,
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  <CountIconsDouble cat={cat} />
 
-  <span style={{ fontWeight: 800, color: "#0f172a" }}>
-    {countText}
-  </span>
-    {/* Riga 2: bottone sotto (solo se consentito) */}
-    {LensDialog}
-  </div>
-)}
+                  <span style={{ fontWeight: 800, color: "#0f172a" }}>
+                    {countText}
+                  </span>
+
+                  {LensDialog}
+                </div>
+              )}
 
               {counts.reserve > 0 ? (
                 <span className="base44-pill" style={{ background: "#fffbeb", borderColor: "#fde68a", color: "#b45309" }}>
@@ -830,79 +817,78 @@ export default function TournamentCard({ tournament, onRegister, status, onCance
               ) : null}
             </div>
 
-            {/* CTA */}
-{status !== "none" ? (
-  <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-    <button className="base44-cta base44-cta-disabled" type="button" disabled>
-      {status === "reserve" ? "In riserva" : "Iscritto"}
-    </button>
+            {status !== "none" ? (
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                <button className="base44-cta base44-cta-disabled" type="button" disabled>
+                  {status === "reserve" ? "In riserva" : "Iscritto"}
+                </button>
 
-    {onCancel ? (
-      <button
-        type="button"
-        title="Cancella iscrizione"
-        onClick={onCancel}
-        className="base44-icon-btn"
-        style={{ width: 40, height: 40, borderRadius: 999, color: "#dc2626" }}
-      >
-        <X className="w-4 h-4" />
-      </button>
-    ) : null}
-  </div>
-) : registrationsOpen ? (
-  <button
-    className={`base44-cta ${isFull ? "base44-cta-amber" : "base44-cta-indigo"}`}
-    type="button"
-    onClick={() => onRegister(tournament)}
-    style={{
-      fontWeight: 600,
-      padding: "10px 14px",
-      fontSize: 14,
-      gap: 6,
-      minWidth: "unset",
-    }}
-  >
-    <UserPlus className="w-3.5 h-3.5" />
-    {isFull ? "Lista riserva" : "Iscriviti"}
-  </button>
-) : live ? (
-  <TournamentLiveDialog
-    tournamentId={tournament.id}
-    tournamentName={tournament.name}
-    trigger={
-      <button
-        type="button"
-        aria-label="Apri avanzamento torneo"
-        style={{
-          background: "linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)",
-          color: "white",
-          fontWeight: 900,
-          padding: "10px 14px",
-          fontSize: 14,
-          borderRadius: 999,
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 8,
-          minWidth: "unset",
-          border: "1px solid rgba(255,255,255,0.25)",
-          boxShadow: "0 12px 26px rgba(239, 68, 68, 0.25)",
-        }}
-      >
-        LIVE
-      </button>
-    }
-  />
-) : (
-  <button
-    className="base44-cta base44-cta-disabled"
-    type="button"
-    disabled
-    style={{ fontWeight: 800, padding: "10px 14px", fontSize: 14, minWidth: "unset" }}
-    title="Iscrizioni chiuse"
-  >
-    Iscrizioni chiuse
-  </button>
-)}
+                {onCancel ? (
+                  <button
+                    type="button"
+                    title="Cancella iscrizione"
+                    onClick={onCancel}
+                    className="base44-icon-btn"
+                    style={{ width: 40, height: 40, borderRadius: 999, color: "#dc2626" }}
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                ) : null}
+              </div>
+            ) : live ? (
+              <TournamentLiveDialog
+                tournamentId={tournament.id}
+                tournamentName={tournament.name}
+                trigger={
+                  <button
+                    type="button"
+                    aria-label="Apri avanzamento torneo"
+                    style={{
+                      background: "linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)",
+                      color: "white",
+                      fontWeight: 900,
+                      padding: "10px 14px",
+                      fontSize: 14,
+                      borderRadius: 999,
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 8,
+                      minWidth: "unset",
+                      border: "1px solid rgba(255,255,255,0.25)",
+                      boxShadow: "0 12px 26px rgba(239, 68, 68, 0.25)",
+                    }}
+                  >
+                    LIVE
+                  </button>
+                }
+              />
+            ) : registrationsOpen ? (
+              <button
+                className={`base44-cta ${isFull ? "base44-cta-amber" : "base44-cta-indigo"}`}
+                type="button"
+                onClick={() => onRegister(tournament)}
+                style={{
+                  fontWeight: 600,
+                  padding: "10px 14px",
+                  fontSize: 14,
+                  gap: 6,
+                  minWidth: "unset",
+                }}
+              >
+                <UserPlus className="w-3.5 h-3.5" />
+                {isFull ? "Lista riserva" : "Iscriviti"}
+              </button>
+            ) : (
+              <button
+                className="base44-cta base44-cta-disabled"
+                type="button"
+                disabled
+                style={{ fontWeight: 800, padding: "10px 14px", fontSize: 14, minWidth: "unset" }}
+                title="Iscrizioni chiuse"
+              >
+                Iscrizioni chiuse
+              </button>
+            )}
           </div>
         </div>
       </div>
