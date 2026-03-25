@@ -284,15 +284,30 @@ function splitPairDisplayName(raw: string): string[] {
   return [parts[0] ?? s, ""].filter((x) => x !== "");
 }
 
-function formatTimeHHMM(iso: string | null) {
-  if (!iso) return null;
-  try {
-    const d = new Date(iso);
-    // toLocaleTimeString con 2-digit è la cosa più robusta senza lib esterne
-    return d.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
-  } catch {
-    return null;
+function formatTimeHHMM(value: string | null) {
+  if (!value) return null;
+
+  const s = String(value).trim();
+  if (!s) return null;
+
+  // nuovo formato corretto dal DB: "20:00"
+  if (/^\d{2}:\d{2}$/.test(s)) {
+    return s;
   }
+
+  // nuovo formato corretto dal DB: "20:00:00"
+  if (/^\d{2}:\d{2}:\d{2}$/.test(s)) {
+    return s.slice(0, 5);
+  }
+
+  // compatibilità con eventuali vecchi record ISO/timestamp
+  const d = new Date(s);
+  if (Number.isNaN(d.getTime())) return null;
+
+  return d.toLocaleTimeString("it-IT", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 /**
@@ -444,6 +459,152 @@ function MatchCardBaraondaStyle({
           <div style={{ ...boxStyleBase, ...leftBoxStyle }}>{leftScore ?? ""}</div>
           <div style={{ color: "#94a3b8", fontWeight: 950, fontSize: 18 }}>-</div>
           <div style={{ ...boxStyleBase, ...rightBoxStyle }}>{rightScore ?? ""}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MatchCardFixedPairsSets({
+  left,
+  right,
+  sets,
+  stripeColor,
+  playerNameClass,
+  infoTop,
+}: {
+  left: [string, string];
+  right: [string, string];
+  sets:
+    | null
+    | {
+        set1: { home: number | null; away: number | null };
+        set2: { home: number | null; away: number | null };
+        set3: { home: number | null; away: number | null };
+        homeSetsWon: number;
+        awaySetsWon: number;
+      };
+  stripeColor: string;
+  playerNameClass: string;
+  infoTop?: React.ReactNode;
+}) {
+  const boxStyle: CSSProperties = {
+    minWidth: 44,
+    height: 38,
+    borderRadius: 12,
+    border: "1px solid #e2e8f0",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontWeight: 900,
+    fontSize: 18,
+    background: "#ffffff",
+    color: "#0f172a",
+    boxShadow: "0 1px 2px rgba(15,23,42,0.08)",
+  };
+
+  const setRows = [
+    { label: "Set 1", home: sets?.set1?.home ?? null, away: sets?.set1?.away ?? null },
+    { label: "Set 2", home: sets?.set2?.home ?? null, away: sets?.set2?.away ?? null },
+    { label: "Set 3", home: sets?.set3?.home ?? null, away: sets?.set3?.away ?? null },
+  ];
+
+  return (
+    <div
+      style={{
+        border: "1px solid #eef2f7",
+        borderRadius: 14,
+        background: "#ffffff",
+        overflow: "hidden",
+        display: "flex",
+      }}
+    >
+      <div style={{ width: 6, background: stripeColor }} />
+
+      <div style={{ flex: 1, padding: 12, display: "flex", flexDirection: "column", gap: 12 }}>
+        {infoTop ? (
+          <div
+            style={{
+              background: "#f1f5f9",
+              border: "1px solid #e2e8f0",
+              borderRadius: 12,
+              padding: "6px 10px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 10,
+              color: "#0f172a",
+              fontWeight: 850,
+              fontSize: 12,
+              letterSpacing: "0.06em",
+              textTransform: "uppercase",
+            }}
+          >
+            {infoTop}
+          </div>
+        ) : null}
+
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr auto 1fr",
+            gap: 10,
+            alignItems: "center",
+          }}
+        >
+          <div style={{ lineHeight: 1.15 }}>
+            <div style={{ fontWeight: 800, fontSize: "clamp(13px, 3.5vw, 15px)", color: "#0f172a" }}>
+              <span className={playerNameClass}>{formatPlayerName(left[0])}</span>
+            </div>
+            <div style={{ fontWeight: 800, fontSize: "clamp(13px, 3.5vw, 15px)", color: "#0f172a" }}>
+              <span className={playerNameClass}>{formatPlayerName(left[1])}</span>
+            </div>
+          </div>
+
+          <div
+            style={{
+              color: "#94a3b8",
+              fontWeight: 950,
+              fontSize: 12,
+              letterSpacing: "0.08em",
+            }}
+          >
+            VS
+          </div>
+
+          <div style={{ textAlign: "right", lineHeight: 1.15 }}>
+            <div style={{ fontWeight: 800, fontSize: "clamp(13px, 3.5vw, 15px)", color: "#0f172a" }}>
+              <span className={playerNameClass}>{formatPlayerName(right[0])}</span>
+            </div>
+            <div style={{ fontWeight: 800, fontSize: "clamp(13px, 3.5vw, 15px)", color: "#0f172a" }}>
+              <span className={playerNameClass}>{formatPlayerName(right[1])}</span>
+            </div>
+          </div>
+        </div>
+
+        <div style={{ display: "grid", gap: 10, justifyItems: "center" }}>
+          {setRows.map((row) => (
+            <div key={row.label} style={{ display: "grid", gap: 6, justifyItems: "center" }}>
+              <div
+                style={{
+                  padding: "2px 12px",
+                  borderRadius: 999,
+                  background: "#f8fafc",
+                  fontWeight: 800,
+                  color: "#0f172a",
+                  fontSize: 13,
+                }}
+              >
+                {row.label}
+              </div>
+
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                <div style={boxStyle}>{row.home ?? ""}</div>
+                <div style={{ color: "#94a3b8", fontWeight: 950, fontSize: 18 }}>-</div>
+                <div style={boxStyle}>{row.away ?? ""}</div>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </div>
@@ -1053,18 +1214,28 @@ const subtitle = modeLabel && categoryLabel ? `${modeLabel} ${categoryLabel}` : 
                           </>
                         ) : null;
 
-                        return (
-                          <MatchCardBaraondaStyle
-                            key={m.id}
-                            left={[left[0] ?? "—", left[1] ?? "—"]}
-                            right={[right[0] ?? "—", right[1] ?? "—"]}
-                            leftScore={m.home_games}
-                            rightScore={m.away_games}
-                            stripeColor={stripe}
-                            playerNameClass={playerNameClass}
-                            infoTop={infoTop ?? undefined}
-                          />
-                        );
+                        return fixed.rules?.scoring === "best_of_3" ? (
+  <MatchCardFixedPairsSets
+    key={m.id}
+    left={[left[0] ?? "—", left[1] ?? "—"]}
+    right={[right[0] ?? "—", right[1] ?? "—"]}
+    sets={m.sets}
+    stripeColor={stripe}
+    playerNameClass={playerNameClass}
+    infoTop={infoTop ?? undefined}
+  />
+) : (
+  <MatchCardBaraondaStyle
+    key={m.id}
+    left={[left[0] ?? "—", left[1] ?? "—"]}
+    right={[right[0] ?? "—", right[1] ?? "—"]}
+    leftScore={m.home_games}
+    rightScore={m.away_games}
+    stripeColor={stripe}
+    playerNameClass={playerNameClass}
+    infoTop={infoTop ?? undefined}
+  />
+);
                       })}
                     </div>
                   </div>
@@ -1137,18 +1308,28 @@ const subtitle = modeLabel && categoryLabel ? `${modeLabel} ${categoryLabel}` : 
                           </>
                         ) : null;
 
-                        return (
-                          <MatchCardBaraondaStyle
-                            key={m.id}
-                            left={[left[0] ?? "—", left[1] ?? "—"]}
-                            right={[right[0] ?? "—", right[1] ?? "—"]}
-                            leftScore={m.home_games}
-                            rightScore={m.away_games}
-                            stripeColor={stripe}
-                            playerNameClass={playerNameClass}
-                            infoTop={infoTop ?? undefined}
-                          />
-                        );
+                        return fixed.rules?.scoring === "best_of_3" ? (
+  <MatchCardFixedPairsSets
+    key={m.id}
+    left={[left[0] ?? "—", left[1] ?? "—"]}
+    right={[right[0] ?? "—", right[1] ?? "—"]}
+    sets={m.sets}
+    stripeColor={stripe}
+    playerNameClass={playerNameClass}
+    infoTop={infoTop ?? undefined}
+  />
+) : (
+  <MatchCardBaraondaStyle
+    key={m.id}
+    left={[left[0] ?? "—", left[1] ?? "—"]}
+    right={[right[0] ?? "—", right[1] ?? "—"]}
+    leftScore={m.home_games}
+    rightScore={m.away_games}
+    stripeColor={stripe}
+    playerNameClass={playerNameClass}
+    infoTop={infoTop ?? undefined}
+  />
+);
                       })}
                     </div>
                   </div>

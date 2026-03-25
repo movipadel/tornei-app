@@ -577,6 +577,7 @@ if (format !== "bracket_only") {
           .absolute.right-4.top-4 { display: none !important; }
         `}</style>
 
+        <DialogTitle style={{ position: "absolute", left: "-9999px" }}>{title}</DialogTitle>
         {/* HEADER compatto */}
 <div style={{ display: "grid", gap: 8, paddingBottom: 6 }}>
   {/* Titolo 1 riga */}

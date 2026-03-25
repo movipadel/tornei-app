@@ -216,9 +216,28 @@ function formatPairDisplayName(raw: string | null | undefined): string {
 
 function fmtTimeOnly(v?: string | null) {
   if (!v) return "-";
-  const d = new Date(v);
+
+  const s = String(v).trim();
+  if (!s) return "-";
+
+  // Caso 1: formato già "HH:MM"
+  if (/^\d{2}:\d{2}$/.test(s)) {
+    return s;
+  }
+
+  // Caso 2: formato "HH:MM:SS"
+  if (/^\d{2}:\d{2}:\d{2}$/.test(s)) {
+    return s.slice(0, 5);
+  }
+
+  // Caso 3: vecchi valori salvati come timestamp/ISO
+  const d = new Date(s);
   if (Number.isNaN(d.getTime())) return "-";
-  return d.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
+
+  return d.toLocaleTimeString("it-IT", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 function ensureHomeAway(m: ApiMatchFpMaybeLegacy): UiMatch {

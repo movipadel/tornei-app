@@ -74,25 +74,23 @@ function pairDisplayName(r: RegRow) {
  * - "YYYY-MM-DDTHH:MM" -> ISO
  * - ISO ("...Z") -> normalizza
  */
-function normalizeStartsAt(input?: string | null, tournamentDate?: string | null) {
+function normalizeStartsAt(input?: string | null) {
   if (!input) return null;
+
   const s = String(input).trim();
   if (!s) return null;
 
-  // ISO / datetime-local
-  if (s.includes("T")) {
-    const dt = new Date(s);
-    if (!Number.isNaN(dt.getTime())) return dt.toISOString();
+  // accetta "HH:MM"
+  if (/^\d{2}:\d{2}$/.test(s)) {
+    return s;
   }
 
-  // HH:MM
-  const d = String(tournamentDate ?? "").trim();
-  if (!d) return null;
+  // accetta "HH:MM:SS" e riduce a "HH:MM"
+  if (/^\d{2}:\d{2}:\d{2}$/.test(s)) {
+    return s.slice(0, 5);
+  }
 
-  const isoLocal = `${d}T${s}:00`;
-  const dt = new Date(isoLocal);
-  if (Number.isNaN(dt.getTime())) return null;
-  return dt.toISOString();
+  return null;
 }
 
 function makeKey(gid: string, a: string, b: string) {
@@ -361,7 +359,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
         const k = makeKey(dbGid, mapRegToRunPair(m.homePairId), mapRegToRunPair(m.awayPairId));
         wizardMatchMeta.set(k, {
           court: m.court ?? null,
-          starts_at: normalizeStartsAt(m.startsAt, tr.date),
+          starts_at: normalizeStartsAt(m.startsAt),
           round_label: m.roundLabel ? String(m.roundLabel) : "Girone",
         });
       }
@@ -496,7 +494,7 @@ if (format === "bracket_only") {
     home_pair_id: home,
     away_pair_id: away,
     court: null,
-    starts_at: new Date(fakeOrderTime).toISOString(),
+    starts_at: null,
     completed_at: null,
   });
 
