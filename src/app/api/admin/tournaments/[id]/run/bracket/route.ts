@@ -314,29 +314,26 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   for (const s of seeds) seedByNum.set(s.seed, s.pairId);
 
   const rows: any[] = [];
-  let fakeOrderTime = Date.now();
 
   const makeMatchRow = (roundLabel: string, home: string | null, away: string | null) => ({
-    run_id: runId,
-    stage: "bracket",
-    group_id: null,
-    round_label: roundLabel,
-    home_pair_id: home,
-    away_pair_id: away,
-    court: null,
-    starts_at: new Date(fakeOrderTime).toISOString(),
-    home_games: null,
-    away_games: null,
-    completed_at: null,
-    set1_home_games: null,
-    set1_away_games: null,
-    set2_home_games: null,
-    set2_away_games: null,
-    set3_home_games: null,
-    set3_away_games: null,
-    home_sets: null,
-    away_sets: null,
-  });
+  run_id: runId,
+  stage: "bracket",
+  group_id: null,
+  round_label: roundLabel,
+  home_pair_id: home,
+  away_pair_id: away,
+  home_games: null,
+  away_games: null,
+  completed_at: null,
+  set1_home_games: null,
+  set1_away_games: null,
+  set2_home_games: null,
+  set2_away_games: null,
+  set3_home_games: null,
+  set3_away_games: null,
+  home_sets: null,
+  away_sets: null,
+});
 
   // 10a) MAIN ROUND (prevPow) con placeholder null dove entrerà il vincitore del play-in
   const mainLabel = roundLabelForSize(prevPow); // es. 8 -> "Quarti"
@@ -374,7 +371,6 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
           seedByNum.get(oppSeed) ?? null
         )
       );
-      fakeOrderTime += 60000;
     }
   }
 
@@ -383,7 +379,6 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     const home = slots[order[i] - 1] ?? null;
     const away = slots[order[i + 1] - 1] ?? null;
     rows.push(makeMatchRow(mainLabel, home, away));
-    fakeOrderTime += 60000;
   }
 
   // 10d) ROUND SUCCESSIVI (vuoti) fino alla finale
@@ -394,7 +389,6 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
 
     for (let i = 0; i < nextSize / 2; i++) {
       rows.push(makeMatchRow(label, null, null));
-      fakeOrderTime += 60000;
     }
     curSize = nextSize;
   }
