@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { generateBaraondaSchedule } from "@/lib/baraonda/generateSchedule";
+import { generateBaraondaScheduleSwitch } from "@/lib/baraonda/generateScheduleSwitch";
 import { guardAdmin } from "@/lib/adminGuard";
+import {
+  getBaraondaOptions,
+  getRecommendedBaraondaOption,
+  type BaraondaFormulaLabel,
+} from "@/lib/baraonda/options";
 
 export const runtime = "nodejs";
 
@@ -20,6 +25,14 @@ type TournamentRow = {
 };
 
 type ParticipantRow = { id: string; name: string; sex: "m" | "f" };
+type BaraondaEngine = "legacy" | "v2";
+
+function resolveBaraondaEngine(rules: any): BaraondaEngine {
+  const requested = String(rules?.engine ?? "").toLowerCase();
+
+  if (requested === "v2") return "v2";
+  return "legacy";
+}
 
 function toSex(g: "M" | "F" | null): "m" | "f" {
   return g === "F" ? "f" : "m";
@@ -45,6 +58,29 @@ function computeTurns(players: number) {
   return players;
 }
 
+function resolveProtectedFormula(
+  players: number,
+  category: string,
+  matchesPerPlayer: number
+): BaraondaFormulaLabel {
+  if (category === "misto") {
+    if (players === 10 && matchesPerPlayer === 6) return "bilanciata";
+    if (players === 12 && matchesPerPlayer === 6) return "bilanciata";
+  } else {
+    if (players === 4 && matchesPerPlayer === 3) return "snella";
+    if (players === 5 && matchesPerPlayer === 4) return "snella";
+    if (players === 6 && matchesPerPlayer === 4) return "snella";
+    if (players === 7 && matchesPerPlayer === 4) return "snella";
+    if (players === 8 && matchesPerPlayer === 7) return "maratona";
+    if (players === 9 && matchesPerPlayer === 8) return "maratona";
+    if (players === 10 && matchesPerPlayer === 8) return "estesa";
+  }
+
+  throw new Error(
+    `Formula protetta non risolvibile per category=${category}, players=${players}, matchesPerPlayer=${matchesPerPlayer}`
+  );
+}
+
 async function ensureScheduleForRun(sb: ReturnType<typeof supabaseAdmin>, runId: string, rules: any) {
   // participants
   const { data: participants, error: perr } = await sb
@@ -57,7 +93,9 @@ async function ensureScheduleForRun(sb: ReturnType<typeof supabaseAdmin>, runId:
   const plist = (participants ?? []) as ParticipantRow[];
   if (plist.length < 4) throw new Error("Partecipanti insufficienti nella run");
 
-  const schedule = generateBaraondaSchedule(plist as any, rules);
+  const schedule = generateBaraondaScheduleSwitch(plist as any, rules, {
+  engine: resolveBaraondaEngine(rules),
+});
 
   // 1) TURNI idempotente (serve vincolo unico run_id+turn_number)
   const turnsPayload = schedule.map((t) => ({
@@ -211,28 +249,21 @@ if (main.length > MAX_BARAONDA_SUPPORTED)
    const players = main.length;
 const category = mapCategory(tr.category);
 
-// --- courts (UI) -> matchesPerTurn (engine) ---
-// UI invia { courts: 1..3 } oppure {} per Auto
 const body = await req.json().catch(() => ({} as any));
-const requestedCourts = Number((body as any)?.courts);
+const requestedCourtsRaw = Number((body as any)?.courts);
+const requestedFormula = String((body as any)?.formula ?? "").toLowerCase() as BaraondaFormulaLabel | "";
+const requestedEngineRaw = String((body as any)?.engine ?? "").toLowerCase();
+const requestedEngine: BaraondaEngine =
+  requestedEngineRaw === "v2" ? "v2" : "legacy";
+const maxCourtsAvailable = Number.isFinite(requestedCourtsRaw) && requestedCourtsRaw >= 1
+  ? Math.min(requestedCourtsRaw, Math.floor(players / 4))
+  : Math.min(players >= 12 ? 3 : players >= 8 ? 2 : 1, Math.floor(players / 4));
 
-// max fisico: ogni match usa 4 giocatori
-const maxMatchesPerTurn = Math.floor(players / 4);
-
-// default "Auto" coerente con UI (defaultBaraondaCourts)
-const autoCourts = players >= 12 ? 3 : players >= 8 ? 2 : 1;
-
-// matchesPerTurn effettivo: se courts valido usa quello, altrimenti Auto
-const matchesPerTurn =
-  Number.isFinite(requestedCourts) && requestedCourts >= 1
-    ? Math.min(requestedCourts, maxMatchesPerTurn)
-    : Math.min(autoCourts, maxMatchesPerTurn);
-
-if (matchesPerTurn < 1) {
+if (maxCourtsAvailable < 1) {
   return NextResponse.json({ error: "Campi non validi per il numero di partecipanti" }, { status: 400 });
 }
 
-// ✅ MISTO: numero pari + M/F uguali (una sola volta, niente duplicati)
+// ✅ MISTO: numero pari + M/F uguali
 if (category === "misto") {
   if (players % 2 !== 0) {
     return NextResponse.json(
@@ -252,8 +283,11 @@ if (category === "misto") {
   }
 }
 
-// calcolo equo coerente con generator
-function computeStandardTurns(players: number, matchesPerTurn: number, matchesPerPlayer: number) {
+const isProtectedNonMisto = category !== "misto" && players <= 10;
+const isProtectedMisto = category === "misto" && players <= 12;
+const isProtectedCase = isProtectedNonMisto || isProtectedMisto;
+
+function computeTurnsFixed(players: number, matchesPerTurn: number, matchesPerPlayer: number) {
   const totalSlots = players * matchesPerPlayer;
   const denom = matchesPerTurn * 4;
   if (totalSlots % denom !== 0) {
@@ -264,42 +298,67 @@ function computeStandardTurns(players: number, matchesPerTurn: number, matchesPe
   return totalSlots / denom;
 }
 
-function targetMatchesPerPlayer(players: number, category: string, matchesPerTurn: number) {
-  // NON-MISTO
-  if (category !== "misto") {
-    if (players === 4) return 3; // 3 turni logici (3 match/player) con 1 campo
-    if (players === 9) return 8; // necessario per equità con 2 campi -> turns=9
-    if (players === 11) return 8; // necessario per equità con 2 campi -> turns=11
-
-    // 12 NON-MISTO: se giochi a 3 campi vuoi "super piena"
-    if (players === 12 && matchesPerTurn === 3) return 8; // 8 turni, 8 match/player, 24 match totali
-
-    // default
-    return 4;
-  }
-
-  // MISTO
-  if (players === 10) return 6; // preset deterministico
-  if (players === 12) return 6; // preset qualità (6+6)
-  return 4;
-}
-
 let turns: number;
 let matchesPerPlayer: number;
+let matchesPerTurn: number;
+let formula: BaraondaFormulaLabel | null = null;
 
-// preset misto 10 (5+5) richiesto dal generator deterministico
-if (category === "misto" && players === 10 && matchesPerTurn === 2) {
-  turns = 8;
-  matchesPerPlayer = 6;
+if (isProtectedCase) {
+  // LOGICA STORICA PROTETTA
+  matchesPerTurn = maxCourtsAvailable >= 2 && players >= 8 ? 2 : 1;
+
+  if (category === "misto" && players === 10) {
+    matchesPerTurn = 2;
+    matchesPerPlayer = 6;
+    turns = 8;
+  } else if (category === "misto" && players === 12) {
+    // protetto anche 6+6
+    matchesPerTurn = maxCourtsAvailable >= 2 ? 2 : 1;
+    matchesPerPlayer = 6;
+    turns = computeTurnsFixed(players, matchesPerTurn, matchesPerPlayer);
+  } else if (category !== "misto" && players === 10) {
+    matchesPerTurn = 2;
+    matchesPerPlayer = 8;
+    turns = 10;
+  } else if (category !== "misto" && players === 9) {
+    matchesPerTurn = 2;
+    matchesPerPlayer = 8;
+    turns = 9;
+  } else {
+    // fallback storico piccoli
+    if (players === 4) matchesPerPlayer = 3;
+    else matchesPerPlayer = 4;
+
+    turns = computeTurnsFixed(players, matchesPerTurn, matchesPerPlayer);
+  }
+
+  formula = resolveProtectedFormula(players, category, matchesPerPlayer);
 } else {
-  matchesPerPlayer = targetMatchesPerPlayer(players, category, matchesPerTurn);
-turns = computeStandardTurns(players, matchesPerTurn, matchesPerPlayer);
-}
+  // NUOVA LOGICA GRANDI
+  const availableOptions = getBaraondaOptions(players, category);
+  if (!availableOptions.length) {
+    return NextResponse.json(
+      { error: `Nessuna formula configurata per ${category} con ${players} partecipanti` },
+      { status: 400 }
+    );
+  }
 
-// eccezione NON-MISTO 10 “full equo” (preset deterministico N=10)
-if (category !== "misto" && players === 10 && matchesPerTurn === 2) {
-  turns = 10;
-  matchesPerPlayer = 8;
+  const chosen =
+    availableOptions.find((o) => o.label === requestedFormula) ??
+    getRecommendedBaraondaOption(players, category);
+
+  if (!chosen) {
+    return NextResponse.json({ error: "Nessuna formula valida trovata" }, { status: 400 });
+  }
+
+  matchesPerPlayer = chosen.matchesPerPlayer;
+  formula = chosen.label;
+  matchesPerTurn = maxCourtsAvailable;
+
+  // ATTENZIONE: qui turns NON è più affidabile come formula fissa
+  // lo mettiamo come valore placeholder; il nuovo generator dei casi grandi
+  // calcolerà la turnazione dinamicamente.
+  turns = Math.ceil(chosen.totalMatches / Math.max(1, maxCourtsAvailable));
 }
 
 // 4) crea run
@@ -311,6 +370,10 @@ const rules = {
   durationPreset: "standard",
   tieWinValue: 0.5,
   category,
+  maxCourtsAvailable,
+  formula,
+  flexibleTurns: !isProtectedCase,
+  engine: requestedEngine,
 };
 
 const { data: run, error: runErr } = await sb

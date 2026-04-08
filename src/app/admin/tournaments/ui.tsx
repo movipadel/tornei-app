@@ -115,6 +115,155 @@ function maxBaraondaCourtsSupported(players: number) {
   return Math.min(3, Math.max(1, physical));
 }
 
+function getBaraondaFormulaOptions(params: {
+  players: number;
+  category: string; // lower-case
+}) {
+  const { players, category } = params;
+
+  if (category === "misto") {
+    switch (players) {
+      case 14:
+        return [
+          { value: "snella", matchesPerPlayer: 4, totalMatches: 14, label: "Snella" },
+          { value: "bilanciata", matchesPerPlayer: 6, totalMatches: 21, label: "Bilanciata" },
+          { value: "estesa", matchesPerPlayer: 8, totalMatches: 28, label: "Estesa" },
+        ] as const;
+      case 16:
+        return [
+          { value: "snella", matchesPerPlayer: 4, totalMatches: 16, label: "Snella" },
+          { value: "bilanciata", matchesPerPlayer: 6, totalMatches: 24, label: "Bilanciata" },
+          { value: "estesa", matchesPerPlayer: 8, totalMatches: 32, label: "Estesa" },
+        ] as const;
+      case 18:
+        return [
+          { value: "bilanciata", matchesPerPlayer: 6, totalMatches: 27, label: "Bilanciata" },
+          { value: "estesa", matchesPerPlayer: 8, totalMatches: 36, label: "Estesa" },
+          { value: "maratona", matchesPerPlayer: 10, totalMatches: 45, label: "Maratona" },
+        ] as const;
+      case 20:
+        return [
+          { value: "bilanciata", matchesPerPlayer: 6, totalMatches: 30, label: "Bilanciata" },
+          { value: "estesa", matchesPerPlayer: 8, totalMatches: 40, label: "Estesa" },
+          { value: "maratona", matchesPerPlayer: 10, totalMatches: 50, label: "Maratona" },
+        ] as const;
+      case 22:
+        return [
+          { value: "bilanciata", matchesPerPlayer: 6, totalMatches: 33, label: "Bilanciata" },
+          { value: "estesa", matchesPerPlayer: 8, totalMatches: 44, label: "Estesa" },
+          { value: "maratona", matchesPerPlayer: 10, totalMatches: 55, label: "Maratona" },
+        ] as const;
+      case 24:
+        return [
+          { value: "bilanciata", matchesPerPlayer: 6, totalMatches: 36, label: "Bilanciata" },
+          { value: "estesa", matchesPerPlayer: 8, totalMatches: 48, label: "Estesa" },
+          { value: "maratona", matchesPerPlayer: 12, totalMatches: 72, label: "Maratona" },
+        ] as const;
+      default:
+        return [] as const;
+    }
+  }
+
+  switch (players) {
+    case 11:
+      return [
+        { value: "snella", matchesPerPlayer: 4, totalMatches: 11, label: "Snella" },
+        { value: "bilanciata", matchesPerPlayer: 8, totalMatches: 22, label: "Bilanciata" },
+        { value: "estesa", matchesPerPlayer: 12, totalMatches: 33, label: "Estesa" },
+      ] as const;
+    case 12:
+      return [
+        { value: "snella", matchesPerPlayer: 6, totalMatches: 18, label: "Snella" },
+        { value: "bilanciata", matchesPerPlayer: 8, totalMatches: 24, label: "Bilanciata" },
+        { value: "estesa", matchesPerPlayer: 10, totalMatches: 30, label: "Estesa" },
+      ] as const;
+    case 13:
+      return [
+        { value: "bilanciata", matchesPerPlayer: 8, totalMatches: 26, label: "Bilanciata" },
+        { value: "estesa", matchesPerPlayer: 12, totalMatches: 39, label: "Estesa" },
+        { value: "maratona", matchesPerPlayer: 16, totalMatches: 52, label: "Maratona" },
+      ] as const;
+    case 14:
+      return [
+        { value: "snella", matchesPerPlayer: 6, totalMatches: 21, label: "Snella" },
+        { value: "bilanciata", matchesPerPlayer: 8, totalMatches: 28, label: "Bilanciata" },
+        { value: "estesa", matchesPerPlayer: 10, totalMatches: 35, label: "Estesa" },
+      ] as const;
+    case 15:
+      return [
+        { value: "snella", matchesPerPlayer: 4, totalMatches: 15, label: "Snella" },
+        { value: "bilanciata", matchesPerPlayer: 8, totalMatches: 30, label: "Bilanciata" },
+        { value: "estesa", matchesPerPlayer: 12, totalMatches: 45, label: "Estesa" },
+      ] as const;
+    case 16:
+      return [
+        { value: "snella", matchesPerPlayer: 6, totalMatches: 24, label: "Snella" },
+        { value: "bilanciata", matchesPerPlayer: 8, totalMatches: 32, label: "Bilanciata" },
+        { value: "estesa", matchesPerPlayer: 10, totalMatches: 40, label: "Estesa" },
+      ] as const;
+    case 17:
+      return [
+        { value: "bilanciata", matchesPerPlayer: 8, totalMatches: 34, label: "Bilanciata" },
+        { value: "estesa", matchesPerPlayer: 12, totalMatches: 51, label: "Estesa" },
+        { value: "maratona", matchesPerPlayer: 16, totalMatches: 68, label: "Maratona" },
+      ] as const;
+    case 18:
+      return [
+        { value: "bilanciata", matchesPerPlayer: 8, totalMatches: 36, label: "Bilanciata" },
+        { value: "estesa", matchesPerPlayer: 10, totalMatches: 45, label: "Estesa" },
+        { value: "maratona", matchesPerPlayer: 12, totalMatches: 54, label: "Maratona" },
+      ] as const;
+    case 19:
+      return [
+        { value: "bilanciata", matchesPerPlayer: 8, totalMatches: 38, label: "Bilanciata" },
+        { value: "estesa", matchesPerPlayer: 12, totalMatches: 57, label: "Estesa" },
+        { value: "maratona", matchesPerPlayer: 16, totalMatches: 76, label: "Maratona" },
+      ] as const;
+    case 20:
+      return [
+        { value: "bilanciata", matchesPerPlayer: 8, totalMatches: 40, label: "Bilanciata" },
+        { value: "estesa", matchesPerPlayer: 10, totalMatches: 50, label: "Estesa" },
+        { value: "maratona", matchesPerPlayer: 12, totalMatches: 60, label: "Maratona" },
+      ] as const;
+    case 21:
+      return [
+        { value: "bilanciata", matchesPerPlayer: 8, totalMatches: 42, label: "Bilanciata" },
+        { value: "estesa", matchesPerPlayer: 12, totalMatches: 63, label: "Estesa" },
+        { value: "maratona", matchesPerPlayer: 16, totalMatches: 84, label: "Maratona" },
+      ] as const;
+    case 22:
+      return [
+        { value: "bilanciata", matchesPerPlayer: 8, totalMatches: 44, label: "Bilanciata" },
+        { value: "estesa", matchesPerPlayer: 10, totalMatches: 55, label: "Estesa" },
+        { value: "maratona", matchesPerPlayer: 12, totalMatches: 66, label: "Maratona" },
+      ] as const;
+    case 23:
+      return [
+        { value: "bilanciata", matchesPerPlayer: 8, totalMatches: 46, label: "Bilanciata" },
+        { value: "estesa", matchesPerPlayer: 12, totalMatches: 69, label: "Estesa" },
+        { value: "maratona", matchesPerPlayer: 16, totalMatches: 92, label: "Maratona" },
+      ] as const;
+    case 24:
+      return [
+        { value: "bilanciata", matchesPerPlayer: 8, totalMatches: 48, label: "Bilanciata" },
+        { value: "estesa", matchesPerPlayer: 10, totalMatches: 60, label: "Estesa" },
+        { value: "maratona", matchesPerPlayer: 12, totalMatches: 72, label: "Maratona" },
+      ] as const;
+    default:
+      return [] as const;
+  }
+}
+
+function getDefaultBaraondaFormula(params: {
+  players: number;
+  category: string;
+}): "snella" | "bilanciata" | "estesa" | "maratona" | "" {
+  const options = getBaraondaFormulaOptions(params);
+  if (!options.length) return "";
+  if (options.some((o) => o.value === "bilanciata")) return "bilanciata";
+  return options[0]?.value ?? "";
+}
+
 function computeBaraondaSummary(params: {
   players: number;
   matchesPerTurn: number;
@@ -192,6 +341,12 @@ export default function AdminTournamentsUI() {
   const [startingById, setStartingById] = useState<Record<string, boolean>>({});
   // Baraonda courts preset: 0 = Auto, 1..3 = campi scelti
 const [baraondaCourtsById, setBaraondaCourtsById] = useState<Record<string, number>>({});
+const [baraondaFormulaById, setBaraondaFormulaById] = useState<
+  Record<string, "snella" | "bilanciata" | "estesa" | "maratona" | "">
+>({});
+const [baraondaEngineById, setBaraondaEngineById] = useState<
+  Record<string, "legacy" | "v2">
+>({});
 
   // Fixed pairs wizard state
   const [fixedWizardOpen, setFixedWizardOpen] = useState(false);
@@ -312,13 +467,23 @@ const [baraondaCourtsById, setBaraondaCourtsById] = useState<Record<string, numb
     }
   }
 
-  async function createTournamentRunBaraonda(tournamentId: string, courts?: number) {
+  async function createTournamentRunBaraonda(
+  tournamentId: string,
+  courts?: number,
+  formula?: "snella" | "bilanciata" | "estesa" | "maratona" | "",
+  engine?: "legacy" | "v2"
+) {
   setStartingById((p) => ({ ...p, [tournamentId]: true }));
   try {
+    const payload: Record<string, any> = {};
+    if (courts) payload.courts = courts;
+    if (formula) payload.formula = formula;
+    if (engine) payload.engine = engine;
+
     const res = await fetch(`/api/admin/tournaments/${tournamentId}/run/start`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(courts ? { courts } : {}),
+      body: JSON.stringify(payload),
     });
 
     const json = await res.json().catch(() => ({}));
@@ -333,17 +498,27 @@ const [baraondaCourtsById, setBaraondaCourtsById] = useState<Record<string, numb
   }
 }
 
-  async function recreateTournamentRunBaraonda(tournamentId: string, courts?: number) {
+  async function recreateTournamentRunBaraonda(
+  tournamentId: string,
+  courts?: number,
+  formula?: "snella" | "bilanciata" | "estesa" | "maratona" | "",
+  engine?: "legacy" | "v2"
+) {
   setStartingById((p) => ({ ...p, [tournamentId]: true }));
   try {
     const r = await fetch(`/api/admin/tournaments/${tournamentId}/run/reset`, { method: "POST" });
     const rj = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error((rj as any).error || "Errore reset torneo");
 
+    const payload: Record<string, any> = {};
+    if (courts) payload.courts = courts;
+    if (formula) payload.formula = formula;
+    if (engine) payload.engine = engine;
+
     const s = await fetch(`/api/admin/tournaments/${tournamentId}/run/start`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(courts ? { courts } : {}),
+      body: JSON.stringify(payload),
     });
     const sj = await s.json().catch(() => ({}));
     if (!s.ok) throw new Error((sj as any).error || "Errore rigenerazione torneo");
@@ -1011,6 +1186,17 @@ async function reopenTournamentRegistrations(tournamentId: string) {
   const maxCourts = canGenerateBaraonda ? maxBaraondaCourtsSupported(mainCount) : 1;
   const autoCourts = defaultBaraondaCourts(mainCount);
   const effectiveCourts = selectedCourts === 0 ? autoCourts : selectedCourts;
+    const formulaOptions = getBaraondaFormulaOptions({
+    players: mainCount,
+    category: String(t.category ?? "libero").toLowerCase(),
+  });
+  const selectedFormula =
+    baraondaFormulaById[tid] ||
+    getDefaultBaraondaFormula({
+      players: mainCount,
+      category: String(t.category ?? "libero").toLowerCase(),
+    });
+  const selectedFormulaOption = formulaOptions.find((o) => o.value === selectedFormula) ?? null;
 
   const optionStyle = (active: boolean) => ({
     padding: "10px 12px",
@@ -1094,7 +1280,134 @@ async function reopenTournamentRegistrations(tournamentId: string) {
         Iscritti: <b>{mainCount}</b> · Max campi possibili: <b>{maxCourts}</b> · Scelta:{" "}
         <b>{selectedCourts === 0 ? `Auto (${autoCourts})` : selectedCourts}</b> · Partite/turno: <b>{effectiveCourts}</b>
       </div>
+            {formulaOptions.length > 0 && (
+        <div style={{ marginTop: 14 }}>
+          <div style={{ fontWeight: 900, marginBottom: 8, color: "#0f172a" }}>Formula</div>
+
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {formulaOptions.map((opt) => {
+              const active = selectedFormula === opt.value;
+
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  className="base44-csv-btn"
+                  style={{
+                    ...optionStyle(active),
+                    minWidth: 120,
+                  }}
+                  disabled={!canGenerateBaraonda}
+                  onClick={() => {
+                    if (!canGenerateBaraonda) return;
+                    setBaraondaFormulaById((p) => ({ ...p, [tid]: opt.value }));
+                  }}
+                  title={`${opt.matchesPerPlayer} partite a testa · ${opt.totalMatches} match totali`}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
+
+          {selectedFormulaOption && (
+            <div style={{ marginTop: 10, fontSize: 12, color: "#64748b", lineHeight: 1.3 }}>
+              Formula scelta: <b>{selectedFormulaOption.label}</b> · Partite a testa:{" "}
+              <b>{selectedFormulaOption.matchesPerPlayer}</b> · Match totali:{" "}
+              <b>{selectedFormulaOption.totalMatches}</b>
+            </div>
+          )}
+        </div>
+      )}
+      {(() => {
+  const selectedEngine = baraondaEngineById[tid] ?? "legacy";
+
+  const optionStyle = (active: boolean) => ({
+    padding: "10px 12px",
+    borderRadius: 999,
+    border: "1px solid #e2e8f0",
+    background: active ? "#eef2ff" : "white",
+    color: active ? "#3730a3" : "#0f172a",
+    fontWeight: 800 as const,
+    cursor: "pointer",
+  });
+
+  return (
+    <div style={{ marginTop: 14 }}>
+      <div style={{ fontWeight: 900, marginBottom: 8, color: "#0f172a" }}>
+        Motore generazione
+      </div>
+
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <button
+          type="button"
+          className="base44-csv-btn"
+          style={optionStyle(selectedEngine === "legacy")}
+          disabled={!canGenerateBaraonda}
+          onClick={() => {
+            if (!canGenerateBaraonda) return;
+            setBaraondaEngineById((p) => ({ ...p, [tid]: "legacy" }));
+          }}
+          title="Usa il motore storico"
+        >
+          Legacy
+        </button>
+
+        <button
+          type="button"
+          className="base44-csv-btn"
+          style={optionStyle(selectedEngine === "v2")}
+          disabled={!canGenerateBaraonda}
+          onClick={() => {
+            if (!canGenerateBaraonda) return;
+            setBaraondaEngineById((p) => ({ ...p, [tid]: "v2" }));
+          }}
+          title="Usa il nuovo motore Baraonda V2 in test"
+        >
+          V2 beta
+        </button>
+      </div>
+
+      <div style={{ marginTop: 10, fontSize: 12, color: "#64748b", lineHeight: 1.3 }}>
+        Motore selezionato: <b>{selectedEngine === "v2" ? "V2 beta" : "Legacy"}</b>
+      </div>
+    </div>
+  );
+})()}
     {(() => {
+    const categoryLower = String(t.category ?? "libero").toLowerCase();
+  const isProtectedNonMistoCase = categoryLower !== "misto" && mainCount <= 10;
+  const isProtectedMistoCase = categoryLower === "misto" && mainCount <= 12;
+  const isProtectedCase = isProtectedNonMistoCase || isProtectedMistoCase;
+
+  if (!isProtectedCase) {
+    if (!selectedFormulaOption) return null;
+
+    return (
+      <div
+        style={{
+          marginTop: 10,
+          padding: "10px 12px",
+          borderRadius: 14,
+          border: "1px solid #e2e8f0",
+          background: "#f8fafc",
+          color: "#0f172a",
+          fontSize: 12,
+          lineHeight: 1.35,
+        }}
+      >
+        <div style={{ fontWeight: 900, marginBottom: 4 }}>Riepilogo generazione</div>
+        <div>
+          Formula <b>{selectedFormulaOption.label}</b> · <b>{selectedFormulaOption.matchesPerPlayer}</b> partite a testa ·{" "}
+          <b>{selectedFormulaOption.totalMatches}</b> match totali
+        </div>
+        <div style={{ marginTop: 4, color: "#334155" }}>
+          Campi disponibili: <b>{effectiveCourts}</b> · Nei casi grandi i campi sono un massimo disponibile, non un obbligo per ogni turno.
+        </div>
+      </div>
+    );
+  }
+
   const summary = computeBaraondaSummary({
     players: mainCount,
     matchesPerTurn: effectiveCourts,
@@ -1166,17 +1479,34 @@ async function reopenTournamentRegistrations(tournamentId: string) {
       backgroundColor: hasRun ? "#dc2626" : "#4f46e5",
       borderColor: hasRun ? "#dc2626" : "#4f46e5",
     }}
-    onClick={() => {
-      const selectedCourts = baraondaCourtsById[tid] ?? 0;
-      const courts = selectedCourts === 0 ? undefined : selectedCourts;
+        onClick={() => {
+  const selectedCourts = baraondaCourtsById[tid] ?? 0;
+  const courts = selectedCourts === 0 ? undefined : selectedCourts;
 
-      // Se esiste già run → reset + start (recreate). Altrimenti start normale.
-      if (hasRun) {
-        recreateTournamentRunBaraonda(tid, courts);
-      } else {
-        createTournamentRunBaraonda(tid, courts);
-      }
-    }}
+  const categoryLower = String(t.category ?? "libero").toLowerCase();
+  const isProtectedNonMistoCase = categoryLower !== "misto" && mainCount <= 10;
+  const isProtectedMistoCase = categoryLower === "misto" && mainCount <= 12;
+  const isProtectedCase = isProtectedNonMistoCase || isProtectedMistoCase;
+
+  const formula =
+    !isProtectedCase
+      ? (
+          baraondaFormulaById[tid] ||
+          getDefaultBaraondaFormula({
+            players: mainCount,
+            category: categoryLower,
+          })
+        )
+      : "";
+
+  const engine = baraondaEngineById[tid] ?? "legacy";
+
+  if (hasRun) {
+    recreateTournamentRunBaraonda(tid, courts, formula, engine);
+  } else {
+    createTournamentRunBaraonda(tid, courts, formula, engine);
+  }
+}}
     disabled={!canGenerateBaraonda || isStarting}
   >
     {hasRun ? "Rigenera torneo" : "Genera torneo"}
