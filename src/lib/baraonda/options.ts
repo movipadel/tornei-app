@@ -16,6 +16,14 @@ export type BaraondaOption = {
 type BaraondaOptionsMap = Record<number, BaraondaOption[]>;
 
 export const BARAONDA_NON_MISTO: BaraondaOptionsMap = {
+  6: [
+    { matchesPerPlayer: 4, totalMatches: 6, label: "snella", recommended: true },
+    { matchesPerPlayer: 6, totalMatches: 9, label: "estesa" },
+  ],
+  7: [
+    { matchesPerPlayer: 4, totalMatches: 7, label: "snella", recommended: true },
+    { matchesPerPlayer: 8, totalMatches: 14, label: "estesa" },
+  ],
   11: [
     { matchesPerPlayer: 4, totalMatches: 11, label: "snella" },
     { matchesPerPlayer: 8, totalMatches: 22, label: "bilanciata", recommended: true },

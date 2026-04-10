@@ -165,6 +165,17 @@ function getBaraondaFormulaOptions(params: {
   }
 
   switch (players) {
+    case 6:
+  return [
+    { value: "snella", matchesPerPlayer: 4, totalMatches: 6, label: "Snella" },
+    { value: "estesa", matchesPerPlayer: 6, totalMatches: 9, label: "Estesa" },
+  ] as const;
+
+case 7:
+  return [
+    { value: "snella", matchesPerPlayer: 4, totalMatches: 7, label: "Snella" },
+    { value: "estesa", matchesPerPlayer: 8, totalMatches: 14, label: "Estesa" },
+  ] as const;
     case 11:
       return [
         { value: "snella", matchesPerPlayer: 4, totalMatches: 11, label: "Snella" },
@@ -268,31 +279,45 @@ function computeBaraondaSummary(params: {
   players: number;
   matchesPerTurn: number;
   category: string; // "misto" | "maschile" | "femminile" | "libero" (lower)
+  formula?: "snella" | "bilanciata" | "estesa" | "maratona" | "";
 }) {
-  const { players, matchesPerTurn, category } = params;
+  const { players, matchesPerTurn, category, formula } = params;
 
   const denom = matchesPerTurn * 4;
   if (players < 4 || matchesPerTurn < 1 || denom <= 0) return null;
 
-  // matchesPerPlayer (replica la logica server)
   let matchesPerPlayer: number;
 
   if (category === "misto") {
-    if (players === 10 && matchesPerTurn === 2) matchesPerPlayer = 6;
-    else if (players === 12) matchesPerPlayer = 6;
-    else matchesPerPlayer = 4;
+    if (players === 10 && matchesPerTurn === 2) {
+      matchesPerPlayer = 6;
+    } else if (players === 12) {
+      matchesPerPlayer = 6;
+    } else {
+      matchesPerPlayer = 4;
+    }
   } else {
-    if (players === 4) matchesPerPlayer = 3;
-    else if (players === 9) matchesPerPlayer = 8;
-    else if (players === 11) matchesPerPlayer = 8;
-    else if (players === 12 && matchesPerTurn === 3) matchesPerPlayer = 8;
-    else if (players === 10 && matchesPerTurn === 2) matchesPerPlayer = 8; // full equo
-    else matchesPerPlayer = 4;
+    if (players === 4) {
+      matchesPerPlayer = 3;
+    } else if (players === 5) {
+      matchesPerPlayer = 4;
+    } else if (players === 6) {
+      matchesPerPlayer = formula === "estesa" ? 6 : 4;
+    } else if (players === 7) {
+      matchesPerPlayer = formula === "estesa" ? 8 : 4;
+    } else if (players === 8) {
+      matchesPerPlayer = matchesPerTurn === 2 ? 7 : 4;
+    } else if (players === 9) {
+      matchesPerPlayer = matchesPerTurn === 2 ? 8 : 4;
+    } else if (players === 10) {
+      matchesPerPlayer = matchesPerTurn === 2 ? 8 : 4;
+    } else {
+      matchesPerPlayer = 4;
+    }
   }
 
   const totalSlots = players * matchesPerPlayer;
 
-  // turns must be integer for "equità hard"
   if (totalSlots % denom !== 0) {
     return {
       ok: false as const,
@@ -303,12 +328,8 @@ function computeBaraondaSummary(params: {
   const turns = totalSlots / denom;
   const totalMatches = turns * matchesPerTurn;
 
-  const activePerTurn = denom; // players playing per turn
+  const activePerTurn = denom;
   const restingPerTurn = Math.max(0, players - activePerTurn);
-
-  // Total rests across whole schedule = turns * restingPerTurn.
-  // With equity hard: each player plays exactly matchesPerPlayer matches, at most 1 per turn.
-  // So rests per player = turns - matchesPerPlayer.
   const restsPerPlayer = turns - matchesPerPlayer;
 
   return {
@@ -343,9 +364,6 @@ export default function AdminTournamentsUI() {
 const [baraondaCourtsById, setBaraondaCourtsById] = useState<Record<string, number>>({});
 const [baraondaFormulaById, setBaraondaFormulaById] = useState<
   Record<string, "snella" | "bilanciata" | "estesa" | "maratona" | "">
->({});
-const [baraondaEngineById, setBaraondaEngineById] = useState<
-  Record<string, "legacy" | "v2">
 >({});
 
   // Fixed pairs wizard state
@@ -470,15 +488,13 @@ const [baraondaEngineById, setBaraondaEngineById] = useState<
   async function createTournamentRunBaraonda(
   tournamentId: string,
   courts?: number,
-  formula?: "snella" | "bilanciata" | "estesa" | "maratona" | "",
-  engine?: "legacy" | "v2"
+  formula?: "snella" | "bilanciata" | "estesa" | "maratona" | ""
 ) {
   setStartingById((p) => ({ ...p, [tournamentId]: true }));
   try {
     const payload: Record<string, any> = {};
     if (courts) payload.courts = courts;
     if (formula) payload.formula = formula;
-    if (engine) payload.engine = engine;
 
     const res = await fetch(`/api/admin/tournaments/${tournamentId}/run/start`, {
       method: "POST",
@@ -501,8 +517,7 @@ const [baraondaEngineById, setBaraondaEngineById] = useState<
   async function recreateTournamentRunBaraonda(
   tournamentId: string,
   courts?: number,
-  formula?: "snella" | "bilanciata" | "estesa" | "maratona" | "",
-  engine?: "legacy" | "v2"
+  formula?: "snella" | "bilanciata" | "estesa" | "maratona" | ""
 ) {
   setStartingById((p) => ({ ...p, [tournamentId]: true }));
   try {
@@ -513,7 +528,6 @@ const [baraondaEngineById, setBaraondaEngineById] = useState<
     const payload: Record<string, any> = {};
     if (courts) payload.courts = courts;
     if (formula) payload.formula = formula;
-    if (engine) payload.engine = engine;
 
     const s = await fetch(`/api/admin/tournaments/${tournamentId}/run/start`, {
       method: "POST",
@@ -1319,61 +1333,7 @@ async function reopenTournamentRegistrations(tournamentId: string) {
           )}
         </div>
       )}
-      {(() => {
-  const selectedEngine = baraondaEngineById[tid] ?? "legacy";
-
-  const optionStyle = (active: boolean) => ({
-    padding: "10px 12px",
-    borderRadius: 999,
-    border: "1px solid #e2e8f0",
-    background: active ? "#eef2ff" : "white",
-    color: active ? "#3730a3" : "#0f172a",
-    fontWeight: 800 as const,
-    cursor: "pointer",
-  });
-
-  return (
-    <div style={{ marginTop: 14 }}>
-      <div style={{ fontWeight: 900, marginBottom: 8, color: "#0f172a" }}>
-        Motore generazione
-      </div>
-
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        <button
-          type="button"
-          className="base44-csv-btn"
-          style={optionStyle(selectedEngine === "legacy")}
-          disabled={!canGenerateBaraonda}
-          onClick={() => {
-            if (!canGenerateBaraonda) return;
-            setBaraondaEngineById((p) => ({ ...p, [tid]: "legacy" }));
-          }}
-          title="Usa il motore storico"
-        >
-          Legacy
-        </button>
-
-        <button
-          type="button"
-          className="base44-csv-btn"
-          style={optionStyle(selectedEngine === "v2")}
-          disabled={!canGenerateBaraonda}
-          onClick={() => {
-            if (!canGenerateBaraonda) return;
-            setBaraondaEngineById((p) => ({ ...p, [tid]: "v2" }));
-          }}
-          title="Usa il nuovo motore Baraonda V2 in test"
-        >
-          V2 beta
-        </button>
-      </div>
-
-      <div style={{ marginTop: 10, fontSize: 12, color: "#64748b", lineHeight: 1.3 }}>
-        Motore selezionato: <b>{selectedEngine === "v2" ? "V2 beta" : "Legacy"}</b>
-      </div>
-    </div>
-  );
-})()}
+      
     {(() => {
     const categoryLower = String(t.category ?? "libero").toLowerCase();
   const isProtectedNonMistoCase = categoryLower !== "misto" && mainCount <= 10;
@@ -1412,6 +1372,12 @@ async function reopenTournamentRegistrations(tournamentId: string) {
     players: mainCount,
     matchesPerTurn: effectiveCourts,
     category: String(t.category ?? "libero").toLowerCase(),
+    formula:
+    baraondaFormulaById[tid] ||
+    getDefaultBaraondaFormula({
+      players: mainCount,
+      category: String(t.category ?? "libero").toLowerCase(),
+    }),
   });
 
   if (!summary) return null;
@@ -1488,8 +1454,11 @@ async function reopenTournamentRegistrations(tournamentId: string) {
   const isProtectedMistoCase = categoryLower === "misto" && mainCount <= 12;
   const isProtectedCase = isProtectedNonMistoCase || isProtectedMistoCase;
 
+  const hasSelectableProtectedFormula =
+    categoryLower !== "misto" && (mainCount === 6 || mainCount === 7);
+
   const formula =
-    !isProtectedCase
+    (!isProtectedCase || hasSelectableProtectedFormula)
       ? (
           baraondaFormulaById[tid] ||
           getDefaultBaraondaFormula({
@@ -1499,12 +1468,10 @@ async function reopenTournamentRegistrations(tournamentId: string) {
         )
       : "";
 
-  const engine = baraondaEngineById[tid] ?? "legacy";
-
   if (hasRun) {
-    recreateTournamentRunBaraonda(tid, courts, formula, engine);
+    recreateTournamentRunBaraonda(tid, courts, formula);
   } else {
-    createTournamentRunBaraonda(tid, courts, formula, engine);
+    createTournamentRunBaraonda(tid, courts, formula);
   }
 }}
     disabled={!canGenerateBaraonda || isStarting}

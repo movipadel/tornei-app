@@ -27,10 +27,7 @@ type TournamentRow = {
 type ParticipantRow = { id: string; name: string; sex: "m" | "f" };
 type BaraondaEngine = "legacy" | "v2";
 
-function resolveBaraondaEngine(rules: any): BaraondaEngine {
-  const requested = String(rules?.engine ?? "").toLowerCase();
-
-  if (requested === "v2") return "v2";
+function resolveBaraondaEngine(_rules: any): BaraondaEngine {
   return "legacy";
 }
 
@@ -70,9 +67,14 @@ function resolveProtectedFormula(
     if (players === 4 && matchesPerPlayer === 3) return "snella";
     if (players === 5 && matchesPerPlayer === 4) return "snella";
     if (players === 6 && matchesPerPlayer === 4) return "snella";
+    if (players === 6 && matchesPerPlayer === 6) return "estesa";
     if (players === 7 && matchesPerPlayer === 4) return "snella";
+    if (players === 7 && matchesPerPlayer === 8) return "estesa";
+    if (players === 8 && matchesPerPlayer === 4) return "snella";
     if (players === 8 && matchesPerPlayer === 7) return "maratona";
+    if (players === 9 && matchesPerPlayer === 4) return "snella";
     if (players === 9 && matchesPerPlayer === 8) return "maratona";
+    if (players === 10 && matchesPerPlayer === 4) return "snella";
     if (players === 10 && matchesPerPlayer === 8) return "estesa";
   }
 
@@ -252,9 +254,7 @@ const category = mapCategory(tr.category);
 const body = await req.json().catch(() => ({} as any));
 const requestedCourtsRaw = Number((body as any)?.courts);
 const requestedFormula = String((body as any)?.formula ?? "").toLowerCase() as BaraondaFormulaLabel | "";
-const requestedEngineRaw = String((body as any)?.engine ?? "").toLowerCase();
-const requestedEngine: BaraondaEngine =
-  requestedEngineRaw === "v2" ? "v2" : "legacy";
+const requestedEngine: BaraondaEngine = "legacy";
 const maxCourtsAvailable = Number.isFinite(requestedCourtsRaw) && requestedCourtsRaw >= 1
   ? Math.min(requestedCourtsRaw, Math.floor(players / 4))
   : Math.min(players >= 12 ? 3 : players >= 8 ? 2 : 1, Math.floor(players / 4));
@@ -303,7 +303,7 @@ let matchesPerPlayer: number;
 let matchesPerTurn: number;
 let formula: BaraondaFormulaLabel | null = null;
 
-if (isProtectedCase) {
+ if (isProtectedCase) {
   // LOGICA STORICA PROTETTA
   matchesPerTurn = maxCourtsAvailable >= 2 && players >= 8 ? 2 : 1;
 
@@ -312,20 +312,53 @@ if (isProtectedCase) {
     matchesPerPlayer = 6;
     turns = 8;
   } else if (category === "misto" && players === 12) {
-    // protetto anche 6+6
     matchesPerTurn = maxCourtsAvailable >= 2 ? 2 : 1;
     matchesPerPlayer = 6;
     turns = computeTurnsFixed(players, matchesPerTurn, matchesPerPlayer);
-  } else if (category !== "misto" && players === 10) {
-    matchesPerTurn = 2;
-    matchesPerPlayer = 8;
-    turns = 10;
-  } else if (category !== "misto" && players === 9) {
-    matchesPerTurn = 2;
-    matchesPerPlayer = 8;
-    turns = 9;
+    } else if (category !== "misto" && players === 6) {
+  if (requestedFormula === "estesa") {
+    matchesPerPlayer = 6;
   } else {
-    // fallback storico piccoli
+    matchesPerPlayer = 4;
+  }
+
+  matchesPerTurn = 1; // sempre 1 campo per 6
+  turns = computeTurnsFixed(players, matchesPerTurn, matchesPerPlayer);
+
+} else if (category !== "misto" && players === 7) {
+  if (requestedFormula === "estesa") {
+    matchesPerPlayer = 8;
+  } else {
+    matchesPerPlayer = 4;
+  }
+
+  matchesPerTurn = 1; // sempre 1 campo
+  turns = computeTurnsFixed(players, matchesPerTurn, matchesPerPlayer);
+  } else if (category !== "misto" && players === 8) {
+    if (matchesPerTurn === 2) {
+      matchesPerPlayer = 7;
+    } else {
+      matchesPerPlayer = 4;
+    }
+
+    turns = computeTurnsFixed(players, matchesPerTurn, matchesPerPlayer);
+  } else if (category !== "misto" && players === 9) {
+    if (matchesPerTurn === 2) {
+      matchesPerPlayer = 8;
+      turns = 9;
+    } else {
+      matchesPerPlayer = 4;
+      turns = computeTurnsFixed(players, matchesPerTurn, matchesPerPlayer);
+    }
+  } else if (category !== "misto" && players === 10) {
+    if (matchesPerTurn === 2) {
+      matchesPerPlayer = 8;
+      turns = 10;
+    } else {
+      matchesPerPlayer = 4;
+      turns = computeTurnsFixed(players, matchesPerTurn, matchesPerPlayer);
+    }
+  } else {
     if (players === 4) matchesPerPlayer = 3;
     else matchesPerPlayer = 4;
 

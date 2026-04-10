@@ -372,6 +372,142 @@ function bestPairingOfFourPairs(
   return options[0].order;
 }
 
+function roundRobinPairsEven(players: Participant[]): Pair[][] {
+  if (players.length % 2 !== 0) {
+    throw new Error("roundRobinPairsEven richiede un numero pari di giocatori.");
+  }
+
+  const arr = [...players];
+  const n = arr.length;
+  const half = n / 2;
+
+  const rounds: Pair[][] = [];
+
+  let fixed = arr[0];
+  let rot = arr.slice(1);
+
+  for (let r = 0; r < n - 1; r++) {
+    const left = [fixed, ...rot.slice(0, half - 1)];
+    const right = rot.slice(half - 1).reverse();
+
+    const pairs: Pair[] = [];
+    for (let i = 0; i < half; i++) {
+      pairs.push([left[i], right[i]]);
+    }
+
+    if (pairs.length !== half) {
+      throw new Error("RoundRobin even: numero pair non valido.");
+    }
+
+    rounds.push(pairs);
+
+    rot = [rot[rot.length - 1], ...rot.slice(0, rot.length - 1)];
+  }
+
+  return rounds;
+}
+
+function generateDeterministicNonMisto8(
+  participants: Participant[],
+  rules: BaraondaRules
+): Turn[] {
+  if (!(participants.length === 8 && rules.matchesPerTurn === 2 && rules.turns === 7 && rules.matchesPerPlayer === 7)) {
+    throw new Error("NON-MISTO N=8: preset richiesto = matchesPerTurn=2, turns=7, matchesPerPlayer=7.");
+  }
+
+  const rr = roundRobinPairsEven(participants);
+
+  const teammateCount = new Map<string, Map<string, number>>();
+  const opponentCount = new Map<string, Map<string, number>>();
+  const usedMatchups = new Set<string>();
+  const played = new Map<string, number>();
+
+  for (const p of participants) {
+    teammateCount.set(p.id, new Map());
+    opponentCount.set(p.id, new Map());
+    played.set(p.id, 0);
+  }
+
+  const turnsResult: Turn[] = [];
+
+  for (let t = 1; t <= rules.turns; t++) {
+    const pairs = rr[t - 1] as [Pair, Pair, Pair, Pair];
+    const ordered = bestPairingOfFourPairs(pairs, opponentCount, usedMatchups);
+
+    const matches: Match[] = [];
+    let matchNumber = 1;
+
+    {
+      const team1 = ordered[0];
+      const team2 = ordered[1];
+
+      registerMatchRelations(team1, team2, teammateCount, opponentCount);
+      usedMatchups.add(matchKey(team1, team2));
+
+      for (const p of [...team1, ...team2]) {
+        played.set(p.id, (played.get(p.id) ?? 0) + 1);
+      }
+
+      matches.push({
+        matchNumber,
+        players: [team1[0], team1[1], team2[0], team2[1]],
+      });
+
+      matchNumber++;
+    }
+
+    {
+      const team1 = ordered[2];
+      const team2 = ordered[3];
+
+      registerMatchRelations(team1, team2, teammateCount, opponentCount);
+      usedMatchups.add(matchKey(team1, team2));
+
+      for (const p of [...team1, ...team2]) {
+        played.set(p.id, (played.get(p.id) ?? 0) + 1);
+      }
+
+      matches.push({
+        matchNumber,
+        players: [team1[0], team1[1], team2[0], team2[1]],
+      });
+    }
+
+    turnsResult.push({
+      turnNumber: t,
+      matches,
+      resting: [],
+    });
+  }
+
+  // Check finale: tutti devono avere 7 match
+  for (const p of participants) {
+    const c = played.get(p.id) ?? 0;
+    if (c !== 7) {
+      throw new Error(`Equità NON-MISTO 8 fallita: ${p.name} ha ${c} match invece di 7.`);
+    }
+  }
+
+  // Check finale: ogni coppia di compagni deve comparire esattamente una volta
+  for (let i = 0; i < participants.length; i++) {
+    for (let j = i + 1; j < participants.length; j++) {
+      const a = participants[i];
+      const b = participants[j];
+      const c =
+        getNested(teammateCount, a.id, b.id) +
+        getNested(teammateCount, b.id, a.id);
+
+      if (c !== 2) {
+        throw new Error(
+          `Coverage NON-MISTO 8 fallita: ${a.name} e ${b.name} non hanno giocato esattamente una volta insieme.`
+        );
+      }
+    }
+  }
+
+  return turnsResult;
+}
+
 function generateDeterministicNonMisto9(participants: Participant[], rules: BaraondaRules): Turn[] {
   const rr = roundRobinPairsWithGhost(participants);
 
@@ -3152,6 +3288,11 @@ export function generateBaraondaSchedule(participants: Participant[], rules: Bar
   // ✅ generic MISTO protetto fino a 6+6
   if (category === "misto") {
     return generateGenericMistoSchedule(participants, rules);
+  }
+
+    // ✅ deterministic NON-MISTO 8
+  if (participants.length === 8 && matchesPerTurn === 2 && turns === 7 && matchesPerPlayer === 7) {
+    return generateDeterministicNonMisto8(participants, rules);
   }
 
   // ✅ deterministic NON-MISTO 9
