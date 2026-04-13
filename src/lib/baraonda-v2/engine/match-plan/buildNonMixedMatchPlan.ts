@@ -27,11 +27,17 @@ export function buildNonMixedMatchPlan(
   initializeOpponentCounts(teams, opponentCounts);
   initializeTeamVsTeamCounts(teams, teamVsTeamCounts);
 
-  const orderedTeams = [...teams].sort((a, b) => a.id.localeCompare(b.id, "it"));
-  const result = searchMatchPlan(orderedTeams, opponentCounts, teamVsTeamCounts, [], {
-    steps: 0,
-    maxSteps: 200000,
-  });
+  const orderedTeams = [...teams].sort((a, b) =>
+    a.id.localeCompare(b.id, "it")
+  );
+
+  const result = searchMatchPlan(
+    orderedTeams,
+    opponentCounts,
+    teamVsTeamCounts,
+    [],
+    { steps: 0, maxSteps: 200000 }
+  );
 
   if (!result.ok) {
     return {
@@ -87,7 +93,11 @@ function searchMatchPlan(
     };
   }
 
-  const teamA = pickMostConstrainedTeam(remaining, opponentCounts, teamVsTeamCounts);
+  const teamA = pickMostConstrainedTeam(
+    remaining,
+    opponentCounts,
+    teamVsTeamCounts
+  );
 
   const compatibleOpponents = remaining
     .filter((team) => team.id !== teamA.id && areTeamsCompatible(teamA, team))
@@ -117,18 +127,13 @@ function searchMatchPlan(
     const nextBuilt: PlannedMatch[] = [
       ...built,
       {
-        team1: {
-          a: teamA.a,
-          b: teamA.b,
-        },
-        team2: {
-          a: teamB.a,
-          b: teamB.b,
-        },
+        team1: { a: teamA.a, b: teamA.b },
+        team2: { a: teamB.a, b: teamB.b },
       },
     ];
 
     const impossible = hasImpossibleTeam(nextRemaining);
+
     if (!impossible) {
       const recursive = searchMatchPlan(
         nextRemaining,
@@ -159,7 +164,8 @@ function pickMostConstrainedTeam(
 ): PairPlanTeam {
   const scored = teams.map((team) => {
     const compatibilityCount = teams.filter(
-      (other) => other.id !== team.id && areTeamsCompatible(team, other)
+      (other) =>
+        other.id !== team.id && areTeamsCompatible(team, other)
     ).length;
 
     return {
@@ -185,7 +191,8 @@ function pickMostConstrainedTeam(
 function hasImpossibleTeam(teams: PairPlanTeam[]): boolean {
   for (const team of teams) {
     const compatibleCount = teams.filter(
-      (other) => other.id !== team.id && areTeamsCompatible(team, other)
+      (other) =>
+        other.id !== team.id && areTeamsCompatible(team, other)
     ).length;
 
     if (compatibleCount === 0 && teams.length > 1) {
@@ -314,51 +321,20 @@ function scoreMatch(
 
   const teamRematchCount = teamVsTeamCounts[a.id]?.[b.id] ?? 0;
 
-  if (teamRematchCount === 0) {
-    score += 8000;
-  } else {
-    score -= 12000 * teamRematchCount;
-  }
+  if (teamRematchCount === 0) score += 8000;
+  else score -= 12000 * teamRematchCount;
 
   const teamAPlayers = [a.a, a.b];
   const teamBPlayers = [b.a, b.b];
 
-  let repeatedEdges = 0;
-  let maxExistingOpponentCount = 0;
-  let sumExistingOpponentCounts = 0;
-
   for (const pa of teamAPlayers) {
     for (const pb of teamBPlayers) {
       const count = opponentCounts[pa.id]?.[pb.id] ?? 0;
 
-      sumExistingOpponentCounts += count;
-      maxExistingOpponentCount = Math.max(maxExistingOpponentCount, count);
-
-      if (count === 0) {
-        score += 2500;
-      } else {
-        repeatedEdges += 1;
-        score -= 3000 * count;
-      }
+      if (count === 0) score += 2500;
+      else score -= 3000 * count;
     }
   }
-
-  score -= repeatedEdges * 1000;
-  score -= maxExistingOpponentCount * 4000;
-  score -= sumExistingOpponentCounts * 500;
-
-  const projectedCounts: number[] = [];
-
-  for (const pa of teamAPlayers) {
-    for (const pb of teamBPlayers) {
-      const count = opponentCounts[pa.id]?.[pb.id] ?? 0;
-      projectedCounts.push(count + 1);
-    }
-  }
-
-  const projectedMax = Math.max(...projectedCounts);
-  const projectedMin = Math.min(...projectedCounts);
-  score -= (projectedMax - projectedMin) * 1200;
 
   const seed = `${a.id}|${b.id}`;
   score += deterministicTieBreak(seed);
@@ -368,10 +344,8 @@ function scoreMatch(
 
 function deterministicTieBreak(seed: string): number {
   let acc = 0;
-
   for (let i = 0; i < seed.length; i++) {
     acc += seed.charCodeAt(i);
   }
-
   return -(acc / 100000);
 }

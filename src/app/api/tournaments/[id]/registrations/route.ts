@@ -101,16 +101,45 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     return NextResponse.json({ error: `Tipo torneo non gestito: ${tournamentType}` }, { status: 400 });
   }
 
-  // capienza main -> riserva
-  const { count: mainCount, error: cerr } = await sb
-    .from("tournament_registrations")
-    .select("*", { count: "exact", head: true })
-    .eq("tournament_id", id)
-    .eq("is_reserve", false);
+    // capienza main -> riserva
+  let is_reserve = false;
 
-  if (cerr) return NextResponse.json({ error: cerr.message }, { status: 500 });
+  const isMixedBaraonda =
+    tournamentType === "Baraonda" &&
+    String(tournamentCategory).toLowerCase() === "misto";
 
-  const is_reserve = (mainCount ?? 0) >= max;
+  if (isMixedBaraonda) {
+    const maxPerSex = Math.floor(max / 2);
+    const targetGender = String(p1_gender ?? "");
+
+    const { data: mainRegs, error: cerr } = await sb
+      .from("tournament_registrations")
+      .select("p1_gender")
+      .eq("tournament_id", id)
+      .eq("is_reserve", false);
+
+    if (cerr) {
+      return NextResponse.json({ error: cerr.message }, { status: 500 });
+    }
+
+    const mainGenderCount = (mainRegs ?? []).filter(
+      (r: any) => String(r.p1_gender ?? "") === targetGender
+    ).length;
+
+    is_reserve = mainGenderCount >= maxPerSex;
+  } else {
+    const { count: mainCount, error: cerr } = await sb
+      .from("tournament_registrations")
+      .select("*", { count: "exact", head: true })
+      .eq("tournament_id", id)
+      .eq("is_reserve", false);
+
+    if (cerr) {
+      return NextResponse.json({ error: cerr.message }, { status: 500 });
+    }
+
+    is_reserve = (mainCount ?? 0) >= max;
+  }
 
   // posizione in coda
   const { data: lastPos, error: perr } = await sb

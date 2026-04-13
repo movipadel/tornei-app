@@ -15,6 +15,9 @@ import { buildNonMixedMatchPlan } from "./match-plan/buildNonMixedMatchPlan";
 import { packTurns } from "./packing/packTurns";
 import { validateSchedule } from "../validation/validateSchedule";
 import { buildTournamentAudit } from "../audit/buildTournamentAudit";
+import { buildNonMixed8MaratonaTurns } from "./presets/buildNonMixed8Maratona";
+import { buildNonMixed10EstesaTurns } from "./presets/buildNonMixed10Estesa";
+import { buildNonMixed12EstesaTurns } from "./presets/buildNonMixed12EstesaTurns";
 
 export function runBaraondaV2Engine(
   input: BaraondaInput
@@ -50,6 +53,60 @@ function runNonMixed(
   context: BaraondaContext,
   participants: Participant[]
 ): GenerateBaraondaV2Result {
+   if (
+    participants.length === 8 &&
+    context.formula === "maratona" &&
+    context.matchesPerPlayer === 7 &&
+    context.totalMatches === 14
+  ) {
+    const turns = buildNonMixed8MaratonaTurns(context, participants);
+    const validation = validateSchedule(context, turns, participants);
+    const audit = buildTournamentAudit(context, turns, validation);
+
+    return {
+      context,
+      turns,
+      validation,
+      audit,
+    };
+  }
+
+  if (
+    participants.length === 10 &&
+    context.formula === "estesa" &&
+    context.matchesPerPlayer === 8 &&
+    context.totalMatches === 20
+  ) {
+    const turns = buildNonMixed10EstesaTurns(context, participants);
+    const validation = validateSchedule(context, turns, participants);
+    const audit = buildTournamentAudit(context, turns, validation);
+
+    return {
+      context,
+      turns,
+      validation,
+      audit,
+    };
+  }
+
+    if (
+    participants.length === 12 &&
+    context.formula === "estesa" &&
+    context.matchesPerPlayer === 10 &&
+    context.totalMatches === 30
+  ) {
+    const turns = buildNonMixed12EstesaTurns(context, participants);
+    const validation = validateSchedule(context, turns, participants);
+    const audit = buildTournamentAudit(context, turns, validation);
+
+    return {
+      context,
+      turns,
+      validation,
+      audit,
+    };
+  }
+  
   const pairPlanResult = buildNonMixedPairPlan(context, participants);
 
   if (!pairPlanResult.ok || !pairPlanResult.pairPlan) {
@@ -85,7 +142,8 @@ function runNonMixed(
   const packResult = packTurns(
     matchPlanResult.matches,
     participants,
-    context.maxCourts
+    context.maxCourts,
+    "non_mixed"
   );
 
   if (!packResult.ok || !packResult.turns) {

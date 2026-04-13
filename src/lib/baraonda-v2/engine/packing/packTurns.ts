@@ -8,6 +8,7 @@ import type {
 
 type RestHistoryMap = Record<string, number[]>;
 type MatchPlayerIds = [string, string, string, string];
+type PackTurnsMode = "mixed" | "non_mixed";
 
 type TurnCombination = {
   matches: PlannedMatch[];
@@ -18,7 +19,8 @@ type TurnCombination = {
 export function packTurns(
   matches: PlannedMatch[],
   participants: Participant[],
-  maxCourts: number
+  maxCourts: number,
+  mode: PackTurnsMode = "mixed"
 ): PackTurnsResult {
   const issues: PackTurnsResult["issues"] = [];
 
@@ -47,7 +49,8 @@ export function packTurns(
       participants,
       normalizedMaxCourts,
       turnNumber,
-      restHistory
+      restHistory,
+      mode
     );
 
     if (!bestCombination || bestCombination.matches.length === 0) {
@@ -103,7 +106,8 @@ function pickBestTurnCombination(
   participants: Participant[],
   maxCourts: number,
   currentTurnNumber: number,
-  restHistory: RestHistoryMap
+  restHistory: RestHistoryMap,
+  mode: PackTurnsMode
 ): TurnCombination | null {
   const sortedMatches = [...matches].sort((a, b) => {
     const keyA = getPlannedMatchDeterministicKey(a);
@@ -127,11 +131,13 @@ function pickBestTurnCombination(
 
       const score = scoreTurnCombination(
         combination,
+        sortedMatches,
         participants,
         usedPlayerIds,
         currentTurnNumber,
         restHistory,
-        maxCourts
+        maxCourts,
+        mode
       );
 
       const candidate: TurnCombination = {
@@ -168,11 +174,13 @@ function isBetterCombination(
 
 function scoreTurnCombination(
   combination: PlannedMatch[],
+  allMatches: PlannedMatch[],
   participants: Participant[],
   usedPlayerIds: Set<string>,
   currentTurnNumber: number,
   restHistory: RestHistoryMap,
-  maxCourts: number
+  maxCourts: number,
+  mode: PackTurnsMode
 ): number {
   let score = 0;
 
@@ -231,7 +239,56 @@ function scoreTurnCombination(
   const maxProjectedRests = Math.max(...projectedRestCounts);
   score -= (maxProjectedRests - minProjectedRests) * 250;
 
-  // 8. Determinismo
+  // 8. Ottimizzazione SOLO per non-misto
+  if (mode === "non_mixed") {
+  // 1. privilegia match difficili (come già facevi)
+  for (const match of combination) {
+    const compatCount = countCompatibleMatches(match, allMatches);
+
+    if (compatCount <= 1) score += 2500;
+    else if (compatCount === 2) score += 1200;
+    else if (compatCount === 3) score += 250;
+  }
+
+  const remainingMatches = allMatches.filter(
+    (match) => !combination.includes(match)
+  );
+
+  // 2. penalità globale (già presente)
+  score -= estimateFuturePackingPenalty(remainingMatches);
+
+  // 🔥 3. NUOVA LOGICA — ANTI-ISOLAMENTO (CRITICA)
+  let isolatedPenalty = 0;
+
+  for (const match of remainingMatches) {
+    const compat = countCompatibleMatches(match, remainingMatches);
+
+    if (compat === 0) {
+      // match completamente isolato → disastro
+      isolatedPenalty += 2;
+    } else if (compat === 1) {
+      // quasi isolato → molto pericoloso
+      isolatedPenalty += 1;
+    }
+  }
+
+  score -= isolatedPenalty * 4000;
+
+  // 🔥 4. BONUS se il futuro è "compattabile"
+  let goodMatches = 0;
+
+  for (const match of remainingMatches) {
+    const compat = countCompatibleMatches(match, remainingMatches);
+
+    if (compat >= 3) {
+      goodMatches += 1;
+    }
+  }
+
+  score += goodMatches * 150;
+}
+
+  // 9. Determinismo
   score += deterministicCombinationTieBreaker(combination);
 
   return score;
@@ -298,6 +355,51 @@ function getPlannedMatchPlayerIds(match: PlannedMatch): MatchPlayerIds {
     match.team2.a.id,
     match.team2.b.id,
   ];
+}
+
+function arePlannedMatchesCompatible(
+  a: PlannedMatch,
+  b: PlannedMatch
+): boolean {
+  const aIds = new Set(getPlannedMatchPlayerIds(a));
+  const bIds = getPlannedMatchPlayerIds(b);
+
+  return bIds.every((id) => !aIds.has(id));
+}
+
+function countCompatibleMatches(
+  target: PlannedMatch,
+  matches: PlannedMatch[]
+): number {
+  let count = 0;
+
+  for (const other of matches) {
+    if (other === target) continue;
+
+    if (arePlannedMatchesCompatible(target, other)) {
+      count += 1;
+    }
+  }
+
+  return count;
+}
+
+function estimateFuturePackingPenalty(matches: PlannedMatch[]): number {
+  if (matches.length <= 1) {
+    return 0;
+  }
+
+  let penalty = 0;
+
+  for (const match of matches) {
+    const compatCount = countCompatibleMatches(match, matches);
+
+    if (compatCount === 0) penalty += 6000;
+    else if (compatCount === 1) penalty += 1500;
+    else if (compatCount === 2) penalty += 500;
+  }
+
+  return penalty;
 }
 
 function getPlannedMatchDeterministicKey(match: PlannedMatch): string {

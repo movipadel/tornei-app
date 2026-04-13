@@ -131,24 +131,31 @@ export async function DELETE(req: Request, ctx: { params: Promise<{ id: string }
   // 5) PROMOZIONE: solo se ho cancellato un MAIN
   let promoted: any = null;
 
-  if (!deletedWasReserve) {
-    // prendo prima riserva (position più bassa)
-    const { data: firstReserve, error: ferr } = await sb
+    if (!deletedWasReserve) {
+    const deletedGender = String((reg as any).p1_gender ?? "");
+    const isMixedBaraonda =
+      tType === "Baraonda" && String(tCat).toLowerCase() === "misto";
+
+    let reserveQuery = sb
       .from("tournament_registrations")
       .select("id,p1_name,p2_name,p1_gender,p2_gender")
       .eq("tournament_id", tournamentId)
-      .eq("is_reserve", true)
+      .eq("is_reserve", true);
+
+    if (isMixedBaraonda && (deletedGender === "M" || deletedGender === "F")) {
+      reserveQuery = reserveQuery.eq("p1_gender", deletedGender);
+    }
+
+    const { data: firstReserve, error: ferr } = await reserveQuery
       .order("position", { ascending: true })
       .limit(1)
       .maybeSingle();
 
     if (ferr) {
-      // non blocchiamo cancellazione, ma logghiamo
       console.warn("reserve fetch error:", ferr);
     }
 
     if (firstReserve?.id) {
-      // diventa MAIN
       const { error: uerr } = await sb
         .from("tournament_registrations")
         .update({ is_reserve: false })

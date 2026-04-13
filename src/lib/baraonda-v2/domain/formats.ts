@@ -19,19 +19,26 @@ export const NON_MIXED_FORMULA_MATCHES_PER_PLAYER: Record<
 > = {
   4: { maratona: 3 },
   5: { maratona: 4 },
-  6: { bilanciata: 6 },
-  7: { estesa: 8 },
-  8: { maratona: 7 },
-  9: { bilanciata: 8 },
-  10: { bilanciata: 8 },
+
+  6: { snella: 4, estesa: 6 },
+  7: { snella: 4, estesa: 8 },
+
+  8: { snella: 4, maratona: 7 },
+  9: { snella: 4, maratona: 8 },
+
+  10: { snella: 4, estesa: 8 },
 
   11: { snella: 4, bilanciata: 8, estesa: 12 },
   12: { snella: 6, bilanciata: 8, estesa: 10 },
+
   13: { bilanciata: 8, estesa: 12, maratona: 16 },
+
   14: { snella: 6, bilanciata: 8, estesa: 10 },
   15: { snella: 4, bilanciata: 8, estesa: 12 },
   16: { snella: 6, bilanciata: 8, estesa: 10 },
+
   17: { bilanciata: 8, estesa: 12, maratona: 16 },
+
   18: { bilanciata: 8, estesa: 10, maratona: 12 },
   19: { bilanciata: 8, estesa: 12, maratona: 16 },
   20: { bilanciata: 8, estesa: 10, maratona: 12 },
