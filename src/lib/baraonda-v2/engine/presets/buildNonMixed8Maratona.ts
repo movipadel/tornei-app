@@ -160,6 +160,33 @@ function bestPairingOfFourPairs(
   return options[0].order;
 }
 
+function cloneMatch(match: TurnMatch, matchNumber = 1): TurnMatch {
+  return {
+    matchNumber,
+    players: [...match.players] as [Participant, Participant, Participant, Participant],
+  };
+}
+
+function expandTurnsForCourts(turns: Turn[], maxCourts: number): Turn[] {
+  if (maxCourts >= 2) return turns;
+
+  const expanded: Turn[] = [];
+  let nextTurnNumber = 1;
+
+  for (const turn of turns) {
+    for (const match of turn.matches) {
+      expanded.push({
+        turnNumber: nextTurnNumber,
+        matches: [cloneMatch(match, 1)],
+        resting: [...turn.resting],
+      });
+      nextTurnNumber += 1;
+    }
+  }
+
+  return expanded;
+}
+
 export function buildNonMixed8MaratonaTurns(
   context: BaraondaContext,
   participants: Participant[]
@@ -269,5 +296,5 @@ export function buildNonMixed8MaratonaTurns(
     }
   }
 
-  return turns;
+  return expandTurnsForCourts(turns, context.maxCourts);
 }

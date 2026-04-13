@@ -990,12 +990,16 @@ const hasSelectableProtectedFormula =
 
 const showFormulaSelector =
   !isProtectedCase || hasSelectableProtectedFormula;
-  const selectedFormula =
-    baraondaFormulaById[tid] ||
-    getDefaultBaraondaFormulaV2({
-      players: mainCount,
-      category: String(t.category ?? "libero").toLowerCase(),
-    });
+  const defaultFormula = getDefaultBaraondaFormulaV2({
+  players: mainCount,
+  category: String(t.category ?? "libero").toLowerCase(),
+});
+
+const rawSelectedFormula = baraondaFormulaById[tid] || defaultFormula;
+
+const selectedFormula = formulaOptions.some((o) => o.value === rawSelectedFormula)
+  ? rawSelectedFormula
+  : defaultFormula;
   const selectedFormulaOption = formulaOptions.find((o) => o.value === selectedFormula) ?? null;
   const preview = getBaraondaCardPreview({
   players: mainCount,

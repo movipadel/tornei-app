@@ -181,6 +181,46 @@ function bestPairingOfSixPairs(
   return best;
 }
 
+function cloneMatch(match: TurnMatch, matchNumber: number): TurnMatch {
+  return {
+    matchNumber,
+    players: [...match.players] as [Participant, Participant, Participant, Participant],
+  };
+}
+
+function chunkMatches(matches: TurnMatch[], size: number): TurnMatch[][] {
+  const out: TurnMatch[][] = [];
+
+  for (let i = 0; i < matches.length; i += size) {
+    out.push(matches.slice(i, i + size));
+  }
+
+  return out;
+}
+
+function expandTurnsForCourts(turns: Turn[], maxCourts: number): Turn[] {
+  if (maxCourts >= 3) return turns;
+
+  const matchesPerExpandedTurn = Math.max(1, Math.min(3, maxCourts));
+  const expanded: Turn[] = [];
+  let nextTurnNumber = 1;
+
+  for (const turn of turns) {
+    const chunks = chunkMatches(turn.matches, matchesPerExpandedTurn);
+
+    for (const chunk of chunks) {
+      expanded.push({
+        turnNumber: nextTurnNumber,
+        matches: chunk.map((match, idx) => cloneMatch(match, idx + 1)),
+        resting: [...turn.resting],
+      });
+      nextTurnNumber += 1;
+    }
+  }
+
+  return expanded;
+}
+
 export function buildNonMixed12EstesaTurns(
   context: BaraondaContext,
   participants: Participant[]
@@ -279,5 +319,5 @@ export function buildNonMixed12EstesaTurns(
     }
   }
 
-  return turns;
+  return expandTurnsForCourts(turns, context.maxCourts);
 }

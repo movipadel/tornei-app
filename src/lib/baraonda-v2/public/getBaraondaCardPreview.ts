@@ -1,9 +1,11 @@
-import { generateBaraondaV2 } from "./generateBaraondaV2";
 import type {
   BaraondaCategory,
   BaraondaFormula,
-  Participant,
 } from "../domain/types";
+import {
+  BARAONDA_CARD_PREVIEW_DATA,
+  type BaraondaCardPreviewDataEntry,
+} from "./card-preview-data";
 
 export type BaraondaCardPreview = {
   ok: boolean;
@@ -24,30 +26,13 @@ function toFormulaLabel(value: BaraondaFormula | null): string {
   return "-";
 }
 
-function buildSyntheticParticipants(
-  players: number,
-  category: BaraondaCategory
-): Participant[] {
-  if (category === "misto") {
-    const perSex = players / 2;
-    const males: Participant[] = Array.from({ length: perSex }, (_, i) => ({
-      id: `m-${i + 1}`,
-      name: `M ${i + 1}`,
-      sex: "m",
-    }));
-    const females: Participant[] = Array.from({ length: perSex }, (_, i) => ({
-      id: `f-${i + 1}`,
-      name: `F ${i + 1}`,
-      sex: "f",
-    }));
-    return [...males, ...females];
-  }
+function normalizeCategory(raw: string): BaraondaCategory {
+  const value = String(raw ?? "libero").toLowerCase();
 
-  return Array.from({ length: players }, (_, i) => ({
-    id: `p-${i + 1}`,
-    name: `P ${i + 1}`,
-    sex: "m",
-  }));
+  if (value === "misto") return "misto";
+  if (value === "maschile") return "libero";
+  if (value === "femminile") return "libero";
+  return "libero";
 }
 
 export function getBaraondaCardPreview(params: {
@@ -57,37 +42,42 @@ export function getBaraondaCardPreview(params: {
   maxCourts: number;
 }): BaraondaCardPreview | null {
   const players = Number(params.players || 0);
-  const rawCategory = String(params.category ?? "libero").toLowerCase();
-  const category: BaraondaCategory =
-    rawCategory === "misto"
-      ? "misto"
-      : rawCategory === "maschile"
-      ? "maschile"
-      : rawCategory === "femminile"
-      ? "femminile"
-      : "libero";
-
+  const category = normalizeCategory(params.category);
   const formula = (params.formula || null) as BaraondaFormula | null;
   const maxCourts = Math.max(1, Math.min(3, Math.floor(params.maxCourts || 1)));
 
   if (players < 4 || !formula) return null;
 
-  const participants = buildSyntheticParticipants(players, category);
-  const result = generateBaraondaV2({
-    category,
-    formula,
-    participants,
-    maxCourts,
-  });
+  const entry: BaraondaCardPreviewDataEntry | undefined =
+    BARAONDA_CARD_PREVIEW_DATA.find(
+      (item) =>
+        item.category === category &&
+        item.players === players &&
+        item.formula === formula &&
+        item.courts === maxCourts
+    );
+
+  if (!entry) {
+    return {
+      ok: false,
+      formula,
+      formulaLabel: toFormulaLabel(formula),
+      matchesPerPlayer: 0,
+      totalMatches: 0,
+      totalTurns: 0,
+      maxCourts,
+      validationSummary: "Preview non disponibile per questa configurazione.",
+    };
+  }
 
   return {
-    ok: result.validation.valid && result.audit.valid,
-    formula: result.context.formula,
-    formulaLabel: toFormulaLabel(result.context.formula),
-    matchesPerPlayer: result.context.matchesPerPlayer,
-    totalMatches: result.context.totalMatches,
-    totalTurns: result.turns.length,
-    maxCourts,
-    validationSummary: result.validation.summary,
+    ok: entry.valid,
+    formula,
+    formulaLabel: toFormulaLabel(formula),
+    matchesPerPlayer: entry.matchesPerPlayer,
+    totalMatches: entry.totalMatches,
+    totalTurns: entry.totalTurns,
+    maxCourts: entry.courts,
+    validationSummary: entry.summary,
   };
 }
