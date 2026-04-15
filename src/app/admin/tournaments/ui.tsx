@@ -826,8 +826,6 @@ async function reopenTournamentRegistrations(tournamentId: string) {
 
     <a
   href={`/api/admin/tournaments/${tid}/poster`}
-  target="_blank"
-  rel="noreferrer"
   className="base44-icon-btn"
   title="Scarica locandina"
 >
