@@ -137,6 +137,7 @@ export default function AdminTournamentsUI() {
   >({});
 
   const [startingById, setStartingById] = useState<Record<string, boolean>>({});
+  const [posterLoadingById, setPosterLoadingById] = useState<Record<string, boolean>>({});
   // Baraonda courts preset: 0 = Auto, 1..3 = campi scelti
 const [baraondaCourtsById, setBaraondaCourtsById] = useState<Record<string, number>>({});
 const [baraondaFormulaById, setBaraondaFormulaById] = useState<
@@ -341,6 +342,60 @@ async function reopenTournamentRegistrations(tournamentId: string) {
   }
 }
 
+async function handlePosterMobile(tournamentId: string, tournamentName?: string | null) {
+  try {
+    setPosterLoadingById((p) => ({ ...p, [tournamentId]: true }));
+
+    const res = await fetch(`/api/admin/tournaments/${tournamentId}/poster`, {
+      method: "GET",
+      cache: "no-store",
+    });
+
+    if (!res.ok) {
+      const json = await res.json().catch(() => ({}));
+      throw new Error((json as any).error || "Errore generazione locandina");
+    }
+
+    const blob = await res.blob();
+
+    const safeName = String(tournamentName ?? "locandina")
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}]+/gu, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 80);
+
+    const file = new File([blob], `locandina-${safeName || tournamentId}.png`, {
+      type: "image/png",
+    });
+
+    if (
+      typeof navigator !== "undefined" &&
+      "share" in navigator &&
+      typeof (navigator as any).canShare === "function" &&
+      (navigator as any).canShare({ files: [file] })
+    ) {
+      await navigator.share({
+        files: [file],
+        title: "Locandina torneo",
+      });
+      return;
+    }
+
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `locandina-${safeName || tournamentId}.png`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+  } catch (e: any) {
+    if (e?.name === "AbortError") return;
+    toast.error(e?.message ?? "Errore download locandina");
+  } finally {
+    setPosterLoadingById((p) => ({ ...p, [tournamentId]: false }));
+  }
+}
   async function openFixedPairsWizardFromServer(t: any, tid: string) {
     if (fixedWizardLoading) return;
 
@@ -824,13 +879,19 @@ async function reopenTournamentRegistrations(tournamentId: string) {
       <Download className="w-5 h-5" />
     </a>
 
-    <a
-  href={`/api/admin/tournaments/${tid}/poster`}
+    <button
+  type="button"
   className="base44-icon-btn"
-  title="Scarica locandina"
+  title="Condividi o salva locandina"
+  onClick={() => handlePosterMobile(tid, t.name)}
+  disabled={!!posterLoadingById[tid]}
 >
-  <ImagePlus className="w-5 h-5" />
-</a>
+  {posterLoadingById[tid] ? (
+    <Loader2 className="w-5 h-5 animate-spin" />
+  ) : (
+    <ImagePlus className="w-5 h-5" />
+  )}
+</button>
 
     <button
       className="base44-icon-btn"
