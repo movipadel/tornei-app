@@ -7,6 +7,11 @@ const withPWA = nextPwa({
 });
 
 const nextConfig: NextConfig = {
+  serverExternalPackages: [
+    "@resvg/resvg-js",
+    "@resvg/resvg-js-win32-x64-msvc",
+  ],
+
   async redirects() {
     return [
       {

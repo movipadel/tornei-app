@@ -32,6 +32,7 @@ import {
   Loader2,
   ArrowUpRight,
   ArrowDownRight,
+  ImagePlus,
 } from "lucide-react";
 
 import TournamentDialogForm, { TournamentDTO } from "./_components/TournamentDialogForm";
@@ -698,6 +699,18 @@ async function reopenTournamentRegistrations(tournamentId: string) {
       </span>
     </a>
 
+    <a
+  className="base44-csv-btn"
+  href={`/api/admin/tournaments/${tid}/poster`}
+  target="_blank"
+  rel="noreferrer"
+>
+  <span style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>
+    <ImagePlus className="w-4 h-4" />
+    Locandina
+  </span>
+</a>
+
     <button
       className="base44-icon-btn"
       title="Modifica"
@@ -810,6 +823,16 @@ async function reopenTournamentRegistrations(tournamentId: string) {
     >
       <Download className="w-5 h-5" />
     </a>
+
+    <a
+  href={`/api/admin/tournaments/${tid}/poster`}
+  target="_blank"
+  rel="noreferrer"
+  className="base44-icon-btn"
+  title="Scarica locandina"
+>
+  <ImagePlus className="w-5 h-5" />
+</a>
 
     <button
       className="base44-icon-btn"
