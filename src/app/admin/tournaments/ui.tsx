@@ -346,7 +346,7 @@ async function handlePosterMobile(tournamentId: string) {
   try {
     setPosterLoadingById((p) => ({ ...p, [tournamentId]: true }));
 
-    const url = `/api/admin/tournaments/${tournamentId}/poster`;
+    const url = `/api/admin/tournaments/${tournamentId}/poster?disposition=inline`;
     window.open(url, "_blank");
   } catch (e: any) {
     toast.error(e?.message ?? "Errore apertura locandina");

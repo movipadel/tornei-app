@@ -283,10 +283,17 @@ export async function GET(
       .replace(/^-+|-+$/g, "")
       .slice(0, 80);
 
+        const url = new URL(req.url);
+    const dispositionMode = url.searchParams.get("disposition");
+    const contentDisposition =
+      dispositionMode === "inline"
+        ? `inline; filename="locandina-${safeName || id}.png"`
+        : `attachment; filename="locandina-${safeName || id}.png"`;
+
     return new NextResponse(pngBytes, {
       headers: {
         "Content-Type": "image/png",
-        "Content-Disposition": `attachment; filename="locandina-${safeName || id}.png"`,
+        "Content-Disposition": contentDisposition,
         "Cache-Control": "no-store",
       },
     });
