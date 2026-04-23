@@ -64,6 +64,54 @@ function parseMaxParticipants(body: any): number {
   return 0;
 }
 
+async function validateCircuitCompatibility(params: {
+  sb: ReturnType<typeof supabaseAdmin>;
+  circuitId: string | null;
+  type: LegacyType;
+  category: LegacyCategory;
+  level: string | null;
+}) {
+  const { sb, circuitId, type, category, level } = params;
+
+  if (!circuitId) return;
+
+  const { data: circuit, error: circuitErr } = await sb
+    .from("circuits")
+    .select("id,name,tournament_type")
+    .eq("id", circuitId)
+    .single();
+
+  if (circuitErr || !circuit) {
+    throw new Error("Circuito non trovato");
+  }
+
+  if (circuit.tournament_type !== type) {
+    throw new Error("Il circuito selezionato non è compatibile con il tipo torneo");
+  }
+
+  const effectiveLevel = level ? String(level).trim() : null;
+  if (!effectiveLevel) {
+    throw new Error("Per associare un torneo a un circuito serve il livello");
+  }
+
+  const { data: rankingGroup, error: groupErr } = await sb
+    .from("circuit_ranking_groups")
+    .select("id")
+    .eq("circuit_id", circuitId)
+    .eq("category", category)
+    .eq("level", effectiveLevel)
+    .limit(1)
+    .maybeSingle();
+
+  if (groupErr) {
+    throw new Error(groupErr.message);
+  }
+
+  if (!rankingGroup) {
+    throw new Error("Il circuito selezionato non prevede la combinazione categoria/livello di questo torneo");
+  }
+}
+
 export async function GET(req: Request) {
   const denied = await guardAdmin(req);
   if (denied) return denied;
@@ -74,7 +122,7 @@ export async function GET(req: Request) {
   // 1) tornei
   const { data, error } = await sb
     .from("tournaments")
-    .select("id,name,type,category,date,time,location,max_participants,registrations_open,image_url,level,show_participants,created_at,updated_at")
+    .select("id,name,type,category,date,time,location,max_participants,registrations_open,image_url,level,show_participants,circuit_id,created_at,updated_at")
     .order("date", { ascending: true })
     .order("time", { ascending: true });
 
@@ -88,31 +136,47 @@ export async function GET(req: Request) {
     // 3) runs per tutti i tornei (per capire se il torneo è già stato generato)
   const { data: runs, error: runErr } = await sb
     .from("tournament_runs")
-    .select("id,tournament_id,created_at")
+    .select("id,tournament_id,status,created_at")
     .in("tournament_id", ids);
 
   if (runErr) return NextResponse.json({ error: runErr.message }, { status: 500 });
 
   // per ogni torneo: has_run + active_run_id (run più recente)
-  const runInfoByTournament: Record<string, { has_run: boolean; active_run_id: string | null; runs_count: number }> = {};
-  for (const tid of ids) runInfoByTournament[tid] = { has_run: false, active_run_id: null, runs_count: 0 };
+  const runInfoByTournament: Record<
+  string,
+  {
+    has_run: boolean;
+    active_run_id: string | null;
+    runs_count: number;
+    run_status: string | null;
+  }
+> = {};
 
+for (const tid of ids) {
+  runInfoByTournament[tid] = {
+    has_run: false,
+    active_run_id: null,
+    runs_count: 0,
+    run_status: null,
+  };
+}
   const latestTsByTournament: Record<string, number> = {};
   for (const tid of ids) latestTsByTournament[tid] = 0;
 
   for (const r of runs ?? []) {
-    const tid = String((r as any).tournament_id ?? "");
-    if (!tid || !runInfoByTournament[tid]) continue;
+  const tid = String((r as any).tournament_id ?? "");
+  if (!tid || !runInfoByTournament[tid]) continue;
 
-    runInfoByTournament[tid].has_run = true;
-    runInfoByTournament[tid].runs_count += 1;
+  runInfoByTournament[tid].has_run = true;
+  runInfoByTournament[tid].runs_count += 1;
 
-    const ts = (r as any).created_at ? new Date((r as any).created_at).getTime() : 0;
-    if (ts >= (latestTsByTournament[tid] ?? 0)) {
-      latestTsByTournament[tid] = ts;
-      runInfoByTournament[tid].active_run_id = String((r as any).id);
-    }
+  const ts = (r as any).created_at ? new Date((r as any).created_at).getTime() : 0;
+  if (ts >= (latestTsByTournament[tid] ?? 0)) {
+    latestTsByTournament[tid] = ts;
+    runInfoByTournament[tid].active_run_id = String((r as any).id);
+    runInfoByTournament[tid].run_status = (r as any).status ?? null;
   }
+}
 
   const { data: regs, error: rerr } = await sb
     .from("tournament_registrations")
@@ -138,12 +202,13 @@ export async function GET(req: Request) {
   }
 
     const out = tournaments.map((t) => ({
-    ...t,
-    counts: counts[t.id] ?? { main: 0, reserve: 0, male: 0, female: 0 },
-    has_run: runInfoByTournament[t.id]?.has_run ?? false,
-    active_run_id: runInfoByTournament[t.id]?.active_run_id ?? null,
-    runs_count: runInfoByTournament[t.id]?.runs_count ?? 0,
-  }));
+  ...t,
+  counts: counts[t.id] ?? { main: 0, reserve: 0, male: 0, female: 0 },
+  has_run: runInfoByTournament[t.id]?.has_run ?? false,
+  active_run_id: runInfoByTournament[t.id]?.active_run_id ?? null,
+  runs_count: runInfoByTournament[t.id]?.runs_count ?? 0,
+  run_status: runInfoByTournament[t.id]?.run_status ?? null,
+}));
 
   return NextResponse.json({ data: out });
 }
@@ -175,24 +240,52 @@ if (denied) return denied;
     return NextResponse.json({ error: "Numero massimo partecipanti obbligatorio" }, { status: 400 });
   }
 
-  const payload: any = {
-    name,
+  const level =
+  body?.level !== undefined && body?.level !== null
+    ? String(body.level).trim()
+    : null;
+
+const circuitId =
+  typeof body?.circuit_id === "string" && body.circuit_id.trim()
+    ? body.circuit_id.trim()
+    : null;
+
+  const sb = supabaseAdmin();
+
+try {
+  await validateCircuitCompatibility({
+    sb,
+    circuitId,
     type,
     category,
-    location: body?.location ? String(body.location).trim() : null,
-    date,
-    time,
-    max_participants: maxParticipants,
-    notes: body?.notes ? String(body.notes) : null,
-    show_participants: Boolean(body?.show_participants),
-    updated_at: new Date().toISOString(),
-  };
+    level,
+  });
+} catch (e: any) {
+  return NextResponse.json(
+    { error: e?.message ?? "Circuito non compatibile con il torneo" },
+    { status: 400 }
+  );
+}
+
+  const payload: any = {
+  name,
+  type,
+  category,
+  location: body?.location ? String(body.location).trim() : null,
+  date,
+  time,
+  max_participants: maxParticipants,
+  notes: body?.notes ? String(body.notes) : null,
+  show_participants: Boolean(body?.show_participants),
+  circuit_id: circuitId,
+  updated_at: new Date().toISOString(),
+};
 
   // opzionali (se colonna esiste)
   if (body?.image_url !== undefined) payload.image_url = body.image_url || null;
-  if (body?.level !== undefined) payload.level = body.level || null;
+  if (body?.level !== undefined) payload.level = level || null;
 
-  const sb = supabaseAdmin();
+  
   const { data, error } = await sb.from("tournaments").insert(payload).select("id").single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

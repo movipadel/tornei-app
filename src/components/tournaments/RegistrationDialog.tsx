@@ -9,8 +9,8 @@ import { Loader2, User as UserIcon, Users as UsersIcon } from "lucide-react";
 type Tournament = {
   id: string;
   name: string;
-  type: string;     // "Baraonda" | "Coppie fisse"
-  category: string; // "Maschile" | "Femminile" | "Misto" | "Libero"
+  type: string;
+  category: string;
 };
 
 type User = {
@@ -43,11 +43,9 @@ export default function RegistrationDialog({
   const [saving, setSaving] = useState(false);
 
   const [formData, setFormData] = useState({
-    p1_name: "",
-    p1_phone: "",
-    p1_gender: "M" as "M" | "F",
     p2_name: "",
     p2_phone: "",
+    p2_gender: "M" as "M" | "F",
   });
 
   const isCouple = useMemo(() => tournament?.type === "Coppie fisse", [tournament?.type]);
@@ -56,32 +54,21 @@ export default function RegistrationDialog({
   useEffect(() => {
     if (!open || !tournament) return;
 
-    // default gender by category if not loggato
-    const defaultGender: "M" | "F" =
+    const defaultP2Gender: "M" | "F" =
       tournament.category === "Femminile" ? "F" : "M";
 
-    // se loggato: prefill
-    if (user) {
-      setFormData((prev) => ({
-        ...prev,
-        p1_name: user.full_name ?? "",
-        p1_phone: user.phone ?? "",
-        p1_gender: user.gender ?? defaultGender,
-        p2_name: "",
-        p2_phone: "",
-      }));
-    } else {
-      setFormData((prev) => ({
-        ...prev,
-        p1_gender: defaultGender,
-      }));
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, tournament?.id, user?.id]);
+    setFormData({
+      p2_name: "",
+      p2_phone: "",
+      p2_gender: defaultP2Gender,
+    });
+  }, [open, tournament?.id]);
 
   if (!tournament) return null;
-  const tournamentId = tournament.id;
+  if (!user) return null;
 
+  const tournamentId = tournament.id;
+  const currentUser = user;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -91,9 +78,9 @@ export default function RegistrationDialog({
       setSaving(true);
 
       const payload: any = {
-        p1_name: formData.p1_name.trim().toUpperCase(),
-        p1_phone: normalizePhone(formData.p1_phone),
-        p1_gender: isMisto ? formData.p1_gender : null,
+        p1_name: currentUser.full_name.trim().toUpperCase(),
+        p1_phone: normalizePhone(currentUser.phone),
+        p1_gender: isMisto ? currentUser.gender : null,
       };
 
       if (!payload.p1_name) throw new Error("Nome obbligatorio");
@@ -102,6 +89,7 @@ export default function RegistrationDialog({
       if (isCouple) {
         payload.p2_name = formData.p2_name.trim().toUpperCase();
         payload.p2_phone = normalizePhone(formData.p2_phone);
+        payload.p2_gender = formData.p2_gender;
 
         if (!payload.p2_name) throw new Error("Nome giocatore 2 obbligatorio");
         if (!payload.p2_phone) throw new Error("Telefono giocatore 2 obbligatorio");
@@ -138,59 +126,33 @@ export default function RegistrationDialog({
             {isCouple ? "Giocatore 1" : "I tuoi dati"}
           </div>
 
-          <div>
-            <div style={{ fontWeight: 700, marginBottom: 6 }}>Nome e Cognome</div>
-            <input
-              className="base44-input"
-              value={formData.p1_name}
-              onChange={(e) => setFormData({ ...formData, p1_name: e.target.value })}
-              required
-            />
-          </div>
-
-          <div>
-            <div style={{ fontWeight: 700, marginBottom: 6 }}>Telefono</div>
-            <input
-              className="base44-input"
-              value={formData.p1_phone}
-              onChange={(e) => setFormData({ ...formData, p1_phone: e.target.value })}
-              required
-            />
-          </div>
-
-          {isMisto ? (
-            <div>
-              <div style={{ fontWeight: 700, marginBottom: 6 }}>Sesso</div>
-              <div style={{ display: "flex", gap: 10 }}>
-                <button
-                  type="button"
-                  className="base44-csv-btn"
-                  style={{
-                    borderColor: formData.p1_gender === "M" ? "#c7d2fe" : "#e2e8f0",
-                    background: formData.p1_gender === "M" ? "#eef2ff" : "#fff",
-                    color: formData.p1_gender === "M" ? "#4338ca" : "#334155",
-                  }}
-                  onClick={() => setFormData({ ...formData, p1_gender: "M" })}
-                >
-                  Uomo
-                </button>
-                <button
-                  type="button"
-                  className="base44-csv-btn"
-                  style={{
-                    borderColor: formData.p1_gender === "F" ? "#c7d2fe" : "#e2e8f0",
-                    background: formData.p1_gender === "F" ? "#eef2ff" : "#fff",
-                    color: formData.p1_gender === "F" ? "#4338ca" : "#334155",
-                  }}
-                  onClick={() => setFormData({ ...formData, p1_gender: "F" })}
-                >
-                  Donna
-                </button>
-              </div>
+          <div
+            style={{
+              background: "#f8fafc",
+              border: "1px solid #e2e8f0",
+              borderRadius: 14,
+              padding: "12px 14px",
+              display: "flex",
+              flexDirection: "column",
+              gap: 6,
+            }}
+          >
+            <div style={{ fontWeight: 800, color: "#0f172a" }}>
+              {currentUser.full_name}
             </div>
-          ) : null}
 
-          {isCouple ? (
+            <div style={{ color: "#475569", fontSize: 14 }}>
+              {currentUser.phone}
+            </div>
+
+            {isMisto && (
+              <div style={{ color: "#475569", fontSize: 14 }}>
+                {currentUser.gender === "M" ? "Uomo" : "Donna"}
+              </div>
+            )}
+          </div>
+
+          {isCouple && (
             <div style={{ marginTop: 8, paddingTop: 12, borderTop: "1px solid #e2e8f0" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, color: "#4f46e5", fontWeight: 800 }}>
                 <UsersIcon className="w-4 h-4" />
@@ -217,15 +179,50 @@ export default function RegistrationDialog({
                     required
                   />
                 </div>
+
+                <div>
+                  <div style={{ fontWeight: 700, marginBottom: 6 }}>Sesso</div>
+                  <div style={{ display: "flex", gap: 10 }}>
+                    <button
+                      type="button"
+                      className="base44-csv-btn"
+                      style={{
+                        borderColor: formData.p2_gender === "M" ? "#c7d2fe" : "#e2e8f0",
+                        background: formData.p2_gender === "M" ? "#eef2ff" : "#fff",
+                      }}
+                      onClick={() => setFormData({ ...formData, p2_gender: "M" })}
+                    >
+                      Uomo
+                    </button>
+
+                    <button
+                      type="button"
+                      className="base44-csv-btn"
+                      style={{
+                        borderColor: formData.p2_gender === "F" ? "#c7d2fe" : "#e2e8f0",
+                        background: formData.p2_gender === "F" ? "#eef2ff" : "#fff",
+                      }}
+                      onClick={() => setFormData({ ...formData, p2_gender: "F" })}
+                    >
+                      Donna
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
-          ) : null}
+          )}
 
           <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 8 }}>
             <button type="button" className="base44-csv-btn" onClick={onClose}>
               Annulla
             </button>
-            <button className="base44-primary-btn" type="submit" disabled={saving} style={{ opacity: saving ? 0.75 : 1 }}>
+
+            <button
+              className="base44-primary-btn"
+              type="submit"
+              disabled={saving}
+              style={{ opacity: saving ? 0.75 : 1 }}
+            >
               {saving ? (
                 <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
                   <Loader2 className="w-4 h-4 animate-spin" /> Iscrizione...

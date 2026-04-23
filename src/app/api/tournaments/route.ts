@@ -30,6 +30,7 @@ export async function GET(_req: Request) {
       type,
       category,
       level,
+      circuit_id,
       date,
       time,
       location,

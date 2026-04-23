@@ -58,6 +58,54 @@ function parseMaxParticipants(body: any): number {
   return 0;
 }
 
+async function validateCircuitCompatibility(params: {
+  sb: ReturnType<typeof supabaseAdmin>;
+  circuitId: string | null;
+  type: LegacyType;
+  category: LegacyCategory;
+  level: string | null;
+}) {
+  const { sb, circuitId, type, category, level } = params;
+
+  if (!circuitId) return;
+
+  const { data: circuit, error: circuitErr } = await sb
+    .from("circuits")
+    .select("id,name,tournament_type")
+    .eq("id", circuitId)
+    .single();
+
+  if (circuitErr || !circuit) {
+    throw new Error("Circuito non trovato");
+  }
+
+  if (circuit.tournament_type !== type) {
+    throw new Error("Il circuito selezionato non è compatibile con il tipo torneo");
+  }
+
+  const effectiveLevel = level ? String(level).trim() : null;
+  if (!effectiveLevel) {
+    throw new Error("Per associare un torneo a un circuito serve il livello");
+  }
+
+  const { data: rankingGroup, error: groupErr } = await sb
+    .from("circuit_ranking_groups")
+    .select("id")
+    .eq("circuit_id", circuitId)
+    .eq("category", category)
+    .eq("level", effectiveLevel)
+    .limit(1)
+    .maybeSingle();
+
+  if (groupErr) {
+    throw new Error(groupErr.message);
+  }
+
+  if (!rankingGroup) {
+    throw new Error("Il circuito selezionato non prevede la combinazione categoria/livello di questo torneo");
+  }
+}
+
 export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const denied = await guardAdmin(req);
   if (denied) return denied;
@@ -66,7 +114,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
 
   const { data, error } = await sb
     .from("tournaments")
-    .select("id,name,type,category,level,location,date,time,max_participants,image_url,show_participants,created_at,updated_at")
+    .select("id,name,type,category,level,location,date,time,max_participants,image_url,show_participants,circuit_id,created_at,updated_at")
     .eq("id", id)
     .single();
 
@@ -102,26 +150,53 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     return NextResponse.json({ error: "Max partecipanti non valido" }, { status: 400 });
   }
 
-    const payload: any = {
-    name,
+  const level =
+  body?.level !== undefined && body?.level !== null
+    ? String(body.level).trim()
+    : null;
+
+const circuitId =
+  typeof body?.circuit_id === "string" && body.circuit_id.trim()
+    ? body.circuit_id.trim()
+    : null;
+
+    const sb = supabaseAdmin();
+
+try {
+  await validateCircuitCompatibility({
+    sb,
+    circuitId,
     type,
     category,
-    date,
-    time,
-    max_participants: maxParticipants,
-    location: body?.location ? String(body.location).trim() : null,
-    show_participants: Boolean(body?.show_participants), // ✅ NEW
-    updated_at: new Date().toISOString(),
-  };
+    level,
+  });
+} catch (e: any) {
+  return NextResponse.json(
+    { error: e?.message ?? "Circuito non compatibile con il torneo" },
+    { status: 400 }
+  );
+}
+
+    const payload: any = {
+  name,
+  type,
+  category,
+  date,
+  time,
+  max_participants: maxParticipants,
+  location: body?.location ? String(body.location).trim() : null,
+  show_participants: Boolean(body?.show_participants),
+  circuit_id: circuitId,
+  updated_at: new Date().toISOString(),
+};
   
   if (body?.show_participants !== undefined) {
     payload.show_participants = Boolean(body.show_participants);
   }
 
-  if (body?.level !== undefined) payload.level = body.level || null;
+  if (body?.level !== undefined) payload.level = level || null;
   if (body?.image_url !== undefined) payload.image_url = body.image_url || null;
 
-  const sb = supabaseAdmin();
   const { data, error } = await sb.from("tournaments").update(payload).eq("id", id).select("*").single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

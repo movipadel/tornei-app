@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Loader2, Trophy } from "lucide-react";
+import Link from "next/link";
 
 import PublicNav from "@/components/PublicNav";
 import TournamentCard, { PublicTournament } from "@/components/tournaments/TournamentCard";
@@ -31,6 +32,17 @@ type MyReg = {
   p2_phone?: string | null;
 };
 
+type PublicCircuit = {
+  id: string;
+  name: string;
+  slug: string;
+  tournament_type: string;
+  status: string;
+  ranking_groups_count: number;
+  played_stages_count: number;
+  rules_url: string | null;
+};
+
 const normalizePhone = (s: string) => String(s ?? "").replace(/\s+/g, "").trim();
 const isValidPhone = (p: string) => normalizePhone(p).length >= 8;
 
@@ -40,6 +52,7 @@ export default function HomePage() {
 
   const [tournaments, setTournaments] = useState<PublicTournament[]>([]);
   const [settings, setSettings] = useState<AppSettings | null>(null);
+  const [circuits, setCircuits] = useState<PublicCircuit[]>([]);
 
   // user session (opzionale)
   const [user, setUser] = useState<User | null>(null);
@@ -50,6 +63,7 @@ export default function HomePage() {
   const [myRegs, setMyRegs] = useState<MyReg[]>([]);
 
   const [selectedTournament, setSelectedTournament] = useState<PublicTournament | null>(null);
+  const [pendingTournament, setPendingTournament] = useState<PublicTournament | null>(null);
 
   const effectivePhone = user?.phone ? normalizePhone(user.phone) : normalizePhone(phone);
 
@@ -68,11 +82,12 @@ export default function HomePage() {
     if (!silent) setLoading(true);
 
     try {
-      const [tRes, sRes, meRes] = await Promise.all([
-        fetch("/api/tournaments", { cache: "no-store", signal: ac.signal }),
-        fetch("/api/app-settings", { cache: "no-store", signal: ac.signal }),
-        fetch("/api/user/me", { cache: "no-store", signal: ac.signal }),
-      ]);
+      const [tRes, sRes, meRes, cRes] = await Promise.all([
+  fetch("/api/tournaments", { cache: "no-store", signal: ac.signal }),
+  fetch("/api/app-settings", { cache: "no-store", signal: ac.signal }),
+  fetch("/api/user/me", { cache: "no-store", signal: ac.signal }),
+  fetch("/api/circuits", { cache: "no-store", signal: ac.signal }),
+]);
 
       const tJson = await tRes.json().catch(() => ({}));
       if (!tRes.ok) throw new Error(tJson.error || "Errore caricamento tornei");
@@ -84,6 +99,10 @@ export default function HomePage() {
 
       const meJson = await meRes.json().catch(() => ({}));
       setUser(meJson.user ?? null);
+
+      const cJson = await cRes.json().catch(() => ({}));
+if (cRes.ok) setCircuits((cJson.data ?? []) as PublicCircuit[]);
+else setCircuits([]);
     } catch (e: any) {
       // Abort = normale durante refresh/cleanup
       if (e?.name === "AbortError") return;
@@ -391,6 +410,297 @@ export default function HomePage() {
           </div>
         </div>
 
+               {circuits.length > 0 ? (
+          <div style={{ marginTop: 6, marginBottom: 6 }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 12,
+                marginBottom: 12,
+                flexWrap: "wrap",
+              }}
+            >
+              <div>
+                <div
+                  style={{
+                    fontWeight: 900,
+                    fontSize: "clamp(20px, 4vw, 26px)",
+                    color: "#0f172a",
+                    lineHeight: 1.1,
+                  }}
+                >
+                  Circuiti Movi
+                </div>
+                <div
+                  style={{
+                    color: "#64748b",
+                    marginTop: 4,
+                    fontWeight: 600,
+                    fontSize: 14,
+                  }}
+                >
+                  Consulta classifiche e risultati delle tappe in tempo reale
+                </div>
+              </div>
+            </div>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+                gap: 14,
+              }}
+            >
+              {circuits.map((c) => {
+  const isActive = String(c.status).toLowerCase() === "active";
+
+  return (
+    <div
+      key={c.id}
+      style={{
+        position: "relative",
+        overflow: "hidden",
+        borderRadius: 24,
+        padding: 18,
+        background: isActive
+          ? "linear-gradient(135deg, #312e81 0%, #4f46e5 55%, #6366f1 100%)"
+          : "linear-gradient(135deg, #334155 0%, #475569 100%)",
+        color: "white",
+        boxShadow: isActive
+          ? "0 18px 40px rgba(79,70,229,0.24)"
+          : "0 14px 30px rgba(51,65,85,0.18)",
+        border: "1px solid rgba(255,255,255,0.10)",
+      }}
+    >
+      <div
+        aria-hidden
+        style={{
+          position: "absolute",
+          inset: 0,
+          background:
+            "radial-gradient(circle at top right, rgba(255,255,255,0.16), transparent 34%)",
+          pointerEvents: "none",
+        }}
+      />
+
+      <div
+        style={{
+          position: "relative",
+          display: "flex",
+          flexDirection: "column",
+          gap: 12,
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 10,
+          }}
+        >
+          <span
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 8,
+              padding: "8px 12px",
+              borderRadius: 999,
+              background: "rgba(255,255,255,0.12)",
+              border: "1px solid rgba(255,255,255,0.16)",
+              fontWeight: 800,
+              fontSize: 13,
+            }}
+          >
+            🏆 Circuito
+          </span>
+
+          <span
+            style={{
+              padding: "7px 10px",
+              borderRadius: 999,
+              background: "rgba(255,255,255,0.12)",
+              border: "1px solid rgba(255,255,255,0.16)",
+              fontWeight: 800,
+              fontSize: 12,
+            }}
+          >
+            {isActive ? "Attivo" : "Chiuso"}
+          </span>
+        </div>
+
+        <div
+          style={{
+            fontWeight: 900,
+            fontSize: 24,
+            lineHeight: 1.05,
+            letterSpacing: -0.3,
+          }}
+        >
+          {c.name}
+        </div>
+
+        <div
+          style={{
+            color: "rgba(255,255,255,0.88)",
+            fontWeight: 700,
+            fontSize: 14,
+          }}
+        >
+          {c.tournament_type}
+        </div>
+
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+            gap: 10,
+            marginTop: 4,
+          }}
+        >
+          <div
+            style={{
+              borderRadius: 16,
+              padding: "12px 12px",
+              background: "rgba(255,255,255,0.10)",
+              border: "1px solid rgba(255,255,255,0.12)",
+            }}
+          >
+            <div
+              style={{
+                fontSize: 12,
+                fontWeight: 700,
+                color: "rgba(255,255,255,0.72)",
+                marginBottom: 4,
+              }}
+            >
+              Classifiche
+            </div>
+            <div style={{ fontSize: 22, fontWeight: 900 }}>
+              {c.ranking_groups_count}
+            </div>
+          </div>
+
+          <div
+            style={{
+              borderRadius: 16,
+              padding: "12px 12px",
+              background: "rgba(255,255,255,0.10)",
+              border: "1px solid rgba(255,255,255,0.12)",
+            }}
+          >
+            <div
+              style={{
+                fontSize: 12,
+                fontWeight: 700,
+                color: "rgba(255,255,255,0.72)",
+                marginBottom: 4,
+              }}
+            >
+              Tappe giocate
+            </div>
+            <div style={{ fontSize: 22, fontWeight: 900 }}>
+              {c.played_stages_count}
+            </div>
+          </div>
+        </div>
+
+        <div
+          style={{
+            marginTop: 6,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 12,
+            flexWrap: "wrap",
+          }}
+        >
+          <Link
+            href={`/circuiti/${c.slug}`}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 8,
+              fontWeight: 900,
+              fontSize: 14,
+              color: "#ffffff",
+              textDecoration: "none",
+            }}
+          >
+            Vedi classifica →
+          </Link>
+
+          {c.rules_url ? (
+            <a
+              href={c.rules_url}
+              target="_blank"
+              rel="noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                padding: "9px 12px",
+                borderRadius: 999,
+                background: "rgba(255,255,255,0.12)",
+                border: "1px solid rgba(255,255,255,0.16)",
+                color: "#ffffff",
+                fontWeight: 800,
+                fontSize: 13,
+                textDecoration: "none",
+              }}
+            >
+              Regolamento
+            </a>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+})}
+            </div>
+          </div>
+        ) : null}
+
+                {/* TORNEI */}
+        <div style={{ marginTop: 6, marginBottom: 6 }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 12,
+              marginBottom: 12,
+              flexWrap: "wrap",
+            }}
+          >
+            <div>
+              <div
+                style={{
+                  fontWeight: 900,
+                  fontSize: "clamp(20px, 4vw, 26px)",
+                  color: "#0f172a",
+                  lineHeight: 1.1,
+                }}
+              >
+                Tornei disponibili
+              </div>
+              <div
+                style={{
+                  color: "#64748b",
+                  marginTop: 4,
+                  fontWeight: 600,
+                  fontSize: 14,
+                }}
+              >
+                Iscriviti ai prossimi tornei oppure gestisci le tue iscrizioni
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* LIST */}
         {loadingMy ? (
           <div style={{ display: "flex", justifyContent: "center", padding: "18px 0" }}>
@@ -416,12 +726,19 @@ export default function HomePage() {
                   hasLive={!!t.hasLive}
                   status={status}
                   onRegister={(tt) => {
-                    if (user && !allowed) {
-                      toast.error("Non puoi iscriverti a questo torneo");
-                      return;
-                    }
-                    setSelectedTournament(tt);
-                  }}
+  if (!user) {
+    setPendingTournament(tt);
+    setUserDialogOpen(true);
+    return;
+  }
+
+  if (!allowed) {
+    toast.error("Non puoi iscriverti a questo torneo");
+    return;
+  }
+
+  setSelectedTournament(tt);
+}}
                   onCancel={() => cancelRegistrationByTournament(t.id)}
                 />
               );
@@ -443,13 +760,26 @@ export default function HomePage() {
         />
 
         <UserLoginDialog
-          open={userDialogOpen}
-          onClose={() => setUserDialogOpen(false)}
-          onSaved={(u) => {
-            setUser(u);
-            toast.success("Dati salvati");
-          }}
-        />
+  open={userDialogOpen}
+  onClose={() => {
+    setUserDialogOpen(false);
+    setPendingTournament(null);
+  }}
+  onSaved={async (u) => {
+    setUser(u);
+    toast.success("Dati salvati");
+
+    const tournamentToOpen = pendingTournament;
+
+    setUserDialogOpen(false);
+    setPendingTournament(null);
+
+    if (tournamentToOpen) {
+      setSelectedTournament(tournamentToOpen);
+      await searchMy(normalizePhone(u.phone));
+    }
+  }}
+/>
       </div>
     </div>
   );

@@ -8,7 +8,7 @@ export default function AdminHomePage() {
         <p className="text-sm text-slate-500">Pannello gestione</p>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <Link
           href="/admin/tournaments"
           className="rounded-lg border border-slate-200 bg-white p-4 hover:bg-slate-50"
@@ -23,6 +23,16 @@ export default function AdminHomePage() {
         >
           <div className="font-semibold">Iscrizioni</div>
           <div className="text-sm text-slate-500">Apri un torneo e gestisci le liste</div>
+        </Link>
+
+        <Link
+          href="/admin/circuits"
+          className="rounded-lg border border-slate-200 bg-white p-4 hover:bg-slate-50"
+        >
+          <div className="font-semibold">Circuiti</div>
+          <div className="text-sm text-slate-500">
+            Crea, configura e consulta classifiche e tappe dei circuiti
+          </div>
         </Link>
       </div>
     </div>

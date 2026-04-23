@@ -17,18 +17,20 @@ export type TournamentDTO = {
   max_participants: number;
   image_url?: string | null;
   show_participants?: boolean; // ✅ nuovo
+  circuit_id?: string | null;
 };
 
 type FormState = {
   name: string;
   type: "Baraonda" | "Coppie fisse";
   category: "Maschile" | "Femminile" | "Misto" | "Libero";
-  level: "principiante" | "intermedio" | "avanzato";
+  level: "principiante" | "intermedio" | "avanzato" | "open";
   date: string;
   time: string;
   location: string;
   max_participants: number;
   show_participants: boolean; // ✅ nuovo
+  circuit_id: string | null;
 };
 
 const DEFAULTS: FormState = {
@@ -41,6 +43,7 @@ const DEFAULTS: FormState = {
   location: "Movi Club Centallo",
   max_participants: 16,
   show_participants: false, // ✅ default OFF
+  circuit_id: null,
 };
 
 const LOCATIONS = [
@@ -65,6 +68,20 @@ export default function TournamentDialogForm({
   const [form, setForm] = useState<FormState>(DEFAULTS);
   const [saving, setSaving] = useState(false);
 
+  const [circuits, setCircuits] = useState<
+  Array<{
+    id: string;
+    name: string;
+    tournament_type: string;
+    circuit_ranking_groups?: Array<{
+      category: string;
+      level: string;
+    }>;
+  }>
+>([]);
+
+const [circuitsLoading, setCircuitsLoading] = useState(false);
+
   const isEdit = !!tournament?.id;
   const title = isEdit ? "Modifica Torneo" : "Nuovo Torneo";
 
@@ -83,11 +100,48 @@ export default function TournamentDialogForm({
         location: tournament.location ?? "Movi Club Centallo",
         max_participants: tournament.max_participants ?? 16,
         show_participants: Boolean((tournament as any).show_participants),
+        circuit_id: (tournament as any).circuit_id ?? null,
       });
     } else {
       setForm(DEFAULTS);
     }
   }, [tournament, open]);
+
+  useEffect(() => {
+  if (!open) return;
+
+  let cancelled = false;
+
+  async function loadCircuits() {
+    try {
+      setCircuitsLoading(true);
+
+      const res = await fetch("/api/admin/circuits", { cache: "no-store" });
+      const json = await res.json().catch(() => ({}));
+
+      if (!res.ok) throw new Error(json.error || "Errore caricamento circuiti");
+
+      if (!cancelled) {
+        setCircuits(Array.isArray(json.data) ? json.data : []);
+      }
+    } catch (e: any) {
+      if (!cancelled) {
+        setCircuits([]);
+        toast.error(e?.message ?? "Errore caricamento circuiti");
+      }
+    } finally {
+      if (!cancelled) setCircuitsLoading(false);
+    }
+  }
+
+  loadCircuits();
+
+  return () => {
+    cancelled = true;
+  };
+}, [open]);
+
+
 
   // Label “Amatoriale Coppie fisse” in UI, valore “Coppie fisse” in payload
   const typeOptions = useMemo(
@@ -97,6 +151,31 @@ export default function TournamentDialogForm({
     ],
     []
   );
+
+  const availableCircuits = useMemo(() => {
+  return circuits.filter((c) => {
+    if (c.tournament_type !== form.type) return false;
+
+    const groups = Array.isArray(c.circuit_ranking_groups) ? c.circuit_ranking_groups : [];
+
+    return groups.some(
+      (g) => g.category === form.category && g.level === form.level
+    );
+  });
+}, [circuits, form.type, form.category, form.level]);
+
+useEffect(() => {
+  if (!form.circuit_id) return;
+
+  const stillValid = availableCircuits.some((c) => c.id === form.circuit_id);
+
+  if (!stillValid) {
+    setForm((prev) => ({
+      ...prev,
+      circuit_id: null,
+    }));
+  }
+}, [availableCircuits, form.circuit_id]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -120,6 +199,7 @@ export default function TournamentDialogForm({
         time: form.time,
         max_participants: form.max_participants,
         show_participants: Boolean(form.show_participants), // ✅ nuovo
+        circuit_id: form.circuit_id,
       };
 
       const url = isEdit ? `/api/admin/tournaments/${tournament!.id}` : `/api/admin/tournaments`;
@@ -267,8 +347,36 @@ export default function TournamentDialogForm({
                   <option value="principiante">Principiante</option>
                   <option value="intermedio">Intermedio</option>
                   <option value="avanzato">Avanzato</option>
+                  <option value="open">Open</option>
                 </select>
               </div>
+
+              <div>
+  <div style={{ fontWeight: 800, marginBottom: 6 }}>Circuito</div>
+  <select
+    className="base44-input"
+    value={form.circuit_id ?? ""}
+    onChange={(e) =>
+      setForm({
+        ...form,
+        circuit_id: e.target.value || null,
+      })
+    }
+    disabled={circuitsLoading}
+    style={{ fontSize: 16 }}
+  >
+    <option value="">Nessun circuito</option>
+    {availableCircuits.map((c) => (
+  <option key={c.id} value={c.id}>
+    {c.name}
+  </option>
+))}
+  </select>
+
+  <div style={{ color: "#64748b", fontSize: 13, lineHeight: 1.25, marginTop: 6 }}>
+    Sono mostrati solo i circuiti compatibili con tipo, categoria e livello attualmente selezionati.
+  </div>
+</div>
 
                             {/* Mostra iscritti (solo nome) */}
               <div

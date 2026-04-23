@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Trophy, LogOut } from "lucide-react";
+import { Trophy, GitBranch } from "lucide-react";
 import { AdminLogoutButton } from "@/components/AdminLogoutButton";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -34,24 +34,39 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </Link>
 
             <div style={{ display: "inline-flex", alignItems: "center", gap: 16 }}>
-              <Link
-                href="/"
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 8,
-                  fontWeight: 700,
-                  color: "#475569",
-                  textDecoration: "none",
-                }}
-                title="Vai alla pagina iscrizioni"
-              >
-                Iscrizioni
-              </Link>
+  <Link
+    href="/admin/circuits"
+    style={{
+      display: "inline-flex",
+      alignItems: "center",
+      gap: 8,
+      fontWeight: 700,
+      color: "#475569",
+      textDecoration: "none",
+    }}
+    title="Gestione circuiti"
+  >
+    <GitBranch className="w-4 h-4" />
+    Circuiti
+  </Link>
 
-            <AdminLogoutButton />
+  <Link
+    href="/"
+    style={{
+      display: "inline-flex",
+      alignItems: "center",
+      gap: 8,
+      fontWeight: 700,
+      color: "#475569",
+      textDecoration: "none",
+    }}
+    title="Vai alla pagina iscrizioni"
+  >
+    Iscrizioni
+  </Link>
 
-            </div>
+  <AdminLogoutButton />
+</div>
           </div>
         </div>
       </div>

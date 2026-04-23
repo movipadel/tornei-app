@@ -88,7 +88,7 @@ function catKey(category?: string | null) {
 }
 function lvlKey(level?: string | null) {
   const l = String(level ?? "intermedio").toLowerCase();
-  if (["principiante", "intermedio", "avanzato"].includes(l)) return l;
+  if (["principiante", "intermedio", "avanzato", "open"].includes(l)) return l;
   return "intermedio";
 }
 function capitalize(value?: string | null) {
@@ -639,6 +639,8 @@ async function handlePosterMobile(tournamentId: string, tournamentName?: string 
             const isStarting = !!startingById[tid];
             // 🔴 run già creato? (prova più possibili campi dal backend)
             const hasRun = Boolean((t as any).has_run);
+            const isCircuit = Boolean((t as any).circuit_id);
+            const isClosed = (t as any).run_status === "completed"; // temporaneo
 
             return (
               <div key={tid} className="base44-card">
@@ -838,9 +840,15 @@ async function handlePosterMobile(tournamentId: string, tournamentName?: string 
             background: "#dc2626",
           }}
           onClick={(e) => {
-            e.stopPropagation();
-            deleteTournament(tid, String(t.name ?? "Torneo"));
-          }}
+  e.stopPropagation();
+
+  if (isCircuit && !isClosed) {
+    toast.error("Devi prima chiudere il torneo");
+    return;
+  }
+
+  deleteTournament(tid, String(t.name ?? "Torneo"));
+}}
         >
           Elimina torneo
         </button>
@@ -967,9 +975,15 @@ async function handlePosterMobile(tournamentId: string, tournamentName?: string 
             width: "100%",
           }}
           onClick={(e) => {
-            e.stopPropagation();
-            deleteTournament(tid, String(t.name ?? "Torneo"));
-          }}
+  e.stopPropagation();
+
+  if (isCircuit && !isClosed) {
+    toast.error("Devi prima chiudere il torneo");
+    return;
+  }
+
+  deleteTournament(tid, String(t.name ?? "Torneo"));
+}}
         >
           Elimina torneo
         </button>
@@ -1003,6 +1017,7 @@ async function handlePosterMobile(tournamentId: string, tournamentName?: string 
                         <button
   className={hasRun ? "base44-primary-btn" : "base44-csv-btn"}
   onClick={() => router.push(`/admin/tournaments/${tid}/run`)}
+  
   style={{
     padding: "8px 14px",
     borderRadius: 999,
@@ -1016,6 +1031,38 @@ async function handlePosterMobile(tournamentId: string, tournamentName?: string 
 >
   Gestisci torneo
 </button>
+
+{isCircuit && hasRun && !isClosed && (
+  <button
+    className="base44-primary-btn"
+    style={{
+      padding: "8px 14px",
+      borderRadius: 999,
+      backgroundColor: "#dc2626",
+      borderColor: "#dc2626",
+    }}
+    onClick={async () => {
+      if (!confirm("Chiudere il torneo? Operazione definitiva")) return;
+
+      try {
+        const res = await fetch(`/api/admin/tournaments/${tid}/run/close`, {
+          method: "POST",
+        });
+
+        const json = await res.json().catch(() => ({}));
+
+        if (!res.ok) throw new Error(json.error || "Errore chiusura");
+
+        toast.success("Torneo chiuso");
+        await loadList();
+      } catch (e: any) {
+        toast.error(e?.message || "Errore");
+      }
+    }}
+  >
+    Chiudi torneo
+  </button>
+)}
 
                         {/* Baraonda */}
                         {isBaraonda && (

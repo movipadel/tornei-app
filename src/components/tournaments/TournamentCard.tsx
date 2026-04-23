@@ -54,7 +54,7 @@ function catKey(cat: string): CatKey {
 
 function lvlKey(level?: string | null) {
   const l = String(level ?? "intermedio").toLowerCase().trim();
-  if (["principiante", "intermedio", "avanzato"].includes(l)) return l;
+  if (["principiante", "intermedio", "avanzato", "open"].includes(l)) return l;
   return "intermedio";
 }
 
@@ -143,6 +143,7 @@ function lvlLabel(key: string) {
   if (k === "principiante") return "PRINCIPIANTE";
   if (k === "intermedio") return "INTERMEDIO";
   if (k === "avanzato") return "AVANZATO";
+  if (k === "open") return "OPEN";
   return "INTERMEDIO";
 }
 
