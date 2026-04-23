@@ -342,14 +342,51 @@ async function reopenTournamentRegistrations(tournamentId: string) {
   }
 }
 
-async function handlePosterMobile(tournamentId: string) {
+async function handlePosterMobile(tournamentId: string, tournamentName?: string | null) {
   try {
     setPosterLoadingById((p) => ({ ...p, [tournamentId]: true }));
 
-    const url = `/api/admin/tournaments/${tournamentId}/poster?disposition=inline`;
-    window.open(url, "_blank");
+    const res = await fetch(`/api/admin/tournaments/${tournamentId}/poster`, {
+      method: "GET",
+      cache: "no-store",
+    });
+
+    if (!res.ok) {
+      const json = await res.json().catch(() => ({}));
+      throw new Error((json as any).error || "Errore generazione locandina");
+    }
+
+    const blob = await res.blob();
+
+    const safeName = String(tournamentName ?? "locandina")
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}]+/gu, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 80);
+
+    const file = new File([blob], `locandina-${safeName || tournamentId}.png`, {
+      type: "image/png",
+    });
+
+    const canNativeShare =
+      typeof navigator !== "undefined" &&
+      "share" in navigator &&
+      typeof (navigator as any).canShare === "function" &&
+      (navigator as any).canShare({ files: [file] });
+
+    if (canNativeShare) {
+      await navigator.share({
+        files: [file],
+        title: "Locandina torneo",
+      });
+      return;
+    }
+
+    const previewUrl = `/api/admin/tournaments/${tournamentId}/poster?disposition=inline`;
+    window.open(previewUrl, "_blank");
   } catch (e: any) {
-    toast.error(e?.message ?? "Errore apertura locandina");
+    const previewUrl = `/api/admin/tournaments/${tournamentId}/poster?disposition=inline`;
+    window.open(previewUrl, "_blank");
   } finally {
     setPosterLoadingById((p) => ({ ...p, [tournamentId]: false }));
   }
@@ -849,7 +886,7 @@ async function handlePosterMobile(tournamentId: string) {
   type="button"
   className="base44-icon-btn"
   title="Condividi o salva locandina"
-  onClick={() => handlePosterMobile(tid)}
+  onClick={() => handlePosterMobile(tid, t.name)}
   disabled={!!posterLoadingById[tid]}
 >
   {posterLoadingById[tid] ? (
