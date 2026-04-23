@@ -342,56 +342,14 @@ async function reopenTournamentRegistrations(tournamentId: string) {
   }
 }
 
-async function handlePosterMobile(tournamentId: string, tournamentName?: string | null) {
+async function handlePosterMobile(tournamentId: string) {
   try {
     setPosterLoadingById((p) => ({ ...p, [tournamentId]: true }));
 
-    const res = await fetch(`/api/admin/tournaments/${tournamentId}/poster`, {
-      method: "GET",
-      cache: "no-store",
-    });
-
-    if (!res.ok) {
-      const json = await res.json().catch(() => ({}));
-      throw new Error((json as any).error || "Errore generazione locandina");
-    }
-
-    const blob = await res.blob();
-
-    const safeName = String(tournamentName ?? "locandina")
-      .toLowerCase()
-      .replace(/[^\p{L}\p{N}]+/gu, "-")
-      .replace(/^-+|-+$/g, "")
-      .slice(0, 80);
-
-    const file = new File([blob], `locandina-${safeName || tournamentId}.png`, {
-      type: "image/png",
-    });
-
-    if (
-      typeof navigator !== "undefined" &&
-      "share" in navigator &&
-      typeof (navigator as any).canShare === "function" &&
-      (navigator as any).canShare({ files: [file] })
-    ) {
-      await navigator.share({
-        files: [file],
-        title: "Locandina torneo",
-      });
-      return;
-    }
-
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `locandina-${safeName || tournamentId}.png`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    window.URL.revokeObjectURL(url);
+    const url = `/api/admin/tournaments/${tournamentId}/poster`;
+    window.open(url, "_blank");
   } catch (e: any) {
-    if (e?.name === "AbortError") return;
-    toast.error(e?.message ?? "Errore download locandina");
+    toast.error(e?.message ?? "Errore apertura locandina");
   } finally {
     setPosterLoadingById((p) => ({ ...p, [tournamentId]: false }));
   }
@@ -891,7 +849,7 @@ async function handlePosterMobile(tournamentId: string, tournamentName?: string 
   type="button"
   className="base44-icon-btn"
   title="Condividi o salva locandina"
-  onClick={() => handlePosterMobile(tid, t.name)}
+  onClick={() => handlePosterMobile(tid)}
   disabled={!!posterLoadingById[tid]}
 >
   {posterLoadingById[tid] ? (

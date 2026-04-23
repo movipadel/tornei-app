@@ -13,59 +13,44 @@ type PosterData = {
   participantsSub: string;
 };
 
-type PosterVariant = "baraonda" | "fixed_pairs";
+type PosterVariant = "baraonda" | "fixed_pairs" | "padelseries";
 
-export function TournamentPoster({
-  background,
-  data,
-  variant = "baraonda",
-}: {
-  background: string;
-  data: PosterData;
-  variant?: PosterVariant;
-}) {
-  const clubLabel = (data.club || "")
+function getClubLabel(club: string) {
+  return (club || "")
     .replace(/^MOVI CLUB\s+/i, "")
     .replace(/^MOVI PADEL CLUB\s+/i, "")
     .trim();
+}
+
+function renderStandardPoster(params: {
+  background: string;
+  data: PosterData;
+  variant: "baraonda" | "fixed_pairs";
+}) {
+  const { background, data, variant } = params;
+
+  const clubLabel = getClubLabel(data.club);
 
   const isLongCategory =
     data.category === "FEMMINILE" || data.category === "MASCHILE";
 
-  // Colori
   const levelAccentColor = variant === "fixed_pairs" ? "#7dff2b" : "#18c8ff";
   const timeAndParticipantsAccentColor =
     variant === "fixed_pairs" ? "#7dff2b" : "#b92cff";
 
-  // Data e club restano sempre blu/cyan
   const dateAndClubAccentColor = "#11c8ff";
 
-  /*
-   * =========================================================
-   * CATEGORIA (separata dal livello)
-   * =========================================================
-   */
   const CATEGORY_TOP = 64;
   const CATEGORY_LEFT = 166;
   const CATEGORY_WIDTH = 460;
   const CATEGORY_FONT_LONG = 75;
   const CATEGORY_FONT_SHORT = 86;
 
-  /*
-   * =========================================================
-   * LIVELLO (INDIPENDENTE)
-   * =========================================================
-   */
   const LEVEL_TOP = 168;
   const LEVEL_LEFT = 83;
   const LEVEL_WIDTH = 350;
   const LEVEL_FONT = 28;
 
-  /*
-   * =========================================================
-   * PANNELLO BASSO
-   * =========================================================
-   */
   const PANEL_TOP = 910;
   const PANEL_LEFT = 86;
 
@@ -101,9 +86,6 @@ export function TournamentPoster({
         backgroundRepeat: "no-repeat",
       }}
     >
-      {/* ======================================================
-          CATEGORIA
-         ====================================================== */}
       <div
         style={{
           position: "absolute",
@@ -133,9 +115,6 @@ export function TournamentPoster({
         </div>
       </div>
 
-      {/* ======================================================
-          LIVELLO
-         ====================================================== */}
       <div
         style={{
           position: "absolute",
@@ -164,9 +143,6 @@ export function TournamentPoster({
         </div>
       </div>
 
-      {/* ======================================================
-          PANNELLO BASSO
-         ====================================================== */}
       <div
         style={{
           position: "absolute",
@@ -177,7 +153,6 @@ export function TournamentPoster({
           display: "flex",
         }}
       >
-        {/* DATA */}
         <div
           style={{
             position: "absolute",
@@ -252,7 +227,6 @@ export function TournamentPoster({
           </div>
         </div>
 
-        {/* ORA */}
         <div
           style={{
             position: "absolute",
@@ -292,7 +266,6 @@ export function TournamentPoster({
           </div>
         </div>
 
-        {/* CLUB */}
         <div
           style={{
             position: "absolute",
@@ -321,7 +294,6 @@ export function TournamentPoster({
           </div>
         </div>
 
-        {/* PARTECIPANTI */}
         <div
           style={{
             position: "absolute",
@@ -334,7 +306,6 @@ export function TournamentPoster({
             textAlign: "center",
           }}
         >
-          {/* MAX */}
           <div
             style={{
               display: "flex",
@@ -350,7 +321,6 @@ export function TournamentPoster({
             MAX
           </div>
 
-          {/* NUMERO */}
           <div
             style={{
               display: "flex",
@@ -366,7 +336,6 @@ export function TournamentPoster({
             {data.participantsMain}
           </div>
 
-          {/* SUB eventuale, es. (10+10) */}
           <div
             style={{
               display: "flex",
@@ -385,4 +354,258 @@ export function TournamentPoster({
       </div>
     </div>
   );
+}
+
+function renderPadelSeriesPoster(params: {
+  background: string;
+  data: PosterData;
+}) {
+  const { background, data } = params;
+
+  const clubLabel = getClubLabel(data.club);
+  const category = String(data.category ?? "").trim().toUpperCase();
+
+  // Area generale del pannello basso
+  const PANEL_LEFT = 92;
+  const PANEL_TOP = 930;
+  const PANEL_WIDTH = 900;
+  const PANEL_HEIGHT = 150;
+  const COL_WIDTH = 225;
+
+  // Posizione base di ogni colonna
+  const DATE_COL_LEFT = 0;
+  const TIME_COL_LEFT = COL_WIDTH;
+  const CLUB_COL_LEFT = COL_WIDTH * 2;
+  const MAX_COL_LEFT = COL_WIDTH * 3;
+
+  const isFemaleLayout = category === "FEMMINILE";
+
+  // TUNING GIÀ CORRETTO: Maschile + Misto
+  const baseTuning = {
+    DATE_X: -45,
+    DATE_Y: 30,
+
+    TIME_X: -28,
+    TIME_Y: 12,
+
+    CLUB_X: 0,
+    CLUB_Y: 40,
+
+    MAX_X: 25,
+    MAX_Y: 45,
+
+    DATE_DAYNAME_SIZE: 20,
+    DATE_NUMBER_SIZE: 68,
+    DATE_MONTH_SIZE: 20,
+
+    TIME_SIZE: 58,
+    CLUB_SIZE: 25,
+    MAX_SIZE: 60,
+  };
+
+  // TUNING FEMMINILE: da regolare separatamente
+  const femaleTuning = {
+    DATE_X: -60,
+    DATE_Y: 60,
+
+    TIME_X: -35,
+    TIME_Y: 45,
+
+    CLUB_X: 0,
+    CLUB_Y: 75,
+
+    MAX_X: 35,
+    MAX_Y: 75,
+
+    DATE_DAYNAME_SIZE: 20,
+    DATE_NUMBER_SIZE: 68,
+    DATE_MONTH_SIZE: 20,
+
+    TIME_SIZE: 58,
+    CLUB_SIZE: 25,
+    MAX_SIZE: 60,
+  };
+
+  const tuning = isFemaleLayout ? femaleTuning : baseTuning;
+
+  return (
+    <div
+      style={{
+        width: 1080,
+        height: 1350,
+        display: "flex",
+        position: "relative",
+        flexDirection: "column",
+        fontFamily: "Inter",
+        color: "#ffffff",
+        overflow: "hidden",
+        backgroundImage: `url(${background})`,
+        backgroundSize: "1080px 1350px",
+        backgroundPosition: "top left",
+        backgroundRepeat: "no-repeat",
+      }}
+    >
+      <div
+        style={{
+          position: "absolute",
+          left: PANEL_LEFT,
+          top: PANEL_TOP,
+          width: PANEL_WIDTH,
+          height: PANEL_HEIGHT,
+          display: "flex",
+        }}
+      >
+        {/* DATA */}
+        <div
+          style={{
+            position: "absolute",
+            left: DATE_COL_LEFT + tuning.DATE_X,
+            top: tuning.DATE_Y,
+            width: COL_WIDTH,
+            height: PANEL_HEIGHT,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            textAlign: "center",
+          }}
+        >
+          <div
+            style={{
+              fontFamily: "Inter",
+              fontSize: tuning.DATE_DAYNAME_SIZE,
+              fontWeight: 700,
+              color: "#ffffff",
+              textTransform: "uppercase",
+              letterSpacing: "0.04em",
+              lineHeight: 1,
+              marginBottom: 4,
+            }}
+          >
+            {data.dateDayName}
+          </div>
+
+          <div
+            style={{
+              fontFamily: "Bebas",
+              fontSize: tuning.DATE_NUMBER_SIZE,
+              color: "#ffffff",
+              letterSpacing: "-0.02em",
+              lineHeight: 1,
+            }}
+          >
+            {data.dateDayNumber}
+          </div>
+
+          <div
+            style={{
+              marginTop: 2,
+              fontFamily: "Inter",
+              fontSize: tuning.DATE_MONTH_SIZE,
+              fontWeight: 700,
+              color: "#ffffff",
+              textTransform: "uppercase",
+              letterSpacing: "0.04em",
+              lineHeight: 1,
+            }}
+          >
+            {data.dateMonth}
+          </div>
+        </div>
+
+        {/* ORA */}
+        <div
+          style={{
+            position: "absolute",
+            left: TIME_COL_LEFT + tuning.TIME_X,
+            top: tuning.TIME_Y,
+            width: COL_WIDTH,
+            height: PANEL_HEIGHT,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            textAlign: "center",
+            fontFamily: "Bebas",
+            fontSize: tuning.TIME_SIZE,
+            color: "#ffffff",
+            letterSpacing: "-0.03em",
+            lineHeight: 1,
+          }}
+        >
+          {data.time}
+        </div>
+
+        {/* CLUB */}
+        <div
+          style={{
+            position: "absolute",
+            left: CLUB_COL_LEFT + tuning.CLUB_X,
+            top: tuning.CLUB_Y,
+            width: COL_WIDTH,
+            height: PANEL_HEIGHT,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            textAlign: "center",
+            paddingLeft: 12,
+            paddingRight: 12,
+            fontFamily: "Inter",
+            fontSize: tuning.CLUB_SIZE,
+            fontWeight: 800,
+            color: "#ffffff",
+            textTransform: "uppercase",
+            letterSpacing: "0.02em",
+            lineHeight: 1,
+          }}
+        >
+          {clubLabel}
+        </div>
+
+        {/* MAX */}
+        <div
+          style={{
+            position: "absolute",
+            left: MAX_COL_LEFT + tuning.MAX_X,
+            top: tuning.MAX_Y,
+            width: COL_WIDTH,
+            height: PANEL_HEIGHT,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            textAlign: "center",
+            fontFamily: "Bebas",
+            fontSize: tuning.MAX_SIZE,
+            color: "#ffffff",
+            letterSpacing: "-0.02em",
+            lineHeight: 1,
+          }}
+        >
+          {data.participantsMain}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function TournamentPoster({
+  background,
+  data,
+  variant = "baraonda",
+}: {
+  background: string;
+  data: PosterData;
+  variant?: PosterVariant;
+}) {
+  if (variant === "padelseries") {
+    return renderPadelSeriesPoster({
+      background,
+      data,
+    });
+  }
+
+  return renderStandardPoster({
+    background,
+    data,
+    variant,
+  });
 }

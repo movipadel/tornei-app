@@ -21,7 +21,10 @@ type TournamentRow = {
   time: string | null;
   location: string | null;
   max_participants: number | null;
+  circuit_id: string | null;
 };
+
+type PosterVariant = "baraonda" | "fixed_pairs" | "padelseries";
 
 function toDataUrl(buffer: Buffer, mime: string) {
   return `data:${mime};base64,${buffer.toString("base64")}`;
@@ -41,12 +44,92 @@ function normalizeTournamentType(type: string | null) {
   return "baraonda" as const;
 }
 
-function getBackgroundPath(normalizedType: "baraonda" | "fixed_pairs") {
+function normalizeCategory(category: string | null) {
+  return String(category ?? "").trim().toLowerCase();
+}
+
+function normalizeLevel(level: string | null) {
+  return String(level ?? "").trim().toLowerCase();
+}
+
+function getStandardBackgroundPath(normalizedType: "baraonda" | "fixed_pairs") {
   if (normalizedType === "fixed_pairs") {
     return join(process.cwd(), "public", "posters", "coppie-fisse-base.png");
   }
 
   return join(process.cwd(), "public", "posters", "baraonda-base.png");
+}
+
+function getPadelSeriesBackgroundPath(params: {
+  category: string | null;
+  level: string | null;
+}) {
+  const category = normalizeCategory(params.category);
+  const level = normalizeLevel(params.level);
+
+  if (category === "maschile" && level === "avanzato") {
+    return join(
+      process.cwd(),
+      "public",
+      "posters",
+      "padelseries-maschile-avanzato.png"
+    );
+  }
+
+  if (category === "misto" && level === "avanzato") {
+    return join(
+      process.cwd(),
+      "public",
+      "posters",
+      "padelseries-misto-avanzato.png"
+    );
+  }
+
+  if (category === "femminile" && level === "avanzato") {
+    return join(
+      process.cwd(),
+      "public",
+      "posters",
+      "padelseries-femminile-avanzato.png"
+    );
+  }
+
+  if (category === "femminile" && level === "principiante") {
+    return join(
+      process.cwd(),
+      "public",
+      "posters",
+      "padelseries-femminile-principiante.png"
+    );
+  }
+
+  return null;
+}
+
+function resolvePosterConfig(t: TournamentRow): {
+  variant: PosterVariant;
+  backgroundPath: string;
+} {
+  const normalizedType = normalizeTournamentType(t.type);
+
+  if (t.circuit_id) {
+    const padelSeriesPath = getPadelSeriesBackgroundPath({
+      category: t.category,
+      level: t.level,
+    });
+
+    if (padelSeriesPath) {
+      return {
+        variant: "padelseries",
+        backgroundPath: padelSeriesPath,
+      };
+    }
+  }
+
+  return {
+    variant: normalizedType,
+    backgroundPath: getStandardBackgroundPath(normalizedType),
+  };
 }
 
 export async function GET(
@@ -70,7 +153,9 @@ export async function GET(
 
     const { data, error } = await sb
       .from("tournaments")
-      .select("id,name,type,category,level,date,time,location,max_participants")
+      .select(
+        "id,name,type,category,level,date,time,location,max_participants,circuit_id"
+      )
       .eq("id", id)
       .single();
 
@@ -139,17 +224,16 @@ export async function GET(
         readFile(bebasPath),
       ]);
 
-    const normalizedType = normalizeTournamentType(t.type);
+    const posterConfig = resolvePosterConfig(t);
 
-    const backgroundPath = getBackgroundPath(normalizedType);
-    const backgroundBuffer = await readFile(backgroundPath);
+    const backgroundBuffer = await readFile(posterConfig.backgroundPath);
     const backgroundDataUrl = toDataUrl(backgroundBuffer, "image/png");
 
     const svg = await satori(
       TournamentPoster({
         background: backgroundDataUrl,
         data: posterData,
-        variant: normalizedType,
+        variant: posterConfig.variant,
       }),
       {
         width: 1080,
