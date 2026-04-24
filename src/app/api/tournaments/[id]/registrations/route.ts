@@ -206,7 +206,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
 
   if (user?.id) payload.user_id = user.id;
 
-  const { data, error } = await sb
+    const { data, error } = await sb
     .from("tournament_registrations")
     .insert(payload)
     .select("id,is_reserve,position")
@@ -214,6 +214,24 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  // Telegram best-effort: non deve mai bloccare l'iscrizione
+  try {
+    const textRegistration =
+      `${data.is_reserve ? "⏳ NUOVA RISERVA" : "✅ NUOVA ISCRIZIONE"}\n\n` +
+      `${tournamentType}${tournamentCategory ? ` · ${tournamentCategory}` : ""}${tournamentLevel ? ` · ${tournamentLevel}` : ""}\n` +
+      `👤 ${
+        tournamentType === "Coppie fisse"
+          ? `${p1_name}${p2_name_raw ? ` + ${p2_name_raw}` : ""}`
+          : p1_name
+      }\n` +
+      `📞 ${p1_phone}\n` +
+      `#️⃣ Posizione ${data.position}`;
+
+    await sendTelegramMessage(textRegistration);
+  } catch (e) {
+    console.warn("Telegram registration notify error (ignored):", e);
   }
 
   return NextResponse.json({ data }, { status: 201 });
