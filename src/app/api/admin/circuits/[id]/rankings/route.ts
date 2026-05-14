@@ -39,6 +39,13 @@ type PlayedStage = {
   results: PlayedStageResult[];
 };
 
+function normalizePlayerName(value?: string | null) {
+  return String(value ?? "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toUpperCase();
+}
+
 export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const denied = await guardAdmin(req);
   if (denied) return denied;
@@ -180,12 +187,53 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
         return a.tournament_name.localeCompare(b.tournament_name, "it");
       });
 
-    rankingGroups.push({
+          const duplicatesByName = new Map<
+      string,
+      {
+        normalized_name: string;
+        names: Set<string>;
+        keys: Set<string>;
+        phones: Set<string>;
+      }
+    >();
+
+    for (const row of typedResults) {
+      const normalizedName = normalizePlayerName(row.player_name);
+      const playerKey = String(row.player_key ?? "").trim();
+
+      if (!normalizedName || !playerKey) continue;
+
+      const current =
+        duplicatesByName.get(normalizedName) ?? {
+          normalized_name: normalizedName,
+          names: new Set<string>(),
+          keys: new Set<string>(),
+          phones: new Set<string>(),
+        };
+
+      if (row.player_name) current.names.add(String(row.player_name));
+      current.keys.add(playerKey);
+      if (row.player_phone) current.phones.add(String(row.player_phone));
+
+      duplicatesByName.set(normalizedName, current);
+    }
+
+    const possible_duplicates = Array.from(duplicatesByName.values())
+      .filter((x) => x.keys.size > 1)
+      .map((x) => ({
+        normalized_name: x.normalized_name,
+        names: Array.from(x.names),
+        player_keys: Array.from(x.keys),
+        player_phones: Array.from(x.phones),
+      }));
+
+        rankingGroups.push({
       id: group.id,
       category: group.category,
       level: group.level,
       ranking,
       played_stages,
+      possible_duplicates,
     });
   }
 

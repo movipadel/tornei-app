@@ -74,14 +74,6 @@ function roundLabelForSize(size: number) {
   return `Round ${size}`;
 }
 
-// ordine “classico” dei seed lungo la griglia
-function bracketOrder(size: number): number[] {
-  if (size === 2) return [1, 2];
-  const prev = bracketOrder(size / 2);
-  const out: number[] = [];
-  for (const s of prev) out.push(s, size + 1 - s);
-  return out;
-}
 
 function shuffle<T>(arr: T[]) {
   const a = [...arr];
@@ -104,7 +96,7 @@ function sortSeeds(a: any, b: any) {
 }
 
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
-  const denied = await guardAdmin(req);
+  const denied = await guardAdmin();
   if (denied) return denied;
 
   const { id: tournamentId } = await ctx.params;
@@ -275,114 +267,274 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   const drawKeyByPair = new Map<string, number>();
   drawPool.forEach((pid, i) => drawKeyByPair.set(pid, i + 1));
 
-  const candidates = allRows.map((x) => ({
-    ...x,
-    drawKey: drawKeyByPair.get(String(x.pairId)) ?? 999999,
-  }));
+    type QualifiedEntry = {
+    kind: "pair";
+    seed: number;
+    pairId: string;
+    name: string;
+    groupId: string;
+    groupName: string;
+    groupPosition: number;
+    groupRank: number;
+    pt: number;
+    dg: number;
+    gw: number;
+    gl: number;
+    drawKey: number;
+  };
 
-  // ✅ QUALIFICATE = TOP N globale con ordine Pt, DG, GW, sorteggio
-  candidates.sort(sortSeeds);
-  const qualified = candidates.slice(0, qualifiersCount);
+  type PlaceholderEntry = {
+    kind: "placeholder";
+    placeholderId: string;
+  };
 
-  if (qualified.length < qualifiersCount) {
-    return NextResponse.json({ error: "Coppie insufficienti per il tabellone" }, { status: 400 });
+  type BracketEntry = QualifiedEntry | PlaceholderEntry;
+
+  const makeMatchRow = (
+    roundLabel: string,
+    home: string | null,
+    away: string | null
+  ) => ({
+    run_id: runId,
+    stage: "bracket",
+    group_id: null,
+    round_label: roundLabel,
+    home_pair_id: home,
+    away_pair_id: away,
+    home_games: null,
+    away_games: null,
+    completed_at: null,
+    set1_home_games: null,
+    set1_away_games: null,
+    set2_home_games: null,
+    set2_away_games: null,
+    set3_home_games: null,
+    set3_away_games: null,
+    home_sets: null,
+    away_sets: null,
+  });
+
+  function entryPairId(entry: BracketEntry) {
+    return entry.kind === "pair" ? entry.pairId : null;
   }
 
-  // ✅ SEEDS finali (1..N) = qualified già ordinato
-  const seeds = qualified.map((q, i) => ({
-    seed: i + 1,
-    pairId: String(q.pairId),
-    name: q.name,
-    pt: q.pt,
-    dg: q.dg,
-    gw: q.gw,
-    drawKey: q.drawKey,
-  }));
-
-  // =======================================
-  // 10) BRACKET SPURIO (play-in + main)
-  //      con PLAY-IN ordinato come i "buchi"
-  //      del main round (così auto-advance è perfetto)
-  // =======================================
-  const q = qualifiersCount;
-  const size = nextPow2(q); // es. 10 -> 16
-  const prevPow = size / 2; // es. 16 -> 8
-  const playInMatches = q - prevPow; // es. 10-8 = 2
-  const directCount = prevPow - playInMatches; // es. 8-2 = 6
-
-  const seedByNum = new Map<number, string>();
-  for (const s of seeds) seedByNum.set(s.seed, s.pairId);
-
-  const rows: any[] = [];
-
-  const makeMatchRow = (roundLabel: string, home: string | null, away: string | null) => ({
-  run_id: runId,
-  stage: "bracket",
-  group_id: null,
-  round_label: roundLabel,
-  home_pair_id: home,
-  away_pair_id: away,
-  home_games: null,
-  away_games: null,
-  completed_at: null,
-  set1_home_games: null,
-  set1_away_games: null,
-  set2_home_games: null,
-  set2_away_games: null,
-  set3_home_games: null,
-  set3_away_games: null,
-  home_sets: null,
-  away_sets: null,
-});
-
-  // 10a) MAIN ROUND (prevPow) con placeholder null dove entrerà il vincitore del play-in
-  const mainLabel = roundLabelForSize(prevPow); // es. 8 -> "Quarti"
-  const order = bracketOrder(prevPow);
-
-  const slots: Array<string | null> = Array.from({ length: prevPow }).map(() => null);
-
-  // seed 1..directCount entrano diretti, seed (directCount+1..prevPow) sono BUCHI per play-in
-  for (let seedNum = 1; seedNum <= prevPow; seedNum++) {
-    if (seedNum <= directCount) slots[seedNum - 1] = seedByNum.get(seedNum) ?? null;
-    else slots[seedNum - 1] = null;
+  function sameGroup(a: BracketEntry, b: BracketEntry) {
+    if (a.kind !== "pair" || b.kind !== "pair") return false;
+    return a.groupId === b.groupId;
   }
 
-  // Calcolo l'ordine ESATTO dei buchi come li “vedrà” l'autoAdvance:
-  // iteriamo i match del main in ordine inserimento, e per ogni match: prima home poi away.
-  const holeSeeds: number[] = [];
-  for (let i = 0; i < order.length; i += 2) {
-    const a = order[i];
-    const b = order[i + 1];
-    if (a > directCount) holeSeeds.push(a);
-    if (b > directCount) holeSeeds.push(b);
+  function buildBalancedPairings(entries: BracketEntry[]) {
+    const half = entries.length / 2;
+    const top = entries.slice(0, half);
+    const bottom = entries.slice(half).reverse();
+
+    const pairings: Array<{ home: BracketEntry; away: BracketEntry }> = [];
+
+    for (const home of top) {
+      let index = bottom.findIndex((candidate) => !sameGroup(home, candidate));
+
+      if (index < 0) index = 0;
+
+      const [away] = bottom.splice(index, 1);
+      pairings.push({ home, away });
+    }
+
+    return pairings;
   }
 
-  // 10b) PLAY-IN (se serve) — creati nello stesso ordine dei buchi
-  if (playInMatches > 0) {
-    const playInLabel = roundLabelForSize(size); // es. 16 -> "Ottavi"
-    for (let k = 0; k < playInMatches; k++) {
-      const holeSeed = holeSeeds[k];   // seed del "buco" da riempire
-      const oppSeed = q - k;           // dal fondo: q, q-1, ...
+  // ============================================================
+  // QUALIFICAZIONE CORRETTA A FASCE
+  // 1) tutte le prime
+  // 2) tutte le seconde
+  // 3) tutte le terze
+  // 4) eventuali quarte...
+  //
+  // Se l'ultima fascia non entra tutta:
+  // Pt desc, DG desc, GW desc, sorteggio
+  //
+  // Questo risolve:
+  // - 7 coppie, passano 6: 1/2/3 dei due gironi, fuori la 4ª
+  // - 10 coppie 3+3+4: prima fuori la 4ª del girone da 4
+  // - 11 coppie 3+4+4: prima fuori le 4ª dei gironi da 4
+  // ============================================================
 
-      rows.push(
-        makeMatchRow(
-          playInLabel,
-          seedByNum.get(holeSeed) ?? null,
-          seedByNum.get(oppSeed) ?? null
-        )
-      );
+  const groupsRanked = groupsList.map((g) => {
+    const gid = String(g.id);
+    const groupRows = (standingsByGroup[gid] ?? [])
+      .map((x) => ({
+        ...x,
+        groupId: gid,
+        groupName: String(g.name ?? ""),
+        groupPosition: Number(g.position ?? 0),
+        drawKey: drawKeyByPair.get(String(x.pairId)) ?? 999999,
+      }))
+      .sort(sortSeeds)
+      .map((x, index) => ({
+        ...x,
+        groupRank: index + 1,
+      }));
+
+    return {
+      group: g,
+      rows: groupRows,
+    };
+  });
+
+  const maxGroupSize = Math.max(0, ...groupsRanked.map((g) => g.rows.length));
+  const qualifiedRaw: any[] = [];
+
+  for (let rank = 1; rank <= maxGroupSize; rank++) {
+    const band = groupsRanked
+      .flatMap((g) => g.rows.filter((row) => row.groupRank === rank))
+      .sort(sortSeeds);
+
+    if (band.length === 0) continue;
+
+    const remaining = qualifiersCount - qualifiedRaw.length;
+    if (remaining <= 0) break;
+
+    if (band.length <= remaining) {
+      qualifiedRaw.push(...band);
+    } else {
+      qualifiedRaw.push(...band.slice(0, remaining));
+      break;
     }
   }
 
-  // 10c) Inserisco i match del MAIN (con null dove serve)
-  for (let i = 0; i < order.length; i += 2) {
-    const home = slots[order[i] - 1] ?? null;
-    const away = slots[order[i + 1] - 1] ?? null;
-    rows.push(makeMatchRow(mainLabel, home, away));
+  if (qualifiedRaw.length < qualifiersCount) {
+    return NextResponse.json(
+      { error: "Coppie insufficienti per il tabellone" },
+      { status: 400 }
+    );
   }
 
-  // 10d) ROUND SUCCESSIVI (vuoti) fino alla finale
-  let curSize = prevPow;
+  const qualified: QualifiedEntry[] = qualifiedRaw.map((q, index) => ({
+    kind: "pair",
+    seed: index + 1,
+    pairId: String(q.pairId),
+    name: q.name,
+    groupId: String(q.groupId),
+    groupName: String(q.groupName),
+    groupPosition: Number(q.groupPosition ?? 0),
+    groupRank: Number(q.groupRank ?? 0),
+    pt: Number(q.pt ?? 0),
+    dg: Number(q.dg ?? 0),
+    gw: Number(q.gw ?? 0),
+    gl: Number(q.gl ?? 0),
+    drawKey: Number(q.drawKey ?? 999999),
+  }));
+
+  const q = qualified.length;
+  const size = nextPow2(q);
+
+  // Se q è già potenza di 2, niente play-in.
+  // Se q NON è potenza di 2:
+  // mainSize = potenza precedente
+  // le peggiori qualificate fanno play-in.
+  const isPowerOfTwo = size === q;
+  const mainSize = isPowerOfTwo ? q : size / 2;
+  const playInMatches = isPowerOfTwo ? 0 : q - mainSize;
+  const playInPlayersCount = playInMatches * 2;
+  const directCount = q - playInPlayersCount;
+
+  if (mainSize < 2) {
+    return NextResponse.json(
+      { error: "Tabellone non valido: servono almeno 2 qualificate" },
+      { status: 400 }
+    );
+  }
+
+  if (directCount < 0) {
+    return NextResponse.json(
+      { error: "Tabellone non valido: qualificate/play-in incoerenti" },
+      { status: 400 }
+    );
+  }
+
+  const directEntries = qualified.slice(0, directCount);
+  const playInEntries = qualified.slice(directCount);
+
+  const placeholders: PlaceholderEntry[] = Array.from({
+    length: playInMatches,
+  }).map((_, index) => ({
+    kind: "placeholder",
+    placeholderId: `PLAYIN_WINNER_${index + 1}`,
+  }));
+
+  const mainEntries: BracketEntry[] = [...directEntries, ...placeholders];
+
+  if (mainEntries.length !== mainSize) {
+    return NextResponse.json(
+      { error: "Errore costruzione tabellone principale" },
+      { status: 500 }
+    );
+  }
+
+  const rows: any[] = [];
+
+  // ============================================================
+  // PLAY-IN
+  // Le peggiori qualificate giocano il play-in.
+  // Pairing: migliore del play-in vs peggiore del play-in.
+  // Es. 3 gironi da 3, passano 9:
+  // - migliore terza diretta
+  // - peggiori due terze nel play-in
+  // ============================================================
+
+  if (playInMatches > 0) {
+    const playInLabel = roundLabelForSize(size);
+    const playInPairings: Array<{ home: QualifiedEntry; away: QualifiedEntry }> = [];
+const playInTop = playInEntries.slice(0, playInMatches);
+const playInBottom = playInEntries.slice(playInMatches).reverse();
+
+for (let i = 0; i < playInMatches; i++) {
+  const home = playInTop[i];
+  const away = playInBottom[i];
+
+      if (!home || !away) {
+        return NextResponse.json(
+          { error: "Errore costruzione play-in" },
+          { status: 500 }
+        );
+      }
+
+      playInPairings.push({ home, away });
+    }
+
+    for (const p of playInPairings) {
+      rows.push(makeMatchRow(playInLabel, p.home.pairId, p.away.pairId));
+    }
+  }
+
+  // ============================================================
+  // MAIN ROUND
+  // Pairing bilanciato:
+  // - prima metà seed vs seconda metà invertita
+  // - evita stesso girone ove possibile
+  //
+  // Caso 2 gironi / 4 qualificate:
+  // qualified = 1A, 1B, 2A, 2B
+  // pairing = 1A vs 2B, 1B vs 2A
+  // ============================================================
+
+  const mainLabel = roundLabelForSize(mainSize);
+  const mainPairings = buildBalancedPairings(mainEntries);
+
+  for (const p of mainPairings) {
+    rows.push(
+      makeMatchRow(
+        mainLabel,
+        entryPairId(p.home),
+        entryPairId(p.away)
+      )
+    );
+  }
+
+  // ============================================================
+  // ROUND SUCCESSIVI VUOTI
+  // ============================================================
+
+  let curSize = mainSize;
   while (curSize > 2) {
     const nextSize = curSize / 2;
     const label = roundLabelForSize(nextSize);
@@ -390,6 +542,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     for (let i = 0; i < nextSize / 2; i++) {
       rows.push(makeMatchRow(label, null, null));
     }
+
     curSize = nextSize;
   }
 
@@ -397,20 +550,63 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   const { error: insErr } = await sb.from("tournament_run_matches_fp").insert(rows);
   if (insErr) return NextResponse.json({ error: insErr.message }, { status: 500 });
 
+  const seeds = qualified.map((q) => ({
+    seed: q.seed,
+    pairId: q.pairId,
+    name: q.name,
+    groupId: q.groupId,
+    groupName: q.groupName,
+    groupPosition: q.groupPosition,
+    groupRank: q.groupRank,
+    pt: q.pt,
+    dg: q.dg,
+    gw: q.gw,
+    gl: q.gl,
+    drawKey: q.drawKey,
+  }));
+
   const bracketDraw = {
     generated_at: new Date().toISOString(),
     qualifiersCount,
     seeds,
-    structure: { size, prevPow, playInMatches, directCount },
+    structure: {
+      type: "group_rank_band_seeded",
+      size,
+      mainSize,
+      playInMatches,
+      directCount,
+      rules: [
+        "Qualificazione per fasce: prime, seconde, terze, quarte...",
+        "Ultima fascia parziale ordinata per Pt, DG, GW, sorteggio",
+        "Play-in tra le peggiori qualificate quando il numero non è potenza di 2",
+        "Primo turno evita stesso girone ove possibile",
+      ],
+    },
   };
 
   const mergedRules = { ...(rules ?? {}), bracketDraw };
 
-  const { error: ruleErr } = await sb.from("tournament_runs").update({ rules: mergedRules }).eq("id", runId);
+  const { error: ruleErr } = await sb
+    .from("tournament_runs")
+    .update({ rules: mergedRules })
+    .eq("id", runId);
+
   if (ruleErr) return NextResponse.json({ error: ruleErr.message }, { status: 500 });
 
   return NextResponse.json(
-    { ok: true, runId, generated: true, qualifiersCount, structure: { size, prevPow, playInMatches, directCount } },
+    {
+      ok: true,
+      runId,
+      generated: true,
+      qualifiersCount,
+      structure: {
+        type: "group_rank_band_seeded",
+        size,
+        mainSize,
+        playInMatches,
+        directCount,
+      },
+    },
     { status: 200 }
   );
 }

@@ -1,77 +1,78 @@
 import Link from "next/link";
-import { Trophy, GitBranch } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { AdminLogoutButton } from "@/components/AdminLogoutButton";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="base44-bg">
+    <div className="base44-bg" style={{ minHeight: "100vh" }}>
       <div
         style={{
           position: "sticky",
           top: 0,
           zIndex: 60,
-          background: "rgba(255,255,255,0.88)",
-          backdropFilter: "blur(10px)",
-          borderBottom: "1px solid #e2e8f0",
+          background: "rgba(3,7,18,0.78)",
+          backdropFilter: "blur(16px)",
+          borderBottom: "1px solid rgba(255,255,255,0.075)",
         }}
       >
-        <div style={{ maxWidth: "72rem", margin: "0 auto", padding: "10px 16px" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <Link
-              href="/admin/tournaments"
+        <div
+          style={{
+            maxWidth: "72rem",
+            margin: "0 auto",
+            padding: "10px 16px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 12,
+          }}
+        >
+          <Link
+            href="/admin"
+            style={{
+              minWidth: 0,
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 10,
+              textDecoration: "none",
+              color: "#ffffff",
+            }}
+          >
+            <img
+              src="/home/movi-logo.png"
+              alt="Movi"
               style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 8,
-                fontWeight: 800,
-                color: "#0f172a",
-                textDecoration: "none",
+                height: 28,
+                width: "auto",
+                objectFit: "contain",
+                display: "block",
+                opacity: 0.95,
               }}
-              title="Gestione Tornei"
+            />
+
+            <span
+              style={{
+                fontWeight: 900,
+                fontSize: 15,
+                color: "rgba(255,255,255,0.92)",
+                letterSpacing: -0.2,
+                lineHeight: 1,
+              }}
             >
-              <Trophy className="w-5 h-5" style={{ color: "#4f46e5" }} />
-              Tornei
-            </Link>
+              Dashboard
+            </span>
+          </Link>
 
-            <div style={{ display: "inline-flex", alignItems: "center", gap: 16 }}>
-  <Link
-    href="/admin/circuits"
-    style={{
-      display: "inline-flex",
-      alignItems: "center",
-      gap: 8,
-      fontWeight: 700,
-      color: "#475569",
-      textDecoration: "none",
-    }}
-    title="Gestione circuiti"
-  >
-    <GitBranch className="w-4 h-4" />
-    Circuiti
-  </Link>
-
-  <Link
-    href="/"
-    style={{
-      display: "inline-flex",
-      alignItems: "center",
-      gap: 8,
-      fontWeight: 700,
-      color: "#475569",
-      textDecoration: "none",
-    }}
-    title="Vai alla pagina iscrizioni"
-  >
-    Iscrizioni
-  </Link>
-
-  <AdminLogoutButton />
-</div>
-          </div>
+          <AdminLogoutButton />
         </div>
       </div>
 
-      <div style={{ maxWidth: "72rem", margin: "0 auto", padding: "24px 16px 40px" }}>
+      <div
+        style={{
+          maxWidth: "72rem",
+          margin: "0 auto",
+          padding: "22px 16px 40px",
+        }}
+      >
         {children}
       </div>
     </div>

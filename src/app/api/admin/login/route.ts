@@ -1,25 +1,75 @@
 import { NextResponse } from "next/server";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import {
-  createAdminSessionToken,
-  adminCookieOptions,
-  ADMIN_COOKIE_NAME,
-} from "@/lib/adminSession";
+  createStaffSessionToken,
+  staffCookieOptions,
+  STAFF_COOKIE_NAME,
+} from "@/lib/staffSession";
 
 export const runtime = "nodejs";
 
 export async function POST(req: Request) {
   const form = await req.formData();
+
+  const email = String(form.get("email") ?? "").trim();
   const password = String(form.get("password") ?? "");
 
-  if (password !== process.env.ADMIN_PASSWORD) {
-    return NextResponse.json({ error: "Password errata" }, { status: 401 });
+  if (!email || !password) {
+    return NextResponse.json(
+      { error: "Email e password obbligatorie" },
+      { status: 400 }
+    );
   }
 
-  const token = await createAdminSessionToken();
+  const sb = supabaseAdmin();
 
+  const { data, error } = await sb.rpc("verify_staff_login", {
+    p_email: email,
+    p_password: password,
+  });
 
-  const res = NextResponse.json({ ok: true });
-  res.cookies.set(ADMIN_COOKIE_NAME, token, adminCookieOptions());
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  const staff = Array.isArray(data) ? data[0] : null;
+
+  if (!staff) {
+    return NextResponse.json({ error: "Credenziali errate" }, { status: 401 });
+  }
+
+  if (staff.role !== "admin") {
+    return NextResponse.json(
+      { error: "Accesso admin non autorizzato" },
+      { status: 403 }
+    );
+  }
+
+  await sb
+    .from("staff_users")
+    .update({ last_login_at: new Date().toISOString() })
+    .eq("id", staff.id);
+
+  const token = await createStaffSessionToken({
+    sid: staff.id,
+    role: "admin",
+    name: staff.full_name,
+    email: staff.email,
+  });
+
+  const res = NextResponse.json({
+  ok: true,
+  role: "admin",
+  redirectTo: "/admin",
+  user: {
+    id: staff.id,
+    full_name: staff.full_name,
+    email: staff.email,
+    role: staff.role,
+  },
+});
+
+  res.cookies.set(STAFF_COOKIE_NAME, token, staffCookieOptions());
 
   return res;
 }

@@ -438,7 +438,7 @@ export async function POST(
               tournament_date: tournament.date ?? null,
               player_key: playerKey,
               player_name: row.name,
-              player_phone: normalizePhone(row.phone) || null,
+              player_phone: playerKey || null,
               placement,
               points,
             },
@@ -596,7 +596,7 @@ if (finalMatch && finalMatch.completed_at) {
               tournament_date: tournament.date ?? null,
               player_key: p1Key,
               player_name: reg.p1_name,
-              player_phone: normalizePhone(reg.p1_phone) || null,
+              player_phone: p1Key || null,
               placement: null,
               points,
             });
@@ -613,7 +613,7 @@ if (finalMatch && finalMatch.completed_at) {
               tournament_date: tournament.date ?? null,
               player_key: p2Key,
               player_name: reg.p2_name,
-              player_phone: normalizePhone(String(reg.p2_phone ?? "")) || null,
+              player_phone: p2Key || null,
               placement: null,
               points,
             });

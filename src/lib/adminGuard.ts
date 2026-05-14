@@ -1,23 +1,16 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { ADMIN_COOKIE_NAME, verifyAdminSessionToken } from "@/lib/adminSession";
+import { getStaffSessionFromCookie } from "@/lib/staffSession";
 
-export async function guardAdmin(_req: Request) {
-  const c = await cookies();
-  const token = c.get(ADMIN_COOKIE_NAME)?.value;
+export async function guardAdmin(_req?: Request) {
+  const session = await getStaffSessionFromCookie();
 
-  if (!token) {
+  if (!session) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  try {
-    const payload = await verifyAdminSessionToken(token);
-    if ((payload as any).role !== "admin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-    return null;
-  } catch {
-    // Non cancelliamo il cookie qui: evitiamo logout “a cascata” per un singolo errore
+  if (session.role !== "admin") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
+
+  return null;
 }

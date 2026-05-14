@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
+import PublicNav from "@/components/PublicNav";
 
 type RankingRow = {
   position: number;
@@ -163,18 +164,24 @@ function placementLabel(n?: number | null) {
   return `${n}°`;
 }
 
-function highlightMatch(text: string, query: string) {
-  if (!query.trim()) return text;
+function upperName(value?: string | null) {
+  return String(value ?? "").trim().toUpperCase();
+}
 
-  const lower = text.toLowerCase();
+function highlightMatch(text: string, query: string) {
+  const displayText = upperName(text);
+
+  if (!query.trim()) return displayText;
+
+  const lower = displayText.toLowerCase();
   const q = query.toLowerCase().trim();
   const index = lower.indexOf(q);
 
-  if (index === -1) return text;
+  if (index === -1) return displayText;
 
-  const before = text.slice(0, index);
-  const match = text.slice(index, index + q.length);
-  const after = text.slice(index + q.length);
+  const before = displayText.slice(0, index);
+  const match = displayText.slice(index, index + q.length);
+  const after = displayText.slice(index + q.length);
 
   return (
     <>
@@ -294,7 +301,7 @@ function PodiumCard({
           color: "#0f172a",
         }}
       >
-        {highlightMatch(row.player_name, search)}
+        {highlightMatch(upperName(row.player_name), search)}
       </div>
 
       <div
@@ -369,7 +376,6 @@ function CompactSelect({
 export default function CircuitPage() {
   const params = useParams<{ slug: string }>();
   const slug = String(params?.slug ?? "");
-  const router = useRouter();
 
   const [data, setData] = useState<ApiResponse | null>(null);
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
@@ -447,7 +453,9 @@ export default function CircuitPage() {
   const upcomingStages = group?.upcoming_stages ?? [];
 
   if (!data) {
-    return (
+  return (
+    <>
+      <PublicNav />
       <div style={{ padding: 20 }}>
         <div
           style={{
@@ -471,9 +479,10 @@ export default function CircuitPage() {
             Caricamento circuito...
           </div>
         </div>
-      </div>
-    );
-  }
+            </div>
+    </>
+  );
+}
 
   const circuit = data.circuit;
 
@@ -484,6 +493,8 @@ const heroLogo2 = circuit?.hero_logo_2_url ?? null;
 const heroLogo3 = circuit?.hero_logo_3_url ?? null;
 
   return (
+  <>
+    <PublicNav />
     <div
       style={{
         padding: "16px 12px 24px",
@@ -502,40 +513,6 @@ const heroLogo3 = circuit?.hero_logo_3_url ?? null;
         }}
       >
 
-        <div
-  style={{
-    display: "flex",
-    justifyContent: "flex-start",
-    marginBottom: -4,
-  }}
->
-  <button
-    type="button"
-    onClick={() => {
-      if (typeof window !== "undefined" && window.history.length > 1) {
-        router.back();
-      } else {
-        router.push("/");
-      }
-    }}
-    style={{
-      display: "inline-flex",
-      alignItems: "center",
-      gap: 8,
-      padding: "10px 14px",
-      borderRadius: 999,
-      border: "1px solid #dbe3f0",
-      background: "rgba(255,255,255,0.85)",
-      color: "#0f172a",
-      fontWeight: 800,
-      fontSize: 14,
-      cursor: "pointer",
-      boxShadow: "0 8px 24px rgba(15,23,42,0.05)",
-    }}
-  >
-    ← Torna ai tornei
-  </button>
-</div>
                 <section
           style={{
             position: "relative",
@@ -1111,7 +1088,7 @@ const heroLogo3 = circuit?.hero_logo_3_url ?? null;
                             wordBreak: "break-word",
                           }}
                         >
-                          {highlightMatch(r.player_name, search)}
+                          {highlightMatch(upperName(r.player_name), search)}
                         </td>
                         <td style={tdCompactRight}>{r.total_points}</td>
                         <td style={tdCompactRight}>{r.events_played}</td>
@@ -1354,7 +1331,7 @@ const heroLogo3 = circuit?.hero_logo_3_url ?? null;
                                           wordBreak: "break-word",
                                         }}
                                       >
-                                        {highlightMatch(r.player_name, search)}
+                                        {highlightMatch(upperName(r.player_name), search)}
                                       </td>
                                       <td style={tdCompactRight}>{r.points}</td>
                                       <td style={tdCompactRight}>
@@ -1377,6 +1354,7 @@ const heroLogo3 = circuit?.hero_logo_3_url ?? null;
         )}
       </div>
     </div>
+    </>
   );
 }
 

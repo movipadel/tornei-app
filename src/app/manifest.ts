@@ -2,13 +2,27 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "MoviPadel Tornei",
-    short_name: "Tornei Movi",
-    description: "Iscriviti ai tornei MoviTorneoFacile",
+    id: "/",
+
+    name: "MOVI App",
+    short_name: "MOVI",
+
+    description:
+      "Tornei, MoviBack, Store MOVI e servizi dedicati ai club MOVI Padel.",
+
     start_url: "/",
+    scope: "/",
+
     display: "standalone",
-    background_color: "#ffffff",
+    orientation: "portrait",
+
+    background_color: "#030712",
     theme_color: "#4f46e5",
+
+    lang: "it-IT",
+
+    categories: ["sports", "lifestyle", "shopping"],
+
     icons: [
       {
         src: "/icon-192.png",

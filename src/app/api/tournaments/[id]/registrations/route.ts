@@ -126,25 +126,76 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     }
   }
 
-  // ==========================
-  // 🎯 CIRCUITO: SOLO PREPARAZIONE
-  // ==========================
-  let p1PlayerKey: string | null = null;
-  let p2PlayerKey: string | null = null;
+// ==========================
+// 🎯 CIRCUITO: telefoni univoci
+// ==========================
+let p1PlayerKey: string | null = null;
+let p2PlayerKey: string | null = null;
 
-  if (circuitId) {
-    p1PlayerKey = buildPlayerKey(p1_phone);
+if (circuitId) {
+  p1PlayerKey = buildPlayerKey(p1_phone);
 
-    if (tournamentType === "Coppie fisse" && p2_phone_raw) {
-      p2PlayerKey = buildPlayerKey(p2_phone_raw);
+  if (!p1PlayerKey) {
+    return NextResponse.json(
+      { error: "Telefono giocatore 1 non valido per circuito" },
+      { status: 400 }
+    );
+  }
+
+  if (tournamentType === "Coppie fisse") {
+    p2PlayerKey = buildPlayerKey(p2_phone_raw);
+
+    if (!p2PlayerKey) {
+      return NextResponse.json(
+        { error: "Telefono giocatore 2 obbligatorio per i tornei circuito" },
+        { status: 400 }
+      );
     }
 
-    console.log("🎯 CIRCUITO DEBUG", {
-      tournamentId: id,
-      p1: { key: p1PlayerKey, name: p1_name },
-      p2: p2PlayerKey ? { key: p2PlayerKey, name: p2_name_raw } : null,
-    });
+    if (p1PlayerKey === p2PlayerKey) {
+      return NextResponse.json(
+        { error: "I due giocatori non possono avere lo stesso numero di telefono" },
+        { status: 400 }
+      );
+    }
   }
+
+  const { data: existingRegs, error: existingErr } = await sb
+    .from("tournament_registrations")
+    .select("p1_name,p1_phone,p2_name,p2_phone")
+    .eq("tournament_id", id);
+
+  if (existingErr) {
+    return NextResponse.json({ error: existingErr.message }, { status: 500 });
+  }
+
+  const usedPhones = new Map<string, string>();
+
+  for (const r of existingRegs ?? []) {
+    const r1Key = buildPlayerKey(String((r as any).p1_phone ?? ""));
+    const r2Key = buildPlayerKey(String((r as any).p2_phone ?? ""));
+
+    if (r1Key) usedPhones.set(r1Key, String((r as any).p1_name ?? "Giocatore"));
+    if (r2Key) usedPhones.set(r2Key, String((r as any).p2_name ?? "Giocatore"));
+  }
+
+  const duplicateP1 = usedPhones.get(p1PlayerKey);
+  const duplicateP2 = p2PlayerKey ? usedPhones.get(p2PlayerKey) : null;
+
+  if (duplicateP1) {
+    return NextResponse.json(
+      { error: `Numero giocatore 1 già presente nel torneo: ${duplicateP1}` },
+      { status: 400 }
+    );
+  }
+
+  if (duplicateP2) {
+    return NextResponse.json(
+      { error: `Numero giocatore 2 già presente nel torneo: ${duplicateP2}` },
+      { status: 400 }
+    );
+  }
+}
 
   // ==========================
   // resto codice IDENTICO

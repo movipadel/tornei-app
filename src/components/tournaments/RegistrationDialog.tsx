@@ -21,6 +21,13 @@ type User = {
   gender: "M" | "F";
 };
 
+type PlayerSuggestion = {
+  player_key: string;
+  player_name: string;
+  player_phone: string;
+  masked_phone: string;
+};
+
 const normalizePhone = (s: string) => s.trim().replace(/\s+/g, "");
 
 function catLower(t?: Tournament | null) {
@@ -41,6 +48,10 @@ export default function RegistrationDialog({
   user: User | null;
 }) {
   const [saving, setSaving] = useState(false);
+
+  const [suggestions, setSuggestions] = useState<PlayerSuggestion[]>([]);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+  const [suggestionsOpen, setSuggestionsOpen] = useState(false);
 
   const [formData, setFormData] = useState({
     p2_name: "",
@@ -63,6 +74,49 @@ export default function RegistrationDialog({
       p2_gender: defaultP2Gender,
     });
   }, [open, tournament?.id]);
+
+    useEffect(() => {
+    if (!open || !tournament || !isCouple) {
+      setSuggestions([]);
+      setSuggestionsOpen(false);
+      return;
+    }
+
+    const q = formData.p2_name.trim();
+
+    if (q.length < 2) {
+      setSuggestions([]);
+      setSuggestionsOpen(false);
+      return;
+    }
+
+    const timer = window.setTimeout(async () => {
+      try {
+        setLoadingSuggestions(true);
+
+        const res = await fetch(
+          `/api/tournaments/${tournament.id}/circuit-player-suggestions?q=${encodeURIComponent(q)}`,
+          { cache: "no-store" }
+        );
+
+        const json = await res.json().catch(() => ({}));
+
+        if (!res.ok) {
+          setSuggestions([]);
+          setSuggestionsOpen(false);
+          return;
+        }
+
+        const rows = Array.isArray(json.data) ? json.data : [];
+        setSuggestions(rows);
+        setSuggestionsOpen(rows.length > 0);
+      } finally {
+        setLoadingSuggestions(false);
+      }
+    }, 250);
+
+    return () => window.clearTimeout(timer);
+  }, [open, tournament?.id, isCouple, formData.p2_name]);
 
   if (!tournament) return null;
   if (!user) return null;
@@ -160,15 +214,53 @@ export default function RegistrationDialog({
               </div>
 
               <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 12 }}>
-                <div>
-                  <div style={{ fontWeight: 700, marginBottom: 6 }}>Nome e Cognome</div>
-                  <input
-                    className="base44-input"
-                    value={formData.p2_name}
-                    onChange={(e) => setFormData({ ...formData, p2_name: e.target.value })}
-                    required
-                  />
-                </div>
+                <div style={{ position: "relative" }}>
+  <div style={{ fontWeight: 700, marginBottom: 6 }}>Nome e Cognome</div>
+  <input
+    className="base44-input"
+    value={formData.p2_name}
+    onChange={(e) => {
+      setFormData({ ...formData, p2_name: e.target.value });
+      setSuggestionsOpen(true);
+    }}
+    onFocus={() => {
+      if (suggestions.length > 0) setSuggestionsOpen(true);
+    }}
+    required
+    placeholder="Inizia a digitare il nome..."
+  />
+
+  {loadingSuggestions ? (
+    <div style={suggestionHint}>Cerco giocatori del circuito...</div>
+  ) : null}
+
+  {suggestionsOpen && suggestions.length > 0 ? (
+    <div style={suggestionsBox}>
+      {suggestions.map((s) => (
+        <button
+          key={s.player_key}
+          type="button"
+          style={suggestionItem}
+          onClick={() => {
+            setFormData({
+              ...formData,
+              p2_name: s.player_name,
+              p2_phone: s.player_phone,
+            });
+            setSuggestionsOpen(false);
+          }}
+        >
+          <span style={{ fontWeight: 900, color: "#0f172a" }}>
+            {s.player_name}
+          </span>
+          <span style={{ color: "#64748b", fontSize: 12, fontWeight: 700 }}>
+            Tel. {s.masked_phone}
+          </span>
+        </button>
+      ))}
+    </div>
+  ) : null}
+</div>
 
                 <div>
                   <div style={{ fontWeight: 700, marginBottom: 6 }}>Telefono</div>
@@ -237,3 +329,36 @@ export default function RegistrationDialog({
     </Dialog>
   );
 }
+
+const suggestionHint: React.CSSProperties = {
+  marginTop: 6,
+  color: "#64748b",
+  fontSize: 12,
+  fontWeight: 700,
+};
+
+const suggestionsBox: React.CSSProperties = {
+  position: "absolute",
+  left: 0,
+  right: 0,
+  top: "calc(100% + 6px)",
+  zIndex: 30,
+  borderRadius: 16,
+  overflow: "hidden",
+  background: "#ffffff",
+  border: "1px solid #e2e8f0",
+  boxShadow: "0 18px 40px rgba(15,23,42,0.16)",
+};
+
+const suggestionItem: React.CSSProperties = {
+  width: "100%",
+  border: 0,
+  background: "#ffffff",
+  padding: "11px 13px",
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "flex-start",
+  gap: 3,
+  cursor: "pointer",
+  textAlign: "left",
+};

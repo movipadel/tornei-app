@@ -16,7 +16,6 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
@@ -38,7 +37,6 @@ import {
 import TournamentDialogForm, { TournamentDTO } from "./_components/TournamentDialogForm";
 import RegistrationForm from "./[id]/registrations/RegistrationForm";
 import FixedPairsGenerateWizard, { FixedPairsPair } from "./FixedPairsGenerateWizard";
-import ResponsiveSheetDialog from "@/components/base44/ResponsiveSheetDialog";
 import {
   getBaraondaFormulaOptionsV2,
   getDefaultBaraondaFormulaV2,
@@ -97,6 +95,15 @@ function capitalize(value?: string | null) {
   return v.charAt(0).toUpperCase() + v.slice(1);
 }
 
+function todayISODate() {
+  return new Date().toLocaleDateString("en-CA", { timeZone: "Europe/Rome" });
+}
+
+function isPastTournamentDate(date?: string | null) {
+  if (!date) return false;
+  return String(date) < todayISODate();
+}
+
 function GenderMark({ gender }: { gender: "M" | "F" | null }) {
   if (!gender) return null;
   const cls = gender === "M" ? "male" : "female";
@@ -126,6 +133,7 @@ export default function AdminTournamentsUI() {
 
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [hidePastTournaments, setHidePastTournaments] = useState(true);
 
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<TournamentDTO | null>(null);
@@ -151,15 +159,6 @@ const [baraondaFormulaById, setBaraondaFormulaById] = useState<
   const [fixedWizardPairs, setFixedWizardPairs] = useState<FixedPairsPair[]>([]);
   const [fixedWizardLoading, setFixedWizardLoading] = useState(false);
 
-  // settings dialog
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [settingsLoading, setSettingsLoading] = useState(false);
-  const [settingsSaving, setSettingsSaving] = useState(false);
-
-  const [homeTitle, setHomeTitle] = useState("");
-  const [homeSubtitle, setHomeSubtitle] = useState("Iscriviti ai tornei Movi e gestisci le tue iscrizioni");
-  const [homeLogoUrl, setHomeLogoUrl] = useState<string | null>(null);
-  const [logoFile, setLogoFile] = useState<File | null>(null);
 
   async function loadList() {
     setLoading(true);
@@ -439,74 +438,26 @@ async function handlePosterMobile(tournamentId: string, tournamentName?: string 
     }
   }
 
-  async function loadSettings() {
-    setSettingsLoading(true);
-    try {
-      const res = await fetch("/api/admin/app-settings", { cache: "no-store" });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json.error || "Errore caricamento impostazioni");
-
-      setHomeTitle(json.home_title ?? "");
-      setHomeSubtitle(json.home_subtitle ?? "");
-      setHomeLogoUrl(json.home_logo_url ?? null);
-      setLogoFile(null);
-    } catch (e: any) {
-      toast.error(e?.message ?? "Errore");
-    } finally {
-      setSettingsLoading(false);
-    }
-  }
-
-  async function saveSettings() {
-    setSettingsSaving(true);
-    try {
-      let url = homeLogoUrl;
-
-      if (logoFile) {
-        const fd = new FormData();
-        fd.append("file", logoFile);
-
-        const up = await fetch("/api/admin/app-settings/logo", { method: "POST", body: fd });
-        const upJson = await up.json().catch(() => ({}));
-        if (!up.ok) throw new Error(upJson.error || "Errore upload logo");
-        url = upJson.url;
-      }
-
-      const res = await fetch("/api/admin/app-settings", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          home_title: homeTitle,
-          home_subtitle: homeSubtitle,
-          home_logo_url: url,
-        }),
-      });
-
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json.error || "Errore salvataggio");
-
-      toast.success("Impostazioni salvate");
-      setHomeLogoUrl(url ?? null);
-      setLogoFile(null);
-      setSettingsOpen(false);
-    } catch (e: any) {
-      toast.error(e?.message ?? "Errore");
-    } finally {
-      setSettingsSaving(false);
-    }
-  }
-
   useEffect(() => {
     loadList();
   }, []);
 
   const sorted = useMemo(() => {
-    return [...items].sort((a, b) => {
+  return [...items]
+    .filter((t) => {
+      if (!hidePastTournaments) return true;
+      return !isPastTournamentDate(t.date);
+    })
+    .sort((a, b) => {
       const ad = `${a.date ?? ""} ${a.time ?? ""}`;
       const bd = `${b.date ?? ""} ${b.time ?? ""}`;
       return ad.localeCompare(bd);
     });
-  }, [items]);
+}, [items, hidePastTournaments]);
+
+const pastHiddenCount = useMemo(() => {
+  return items.filter((t) => isPastTournamentDate(t.date)).length;
+}, [items]);
 
   return (
     <>
@@ -562,18 +513,7 @@ async function handlePosterMobile(tournamentId: string, tournamentName?: string 
         </div>
 
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-          <button
-  className="base44-icon-btn"
-  title="Personalizzazione"
-  onClick={async () => {
-    setSettingsOpen(true);
-    await loadSettings();
-  }}
->
-  ⚙️
-</button>
-
-
+          
           <button
   className="base44-primary-btn hidden md:inline-flex"
   onClick={() => {
@@ -586,6 +526,52 @@ async function handlePosterMobile(tournamentId: string, tournamentName?: string 
 
         </div>
       </div>
+
+      <div
+  className="base44-card"
+  style={{
+    marginBottom: 14,
+  }}
+>
+  <div
+    className="base44-card-inner"
+    style={{
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: 12,
+      flexWrap: "wrap",
+      padding: "12px 14px",
+    }}
+  >
+    <div>
+      <div style={{ fontWeight: 900, color: "#0f172a" }}>
+        Visualizzazione tornei
+      </div>
+      <div style={{ color: "#64748b", fontSize: 13, marginTop: 2 }}>
+        {hidePastTournaments
+          ? `Tornei passati nascosti${pastHiddenCount > 0 ? `: ${pastHiddenCount}` : ""}`
+          : "Stai visualizzando anche i tornei passati"}
+      </div>
+    </div>
+
+    <button
+      type="button"
+      className="base44-csv-btn"
+      onClick={() => setHidePastTournaments((v) => !v)}
+      style={{
+        borderRadius: 999,
+        padding: "9px 13px",
+        fontWeight: 900,
+        background: hidePastTournaments ? "#eef2ff" : "#fff",
+        borderColor: hidePastTournaments ? "#c7d2fe" : "#e2e8f0",
+        color: hidePastTournaments ? "#3730a3" : "#334155",
+      }}
+    >
+      {hidePastTournaments ? "Mostra passati" : "Nascondi passati"}
+    </button>
+  </div>
+</div>
 
       {/* List */}
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -1694,111 +1680,6 @@ const selectedFormula = formulaOptions.some((o) => o.value === rawSelectedFormul
 
       {/* Dialog tornei */}
       <TournamentDialogForm open={open} onClose={() => setOpen(false)} tournament={selected} onSaved={loadList} />
-
-      {/* Dialog personalizzazione (mobile sheet + footer sticky) */}
-<ResponsiveSheetDialog
-  open={settingsOpen}
-  onOpenChange={setSettingsOpen}
-  title="Personalizzazione Home Page"
-  footer={
-    <div className="flex gap-3">
-      <button className="base44-csv-btn" style={{ flex: 1 }} onClick={() => setSettingsOpen(false)}>
-        Annulla
-      </button>
-      <button
-        className="base44-primary-btn"
-        style={{ flex: 1, opacity: settingsSaving ? 0.7 : 1 }}
-        onClick={saveSettings}
-        disabled={settingsSaving}
-      >
-        {settingsSaving ? "Salvataggio..." : "Salva"}
-      </button>
-    </div>
-  }
->
-  {settingsLoading ? (
-    <div style={{ color: "#64748b" }}>Caricamento...</div>
-  ) : (
-    <>
-      <div>
-        <div style={{ fontWeight: 800, marginBottom: 6 }}>Titolo</div>
-        <input
-          value={homeTitle}
-          onChange={(e) => setHomeTitle(e.target.value)}
-          style={{
-            width: "100%",
-            padding: "12px 12px",
-            borderRadius: 12,
-            border: "1px solid #e2e8f0",
-            outline: "none",
-            fontSize: 16, // extra safety (iOS)
-          }}
-        />
-      </div>
-
-      <div>
-        <div style={{ fontWeight: 800, marginBottom: 6 }}>Sottotitolo</div>
-        <textarea
-          value={homeSubtitle}
-          onChange={(e) => setHomeSubtitle(e.target.value)}
-          rows={4}
-          style={{
-            width: "100%",
-            padding: "12px 12px",
-            borderRadius: 12,
-            border: "1px solid #e2e8f0",
-            outline: "none",
-            resize: "vertical",
-            fontSize: 16, // extra safety (iOS)
-          }}
-        />
-      </div>
-
-      <div>
-        <div style={{ fontWeight: 800, marginBottom: 6 }}>Logo (opzionale)</div>
-
-        {homeLogoUrl ? (
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <img
-              src={homeLogoUrl}
-              alt="Logo"
-              style={{
-                width: 64,
-                height: 64,
-                objectFit: "contain",
-                border: "1px solid #e2e8f0",
-                borderRadius: 12,
-              }}
-            />
-            <button
-              className="base44-csv-btn"
-              onClick={() => {
-                setHomeLogoUrl(null);
-                setLogoFile(null);
-              }}
-              style={{ color: "#dc2626" }}
-            >
-              Rimuovi
-            </button>
-          </div>
-        ) : null}
-
-        <input
-          type="file"
-          accept="image/*"
-          onChange={(e) => setLogoFile(e.target.files?.[0] ?? null)}
-          style={{ marginTop: 10, fontSize: 16 }}
-        />
-
-        {logoFile ? (
-          <div style={{ color: "#64748b", fontSize: 12, marginTop: 6 }}>
-            Selezionato: <b>{logoFile.name}</b>
-          </div>
-        ) : null}
-      </div>
-    </>
-  )}
-</ResponsiveSheetDialog>
 
     </>
   );

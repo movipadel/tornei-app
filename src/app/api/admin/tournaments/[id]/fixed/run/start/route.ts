@@ -22,6 +22,7 @@ type WizardPayload = {
   }>;
 
   qualifiersCount?: number | null;
+    bracketParticipantsCount?: number | null;
 
   bracketSlots?: Array<string | "BYE" | null>; // registration.id (wizard può mandarli, ma in bracket_only useremo TUTTE le coppie)
 
@@ -446,122 +447,283 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
 
     }
 
-    // 8) SOLO TABELLONE (BRACKET_ONLY) — STRUTTURA DINAMICA CORRETTA
-if (format === "bracket_only") {
-  const n = main.length;
-  if (n < 2) throw new Error("Servono almeno 2 coppie");
-
-  const nextPow = nextPow2(n);
-  const prevPow = nextPow / 2;
-
-  const playInMatches = n - prevPow; // match preliminari reali
-  const playInPlayersCount = playInMatches * 2;
-
-  // runPairId di tutti
-  const allRunPairIds = main.map((r) =>
-    mapRegToRunPair(String(r.id))
-  );
-
-  const seedRunPairIds = seedRegistrationIds.map((rid) =>
-    mapRegToRunPair(String(rid))
-  );
-
-  const seedSet = new Set(seedRunPairIds);
-  const nonSeed = shuffle(
-    allRunPairIds.filter((p) => !seedSet.has(p))
-  );
-
-  // ==== PLAY-IN ====
-  const playInPlayers = nonSeed.slice(0, playInPlayersCount);
-  const remainingPlayers = [
-    ...seedRunPairIds,
-    ...nonSeed.slice(playInPlayersCount),
-  ];
-
-  const rounds: any[] = [];
-  const fakeBase = Date.now();
-  let fakeOrderTime = fakeBase;
-
-  const makeMatchRow = (
-    roundLabel: string,
-    home: string | null,
-    away: string | null
-  ) => ({
-    run_id: runId,
-    stage: "bracket",
-    group_id: null,
-    round_label: roundLabel,
-    home_pair_id: home,
-    away_pair_id: away,
-    court: null,
-    starts_at: null,
-    completed_at: null,
-  });
-
-  // PLAY-IN ROUND
-  if (playInMatches > 0) {
-    const label = roundLabelForSize(prevPow * 2);
-    const ms = [];
-
-    for (let i = 0; i < playInPlayers.length; i += 2) {
-      ms.push(
-        makeMatchRow(label, playInPlayers[i], playInPlayers[i + 1])
+        // 8) SOLO TABELLONE (BRACKET_ONLY)
+    // TDS rispettate:
+    // - Seed 1 e Seed 2 in lati opposti
+    // - Seed 3/4 distribuiti
+    // - se non potenza di 2: play-in tra seed basse / non-TDS
+    // - ordine match deterministico tramite created_at progressivo
+    if (format === "bracket_only") {
+      const requestedParticipants = Math.trunc(
+        Number(body.bracketParticipantsCount ?? main.length)
       );
-      fakeOrderTime += 60000;
-    }
 
-    rounds.push({ label, matches: ms });
-  }
+      const participantsCount = Math.max(
+        2,
+        Math.min(main.length, requestedParticipants || main.length)
+      );
 
-  // ==== BRACKET PRINCIPALE ====
-  const bracketSize = prevPow;
-  const order = bracketOrder(bracketSize);
+      if (participantsCount < 2) {
+        throw new Error("Servono almeno 2 coppie");
+      }
 
-  const slots: Array<string | null> = Array.from({
-    length: bracketSize,
-  }).map(() => null);
+      const allMainRegistrationIds = main.map((r) => String(r.id));
 
-  for (let i = 0; i < remainingPlayers.length; i++) {
-    slots[i] = remainingPlayers[i] ?? null;
-  }
+      const selectedSeedRegistrationIds = seedRegistrationIds.filter((rid) =>
+        allMainRegistrationIds.includes(String(rid))
+      );
 
-  const matchesMain = [];
-  const labelMain = roundLabelForSize(bracketSize);
+      if (selectedSeedRegistrationIds.length > participantsCount) {
+        throw new Error("Numero TDS superiore ai partecipanti del tabellone");
+      }
 
-  for (let i = 0; i < order.length; i += 2) {
-    const home = slots[order[i] - 1] ?? null;
-    const away = slots[order[i + 1] - 1] ?? null;
+      const seedRunPairIds = selectedSeedRegistrationIds.map((rid) =>
+        mapRegToRunPair(String(rid))
+      );
 
-    matchesMain.push(makeMatchRow(labelMain, home, away));
-    fakeOrderTime += 60000;
-  }
+      const seedSet = new Set(seedRunPairIds);
 
-  rounds.push({ label: labelMain, matches: matchesMain });
+      const nonSeedRegistrationIds = allMainRegistrationIds.filter(
+        (rid) => !selectedSeedRegistrationIds.includes(rid)
+      );
 
-  // ==== ROUND SUCCESSIVI VUOTI ====
-  let curSize = bracketSize;
-  while (curSize > 2) {
-    const nextSize = curSize / 2;
-    const label = roundLabelForSize(nextSize);
-    const ms = [];
+      const shuffledNonSeedRunPairIds = shuffle(
+        nonSeedRegistrationIds.map((rid) => mapRegToRunPair(rid))
+      );
 
-    for (let i = 0; i < nextSize / 2; i++) {
-      ms.push(makeMatchRow(label, null, null));
-      fakeOrderTime += 60000;
-    }
+      const allSeededPlayers = [
+        ...seedRunPairIds,
+        ...shuffledNonSeedRunPairIds,
+      ].slice(0, participantsCount);
 
-    rounds.push({ label, matches: ms });
-    curSize = nextSize;
-  }
+      const q = allSeededPlayers.length;
+      const size = nextPow2(q);
+      const isPowerOfTwo = size === q;
 
-  // inserisco tutti i match
-  const allMatchRows = rounds.flatMap((r) => r.matches);
-  const { error: bmErr } = await sb
-    .from("tournament_run_matches_fp")
-    .insert(allMatchRows);
+      const mainSize = isPowerOfTwo ? q : size / 2;
+      const playInMatches = isPowerOfTwo ? 0 : q - mainSize;
+      const playInPlayersCount = playInMatches * 2;
+      const directCount = q - playInPlayersCount;
 
-  if (bmErr) throw new Error(bmErr.message);
+      if (mainSize < 2) {
+        throw new Error("Tabellone non valido");
+      }
+
+      if (directCount < 0) {
+        throw new Error("Tabellone non valido: play-in incoerente");
+      }
+
+      const directPlayers = allSeededPlayers.slice(0, directCount);
+      const playInPlayers = allSeededPlayers.slice(directCount);
+
+      const rows: any[] = [];
+      const orderBase = Date.now();
+      let orderIndex = 0;
+
+      const makeMatchRow = (
+        roundLabel: string,
+        home: string | null,
+        away: string | null
+      ) => {
+        orderIndex += 1;
+
+        return {
+          run_id: runId,
+          stage: "bracket",
+          group_id: null,
+          round_label: roundLabel,
+          home_pair_id: home,
+          away_pair_id: away,
+          court: null,
+          starts_at: null,
+
+          // serve per ordinare in modo stabile auto-advance
+          created_at: new Date(orderBase + orderIndex * 1000).toISOString(),
+
+          home_games: null,
+          away_games: null,
+          set1_home_games: null,
+          set1_away_games: null,
+          set2_home_games: null,
+          set2_away_games: null,
+          set3_home_games: null,
+          set3_away_games: null,
+          home_sets: null,
+          away_sets: null,
+          completed_at: null,
+        };
+      };
+
+      // ==========================
+      // PLAY-IN
+      // ==========================
+      if (playInMatches > 0) {
+        const playInLabel = roundLabelForSize(size);
+
+        const playInTop = playInPlayers.slice(0, playInMatches);
+        const playInBottom = playInPlayers.slice(playInMatches).reverse();
+
+        for (let i = 0; i < playInMatches; i++) {
+          const home = playInTop[i] ?? null;
+          const away = playInBottom[i] ?? null;
+
+          if (!home || !away) {
+            throw new Error("Errore costruzione play-in");
+          }
+
+          rows.push(makeMatchRow(playInLabel, home, away));
+        }
+      }
+
+      // ==========================
+      // ==========================
+// MAIN ROUND
+// ==========================
+const placeholders: Array<{ type: "placeholder"; index: number }> =
+  Array.from({ length: playInMatches }).map((_, index) => ({
+    type: "placeholder",
+    index,
+  }));
+
+const mainSeeds: Array<string | { type: "placeholder"; index: number } | null> = [
+  ...directPlayers,
+  ...placeholders,
+];
+
+if (mainSeeds.length !== mainSize) {
+  throw new Error("Errore costruzione tabellone principale");
 }
+
+function mainSeed(seedNumber: number) {
+  return mainSeeds[seedNumber - 1] ?? null;
+}
+
+function mainPairId(entry: string | { type: "placeholder"; index: number } | null) {
+  return typeof entry === "string" ? entry : null;
+}
+
+function buildMainRoundSeedPairs(size: number): Array<[number, number]> {
+  if (size === 2) return [[1, 2]];
+
+  if (size === 4) {
+    return [
+      [1, 4],
+      [2, 3],
+    ];
+  }
+
+  if (size === 8) {
+    return [
+      [1, 8],
+      [4, 5],
+      [3, 6],
+      [2, 7],
+    ];
+  }
+
+  if (size === 16) {
+    return [
+      [1, 16],
+      [8, 9],
+      [5, 12],
+      [4, 13],
+
+      [3, 14],
+      [6, 11],
+      [7, 10],
+      [2, 15],
+    ];
+  }
+
+  // fallback semplice
+  const out: Array<[number, number]> = [];
+  for (let i = 1; i <= size / 2; i++) {
+    out.push([i, size + 1 - i]);
+  }
+  return out;
+}
+
+const mainLabel = roundLabelForSize(mainSize);
+const mainSeedPairs = buildMainRoundSeedPairs(mainSize);
+
+for (const [homeSeed, awaySeed] of mainSeedPairs) {
+  const homeEntry = mainSeed(homeSeed);
+  const awayEntry = mainSeed(awaySeed);
+
+  rows.push(
+    makeMatchRow(
+      mainLabel,
+      mainPairId(homeEntry),
+      mainPairId(awayEntry)
+    )
+  );
+}
+
+      // ==========================
+      // ROUND SUCCESSIVI VUOTI
+      // ==========================
+      let curSize = mainSize;
+
+      while (curSize > 2) {
+        const nextSize = curSize / 2;
+        const label = roundLabelForSize(nextSize);
+
+        for (let i = 0; i < nextSize / 2; i++) {
+          rows.push(makeMatchRow(label, null, null));
+        }
+
+        curSize = nextSize;
+      }
+
+      const { error: bmErr } = await sb
+        .from("tournament_run_matches_fp")
+        .insert(rows);
+
+      if (bmErr) throw new Error(bmErr.message);
+
+      const pairNameByRunPairId = new Map<string, string>();
+      for (const rp of (insertedPairs ?? []) as any[]) {
+        pairNameByRunPairId.set(
+          String(rp.id),
+          pairDisplayName(
+            main.find((r) => String(r.id) === String(rp.registration_id)) as RegRow
+          )
+        );
+      }
+
+      const bracketDraw = {
+        generated_at: new Date().toISOString(),
+        participantsCount: q,
+        seeds: allSeededPlayers.map((pairId, index) => ({
+          seed: index + 1,
+          pairId,
+          name: pairNameByRunPairId.get(pairId) ?? pairId,
+          isTds: seedSet.has(pairId),
+        })),
+        structure: {
+          type: "bracket_only_seeded",
+          size,
+          mainSize,
+          playInMatches,
+          directCount,
+          rules: [
+            "TDS ordinate prima dei non-TDS",
+            "Non-TDS sorteggiate",
+            "Seed 1 e Seed 2 su lati opposti del tabellone",
+            "Play-in solo se i partecipanti non sono potenza di 2",
+          ],
+        },
+      };
+
+      const mergedRules = { ...(rules ?? {}), bracketDraw };
+
+      const { error: ruleErr } = await sb
+        .from("tournament_runs")
+        .update({ rules: mergedRules })
+        .eq("id", runId);
+
+      if (ruleErr) throw new Error(ruleErr.message);
+    }
 
     // 9) running
     const { error: uerr } = await sb
