@@ -36,29 +36,42 @@ export default function StaffScannerPage() {
   }
 
   function handleScan(result: any) {
-    if (!result || scanned) return;
+  if (!result || scanned) return;
 
-    const raw = String(result?.rawValue || "").trim();
-    if (!raw) return;
+  const first = Array.isArray(result) ? result[0] : result;
 
-    setScanned(true);
+  const raw = String(
+    first?.rawValue ||
+      first?.text ||
+      first?.format?.rawValue ||
+      ""
+  ).trim();
 
-    const prizeToken = getPrizeTokenFromUrl(raw);
-
-    if (prizeToken) {
-      router.push(`/riscatto-premio/${encodeURIComponent(prizeToken)}`);
-      return;
-    }
-
-    const code = extractCustomerCode(raw);
-
-    if (!code) {
-      setScanned(false);
-      return;
-    }
-
-    router.push(`/staff?code=${encodeURIComponent(code)}`);
+  if (!raw) {
+    setError("QR letto ma formato non riconosciuto");
+    return;
   }
+
+  setScanned(true);
+  setError(null);
+
+  const prizeToken = getPrizeTokenFromUrl(raw);
+
+  if (prizeToken) {
+    window.location.href = `/riscatto-premio/${encodeURIComponent(prizeToken)}`;
+    return;
+  }
+
+  const code = extractCustomerCode(raw);
+
+  if (!code) {
+    setScanned(false);
+    setError("QR non valido");
+    return;
+  }
+
+  window.location.href = `/staff?code=${encodeURIComponent(code)}`;
+}
 
   return (
     <div
