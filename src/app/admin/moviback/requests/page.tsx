@@ -28,6 +28,8 @@ export default function RequestsPage() {
   const [data, setData] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [rejectTarget, setRejectTarget] = useState<Row | null>(null);
+  const [rejectionReason, setRejectionReason] = useState("");
 
   async function load() {
     try {
@@ -52,7 +54,11 @@ export default function RequestsPage() {
     load();
   }, []);
 
-  async function handleAction(id: string, action: "approve" | "reject") {
+  async function handleAction(
+  id: string,
+  action: "approve" | "reject",
+  reason?: string
+) {
     try {
       setSavingId(id);
 
@@ -61,7 +67,11 @@ export default function RequestsPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ id, action }),
+        body: JSON.stringify({
+  id,
+  action,
+  rejection_reason: action === "reject" ? reason : undefined,
+}),
       });
 
       const json = await res.json().catch(() => ({}));
@@ -69,6 +79,8 @@ export default function RequestsPage() {
 
       toast.success(action === "approve" ? "Richiesta approvata" : "Richiesta rifiutata");
       await load();
+      setRejectTarget(null);
+setRejectionReason("");
     } catch (e: any) {
       toast.error(e?.message || "Errore");
     } finally {
@@ -282,7 +294,10 @@ export default function RequestsPage() {
                   </button>
 
                   <button
-                    onClick={() => handleAction(r.id, "reject")}
+  onClick={() => {
+    setRejectTarget(r);
+    setRejectionReason("");
+  }}
                     disabled={savingId === r.id}
                     style={{
                       ...rejectBtn,
@@ -302,6 +317,98 @@ export default function RequestsPage() {
           </div>
         )}
       </div>
+      {rejectTarget ? (
+  <div
+    style={{
+      position: "fixed",
+      inset: 0,
+      zIndex: 100,
+      background: "rgba(3,7,18,0.76)",
+      backdropFilter: "blur(10px)",
+      display: "flex",
+      alignItems: "flex-end",
+      justifyContent: "center",
+      padding: 14,
+    }}
+    onClick={() => {
+      if (!savingId) setRejectTarget(null);
+    }}
+  >
+    <div
+      onClick={(e) => e.stopPropagation()}
+      style={{
+        width: "100%",
+        maxWidth: 520,
+        borderRadius: 28,
+        padding: 18,
+        color: "white",
+        background:
+          "linear-gradient(180deg, rgba(15,23,42,0.98), rgba(3,7,18,0.98))",
+        border: "1px solid rgba(255,255,255,0.10)",
+        boxShadow: "0 26px 70px rgba(0,0,0,0.45)",
+      }}
+    >
+      <div style={{ fontSize: 21, fontWeight: 950 }}>
+        Rifiuta richiesta
+      </div>
+
+      <div style={{ marginTop: 6, ...muted }}>
+        Inserisci il motivo che verrà mostrato all’utente.
+      </div>
+
+      <textarea
+        value={rejectionReason}
+        onChange={(e) => setRejectionReason(e.target.value)}
+        placeholder="Esempio: certificato medico non leggibile, carica un nuovo documento."
+        style={{
+          marginTop: 14,
+          width: "100%",
+          minHeight: 110,
+          borderRadius: 18,
+          border: "1px solid rgba(255,255,255,0.12)",
+          background: "rgba(255,255,255,0.07)",
+          color: "white",
+          padding: 13,
+          outline: "none",
+          resize: "vertical",
+          fontWeight: 700,
+        }}
+      />
+
+      <div
+        style={{
+          marginTop: 16,
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: 10,
+        }}
+      >
+        <button
+          type="button"
+          disabled={!!savingId}
+          onClick={() => setRejectTarget(null)}
+          style={secondaryBtn}
+        >
+          Annulla
+        </button>
+
+        <button
+          type="button"
+          disabled={!!savingId || !rejectionReason.trim()}
+          onClick={() =>
+            handleAction(rejectTarget.id, "reject", rejectionReason)
+          }
+          style={{
+            ...rejectBtn,
+            opacity: !!savingId || !rejectionReason.trim() ? 0.55 : 1,
+          }}
+        >
+          Conferma rifiuto
+        </button>
+      </div>
+    </div>
+  </div>
+) : null}
     </div>
   );
 }

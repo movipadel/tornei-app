@@ -62,7 +62,7 @@ export async function POST(req: Request) {
   const denied = await guardAdmin();
   if (denied) return denied;
 
-  const { id, action } = await req.json().catch(() => ({}));
+  const { id, action, rejection_reason } = await req.json().catch(() => ({}));
 
   if (!id || !action) {
     return NextResponse.json({ error: "Dati mancanti" }, { status: 400 });
@@ -133,38 +133,51 @@ export async function POST(req: Request) {
   }
 
   if (action === "reject") {
-    const { data: membership, error: readErr } = await sb
-      .from("loyalty_memberships")
-      .select("id,status")
-      .eq("id", id)
-      .single();
+  const rejectionReason = String(rejection_reason ?? "").trim();
 
-    if (readErr || !membership) {
-      return NextResponse.json(
-        { error: readErr?.message || "Richiesta non trovata" },
-        { status: 404 }
-      );
-    }
-
-    if (membership.status !== "pending_review") {
-      return NextResponse.json(
-        { error: "La richiesta non è più in revisione" },
-        { status: 400 }
-      );
-    }
-
-    const { error } = await sb
-      .from("loyalty_memberships")
-      .update({
-        status: "rejected",
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", id);
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
+  if (!rejectionReason) {
+    return NextResponse.json(
+      { error: "Motivo rifiuto obbligatorio" },
+      { status: 400 }
+    );
   }
 
-  return NextResponse.json({ ok: true });
+  const { data: membership, error: readErr } = await sb
+    .from("loyalty_memberships")
+    .select("id,status")
+    .eq("id", id)
+    .single();
+
+  if (readErr || !membership) {
+    return NextResponse.json(
+      { error: readErr?.message || "Richiesta non trovata" },
+      { status: 404 }
+    );
+  }
+
+  if (membership.status !== "pending_review") {
+    return NextResponse.json(
+      { error: "La richiesta non è più in revisione" },
+      { status: 400 }
+    );
+  }
+
+  const now = new Date().toISOString();
+
+  const { error } = await sb
+    .from("loyalty_memberships")
+    .update({
+      status: "rejected",
+      rejection_reason: rejectionReason,
+      rejected_at: now,
+      updated_at: now,
+    })
+    .eq("id", id);
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+return NextResponse.json({ ok: true });
 }

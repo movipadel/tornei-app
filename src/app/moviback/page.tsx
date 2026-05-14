@@ -41,6 +41,8 @@ type Membership = {
   approved_at?: string | null;
   suspended_at?: string | null;
   suspension_reason?: string | null;
+  rejection_reason?: string | null;
+rejected_at?: string | null;
 };
 
 type Certificate = {
@@ -1045,27 +1047,53 @@ form.set(
 ) : null}
 
             {membership?.status === "rejected" ? (
-              <section style={{ ...glassCard, padding: 18, color: "white" }}>
-                <AlertTriangle
-                  className="w-6 h-6"
-                  strokeWidth={1.7}
-                  style={{ color: "#fb7185" }}
-                />
-                <div style={{ marginTop: 10, fontSize: 19, fontWeight: 850 }}>
-                  Richiesta non approvata
-                </div>
-                <div
-                  style={{
-                    marginTop: 7,
-                    color: "rgba(255,255,255,0.60)",
-                    fontSize: 14,
-                    fontWeight: 560,
-                  }}
-                >
-                  Contatta la segreteria per maggiori informazioni.
-                </div>
-              </section>
-            ) : null}
+  <section style={{ ...glassCard, padding: 18, color: "white" }}>
+    <AlertTriangle
+      className="w-6 h-6"
+      strokeWidth={1.7}
+      style={{ color: "#fb7185" }}
+    />
+
+    <div style={{ marginTop: 10, fontSize: 19, fontWeight: 850 }}>
+      Richiesta non approvata
+    </div>
+
+    <div
+      style={{
+        marginTop: 7,
+        color: "rgba(255,255,255,0.60)",
+        fontSize: 14,
+        fontWeight: 560,
+        lineHeight: 1.35,
+      }}
+    >
+      {membership.rejection_reason ||
+        "La richiesta è stata rifiutata. Puoi correggere i dati e inviarla nuovamente."}
+    </div>
+
+    <button
+      type="button"
+      onClick={() => {
+        setTaxCode(membership.tax_code || "");
+        setMembershipType(membership.membership_type || "ASC");
+        setRequestOpen(true);
+      }}
+      style={{
+        marginTop: 14,
+        minHeight: 46,
+        width: "100%",
+        borderRadius: 16,
+        border: 0,
+        background: "linear-gradient(135deg,#14b8a6,#0ea5e9)",
+        color: "white",
+        fontWeight: 900,
+        fontSize: 14,
+      }}
+    >
+      Correggi e reinvia richiesta
+    </button>
+  </section>
+) : null}
 
             {membership?.status === "suspended" ? (
               <section style={{ ...glassCard, padding: 18, color: "white" }}>
@@ -1356,7 +1384,7 @@ form.set(
                             fontWeight: 700,
                           }}
                         >
-                          100 punti
+                          15 punti
                         </div>
                       </button>
                     </div>

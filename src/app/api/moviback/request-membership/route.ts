@@ -132,15 +132,15 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: existingErr.message }, { status: 500 });
   }
 
-  if (existingMembership) {
-    return NextResponse.json(
-      {
-        error: "Richiesta MoviBack già presente",
-        membership: existingMembership,
-      },
-      { status: 409 }
-    );
-  }
+  if (existingMembership && existingMembership.status !== "rejected") {
+  return NextResponse.json(
+    {
+      error: "Richiesta MoviBack già presente",
+      membership: existingMembership,
+    },
+    { status: 409 }
+  );
+}
 
   const { data: user, error: userErr } = await sb
     .from("users")
@@ -168,6 +168,70 @@ export async function POST(req: Request) {
   if (uploadErr) {
     return NextResponse.json({ error: uploadErr.message }, { status: 500 });
   }
+
+  if (existingMembership?.status === "rejected") {
+  const feePoints = hasExistingMembership ? 0 : membershipType === "FITP" ? 15 : 0;
+  const feePaid = hasExistingMembership || feePoints === 0;
+  const nowIso = new Date().toISOString();
+
+  const { data: membership, error: membershipErr } = await sb
+    .from("loyalty_memberships")
+    .update({
+      status: "pending_review",
+      tax_code: taxCode,
+      membership_type: membershipType,
+      fee_points: feePoints,
+      fee_paid: feePaid,
+      has_existing_membership: hasExistingMembership,
+      existing_membership_type: hasExistingMembership
+        ? existingMembershipType
+        : null,
+      existing_membership_number:
+        hasExistingMembership && existingMembershipType === "FITP"
+          ? existingMembershipNumber
+          : null,
+      rejection_reason: null,
+      rejected_at: null,
+      updated_at: nowIso,
+    })
+    .eq("id", existingMembership.id)
+    .select(
+      "id,user_id,status,membership_code,tax_code,membership_type,fee_points,fee_paid,has_existing_membership,existing_membership_type,existing_membership_number,created_at"
+    )
+    .single();
+
+  if (membershipErr || !membership) {
+    await sb.storage.from(BUCKET).remove([filePath]);
+
+    return NextResponse.json(
+      { error: membershipErr?.message ?? "Errore reinvio richiesta" },
+      { status: 500 }
+    );
+  }
+
+  const { data: certificate, error: certErr } = await sb
+    .from("medical_certificates")
+    .insert({
+      user_id: uid,
+      file_path: filePath,
+      status: "pending_review",
+      expiry_date: expiryDate,
+    })
+    .select("id,user_id,file_path,status,uploaded_at,expiry_date")
+    .single();
+
+  if (certErr) {
+    await sb.storage.from(BUCKET).remove([filePath]);
+
+    return NextResponse.json({ error: certErr.message }, { status: 500 });
+  }
+
+  return NextResponse.json({
+    ok: true,
+    membership,
+    certificate,
+  });
+}
 
   const feePoints = hasExistingMembership ? 0 : membershipType === "FITP" ? 15 : 0;
   const feePaid = hasExistingMembership || feePoints === 0;

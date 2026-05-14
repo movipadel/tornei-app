@@ -33,7 +33,7 @@ export async function GET() {
   const { data: membership, error: membershipErr } = await sb
     .from("loyalty_memberships")
     .select(
-  "id,user_id,status,membership_code,tax_code,membership_type,fee_points,fee_paid,approved_at,suspended_at,suspension_reason,created_at,updated_at"
+  "id,user_id,status,membership_code,tax_code,membership_type,fee_points,fee_paid,approved_at,suspended_at,suspension_reason,rejection_reason,rejected_at,created_at,updated_at"
 )
     .eq("user_id", uid)
     .maybeSingle();
