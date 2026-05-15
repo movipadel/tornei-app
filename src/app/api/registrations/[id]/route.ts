@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { sendTelegramMessage } from "@/lib/telegram";
+import { sendAdminPushNotification } from "@/lib/adminPush";
 
 export const runtime = "nodejs";
 
@@ -230,6 +231,26 @@ export async function DELETE(req: Request, ctx: { params: Promise<{ id: string }
     }
   } catch (e) {
     console.warn("Telegram notify error (ignored):", e);
+  }
+    // Push admin best-effort: non deve mai bloccare la cancellazione
+  try {
+    await sendAdminPushNotification({
+      title: "❌ Cancellazione iscrizione",
+      body: `${whoDeleted} · ${tName}`,
+      url: "/admin/tournaments",
+    });
+
+    if (promoted?.id) {
+      const whoPromoted = fmtWho(promoted, tType);
+
+      await sendAdminPushNotification({
+        title: "⬆️ Promozione da riserva",
+        body: `${whoPromoted} ora in main · ${tName}`,
+        url: "/admin/tournaments",
+      });
+    }
+  } catch (e) {
+    console.warn("Admin push delete notify error (ignored):", e);
   }
 
   return NextResponse.json({ ok: true, promoted: Boolean(promoted?.id) });

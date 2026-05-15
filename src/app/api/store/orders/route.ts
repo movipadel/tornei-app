@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getUserIdFromCookie } from "@/lib/userAuth";
 import { sendStoreOrderEmail } from "@/lib/email";
+import { sendTelegramMessage } from "@/lib/telegram";
+import { sendAdminPushNotification } from "@/lib/adminPush";
 
 export const runtime = "nodejs";
 
@@ -366,6 +368,49 @@ try {
   });
 } catch (e) {
   console.error("Errore invio email Store MOVI:", e);
+}
+
+// Telegram + push admin ordine Store.
+// Non bloccano l'ordine se hanno problemi.
+try {
+  const itemsSummary = orderItems
+    .map((item) => {
+      const variant = [item.color_name, item.size_label].filter(Boolean).join(" · ");
+      return `• ${item.quantity}x ${item.product_name}${variant ? ` (${variant})` : ""}`;
+    })
+    .join("\n");
+
+  const paymentLabel =
+    payment_mode === "euro"
+      ? "Euro"
+      : payment_mode === "points"
+        ? "Punti MoviBack"
+        : "Misto euro + punti";
+
+  const totalsLine =
+    payment_mode === "euro"
+      ? `€ ${finalEuro.toFixed(2)}`
+      : payment_mode === "points"
+        ? `${pointsToRedeem} punti`
+        : `€ ${finalEuro.toFixed(2)} + ${pointsToRedeem} punti`;
+
+  await sendTelegramMessage(
+    `🛍️ NUOVO ORDINE STORE MOVI\n\n` +
+      `👤 ${user.full_name}\n` +
+      `📞 ${user.phone || "—"}\n` +
+      `📍 Ritiro: ${pickup_club}\n` +
+      `💳 Pagamento: ${paymentLabel}\n` +
+      `💰 Totale: ${totalsLine}\n\n` +
+      `${itemsSummary}`
+  );
+
+  await sendAdminPushNotification({
+    title: "🛍️ Nuovo ordine Store",
+    body: `${user.full_name} · ${totalsLine} · ${pickup_club}`,
+    url: "/admin/store-orders",
+  });
+} catch (e) {
+  console.warn("Store order admin notify error (ignored):", e);
 }
 
   return NextResponse.json({

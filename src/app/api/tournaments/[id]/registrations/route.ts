@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getUserIdFromCookie } from "@/lib/userAuth";
 import { sendTelegramMessage } from "@/lib/telegram";
+import { sendAdminPushNotification } from "@/lib/adminPush";
 
 export const runtime = "nodejs";
 
@@ -283,6 +284,19 @@ if (circuitId) {
     await sendTelegramMessage(textRegistration);
   } catch (e) {
     console.warn("Telegram registration notify error (ignored):", e);
+  }
+    // Push admin best-effort: non deve mai bloccare l'iscrizione
+  try {
+    await sendAdminPushNotification({
+      title: data.is_reserve ? "⏳ Nuova riserva torneo" : "✅ Nuova iscrizione torneo",
+      body:
+        tournamentType === "Coppie fisse"
+          ? `${p1_name}${p2_name_raw ? ` + ${p2_name_raw}` : ""} · ${tournamentCategory}`
+          : `${p1_name} · ${tournamentCategory}`,
+      url: "/admin/tournaments",
+    });
+  } catch (e) {
+    console.warn("Admin push registration notify error (ignored):", e);
   }
 
   return NextResponse.json({ data }, { status: 201 });

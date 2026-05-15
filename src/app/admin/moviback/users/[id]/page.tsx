@@ -9,10 +9,14 @@ import {
   BadgePercent,
   Ban,
   CheckCircle2,
+  Download,
+  Eye,
+  FileText,
   Gift,
   Loader2,
   Save,
   Wallet,
+  X,
 } from "lucide-react";
 
 type Detail = {
@@ -41,6 +45,9 @@ export default function AdminMoviBackUserDetailPage() {
   const [promoMultiplier, setPromoMultiplier] = useState<string>("");
   const [promoDays, setPromoDays] = useState<string>("");
   const [promoNotes, setPromoNotes] = useState("");
+  const [certificateModalOpen, setCertificateModalOpen] = useState(false);
+const [certificateUrl, setCertificateUrl] = useState("");
+const [certificateLoading, setCertificateLoading] = useState(false);
 
   async function load() {
     try {
@@ -197,6 +204,38 @@ await load();
       setSaving(false);
     }
   }
+
+  async function openCertificateModal(certificateId?: string) {
+  if (!certificateId) {
+    toast.error("Certificato non disponibile");
+    return;
+  }
+
+  try {
+    setCertificateLoading(true);
+
+    const res = await fetch("/api/admin/moviback/certificate-url", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ certificate_id: certificateId }),
+    });
+
+    const json = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      throw new Error(json.error || "Errore apertura certificato");
+    }
+
+    setCertificateUrl(json.url);
+    setCertificateModalOpen(true);
+  } catch (e: any) {
+    toast.error(e?.message || "Errore apertura certificato");
+  } finally {
+    setCertificateLoading(false);
+  }
+}
 
   if (loading) {
     return (
@@ -475,23 +514,42 @@ await load();
 
         <section style={grid2}>
           <div style={cardStyle}>
-            <h2 style={titleStyle}>Certificato</h2>
-            {data.certificate ? (
-              <>
-                <Info label="Stato" value={data.certificate.status} />
-                <Info
-                  label="Scadenza"
-                  value={
-                    data.certificate.expiry_date
-                      ? new Date(data.certificate.expiry_date).toLocaleDateString("it-IT")
-                      : "—"
-                  }
-                />
-              </>
-            ) : (
-              <div style={muted}>Nessun certificato.</div>
-            )}
-          </div>
+  <h2 style={titleStyle}>Certificato</h2>
+
+  {data.certificate ? (
+    <>
+      <Info label="Stato" value={data.certificate.status} />
+      <Info
+        label="Scadenza"
+        value={
+          data.certificate.expiry_date
+            ? new Date(data.certificate.expiry_date).toLocaleDateString("it-IT")
+            : "—"
+        }
+      />
+
+      <button
+        type="button"
+        onClick={() => openCertificateModal(data.certificate?.id)}
+        disabled={certificateLoading}
+        style={{
+          ...primaryBtn,
+          marginTop: 12,
+          background: "linear-gradient(135deg,#38bdf8,#2dd4bf)",
+        }}
+      >
+        {certificateLoading ? (
+          <Loader2 className="w-4 h-4 animate-spin" />
+        ) : (
+          <Eye className="w-4 h-4" />
+        )}
+        Vedi certificato
+      </button>
+    </>
+  ) : (
+    <div style={muted}>Nessun certificato.</div>
+  )}
+</div>
 
           <div style={cardStyle}>
             <h2 style={titleStyle}>Riscatti premio</h2>
@@ -551,6 +609,184 @@ await load();
             </div>
           )}
         </section>
+        {certificateModalOpen ? (
+  <div
+    style={{
+      position: "fixed",
+      inset: 0,
+      zIndex: 100,
+      background: "rgba(3,7,18,0.82)",
+      backdropFilter: "blur(10px)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      padding: 14,
+    }}
+    onClick={() => setCertificateModalOpen(false)}
+  >
+    <div
+      onClick={(e) => e.stopPropagation()}
+      style={{
+        width: "100%",
+        maxWidth: 920,
+        maxHeight: "92dvh",
+        borderRadius: 28,
+        overflow: "hidden",
+        background:
+          "linear-gradient(180deg, rgba(15,23,42,0.98), rgba(3,7,18,0.98))",
+        border: "1px solid rgba(255,255,255,0.10)",
+        boxShadow: "0 26px 70px rgba(0,0,0,0.45)",
+        color: "white",
+        display: "flex",
+        flexDirection: "column",
+      }}
+    >
+      <div
+        style={{
+          padding: 14,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 10,
+          borderBottom: "1px solid rgba(255,255,255,0.08)",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+          <FileText className="w-5 h-5" style={{ color: "#38bdf8" }} />
+          <div style={{ fontWeight: 950 }}>C.M</div>
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {certificateUrl ? (
+            <>
+  <a
+    href={certificateUrl}
+    target="_blank"
+    rel="noopener noreferrer"
+    style={{
+      minHeight: 36,
+      padding: "0 12px",
+      borderRadius: 999,
+      border: "1px solid rgba(255,255,255,0.12)",
+      background: "rgba(255,255,255,0.07)",
+      color: "white",
+      textDecoration: "none",
+      fontWeight: 850,
+      fontSize: 13,
+      display: "inline-flex",
+      alignItems: "center",
+      gap: 7,
+    }}
+  >
+    <Eye className="w-4 h-4" />
+    Apri file
+  </a>
+
+  <button
+    type="button"
+    onClick={async () => {
+      try {
+        const response = await fetch(certificateUrl);
+        const blob = await response.blob();
+
+        const blobUrl = window.URL.createObjectURL(blob);
+
+        const a = document.createElement("a");
+        a.href = blobUrl;
+        a.download = "certificato-medico";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+
+        window.URL.revokeObjectURL(blobUrl);
+      } catch {
+        toast.error("Errore download certificato");
+      }
+    }}
+    style={{
+      minHeight: 36,
+      padding: "0 12px",
+      borderRadius: 999,
+      border: "1px solid rgba(255,255,255,0.12)",
+      background: "rgba(56,189,248,0.12)",
+      color: "#7dd3fc",
+      fontWeight: 850,
+      fontSize: 13,
+      display: "inline-flex",
+      alignItems: "center",
+      gap: 7,
+      cursor: "pointer",
+    }}
+  >
+    <Download className="w-4 h-4" />
+    Salva
+  </button>
+</>
+          ) : null}
+
+          <button
+            type="button"
+            onClick={() => setCertificateModalOpen(false)}
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 999,
+              border: "1px solid rgba(255,255,255,0.12)",
+              background: "rgba(255,255,255,0.07)",
+              color: "white",
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+            }}
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
+      <div
+        style={{
+          padding: 12,
+          overflow: "auto",
+          flex: 1,
+          background: "rgba(255,255,255,0.035)",
+        }}
+      >
+        {certificateUrl ? (
+          String(data.certificate?.file_path || "").toLowerCase().match(/\.(jpg|jpeg|png|webp)$/) ? (
+            <img
+              src={certificateUrl}
+              alt="Certificato medico"
+              style={{
+                display: "block",
+                maxWidth: "100%",
+                height: "auto",
+                margin: "0 auto",
+                borderRadius: 18,
+                background: "white",
+              }}
+            />
+          ) : (
+            <iframe
+              src={certificateUrl}
+              title="Certificato medico"
+              style={{
+                width: "100%",
+                height: "75dvh",
+                border: 0,
+                borderRadius: 18,
+                background: "white",
+              }}
+            />
+          )
+        ) : (
+          <div style={muted}>Certificato non disponibile.</div>
+        )}
+      </div>
+    </div>
+  </div>
+) : null}
       </div>
     </div>
   );
