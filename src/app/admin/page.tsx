@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
   Trophy,
@@ -94,6 +94,17 @@ function urlBase64ToUint8Array(base64String: string) {
 
 export default function AdminHomePage() {
   const [pushLoading, setPushLoading] = useState(false);
+  const [pushPermission, setPushPermission] =
+  useState<NotificationPermission | "unsupported">("default");
+
+useEffect(() => {
+  if (!("Notification" in window)) {
+    setPushPermission("unsupported");
+    return;
+  }
+
+  setPushPermission(Notification.permission);
+}, []);
 
   async function enableAdminPush() {
     if (pushLoading) return;
@@ -154,6 +165,7 @@ export default function AdminHomePage() {
       }
 
       toast.success("Notifiche admin attivate su questo dispositivo.");
+      setPushPermission(Notification.permission);
     } catch (e: any) {
       toast.error(e?.message || "Errore attivazione notifiche.");
     } finally {
@@ -229,39 +241,41 @@ export default function AdminHomePage() {
           </Link>
         </div>
 
-        <button
-          type="button"
-          onClick={enableAdminPush}
-          disabled={pushLoading}
-          style={{
-            width: "100%",
-            marginBottom: 18,
-            minHeight: 52,
-            borderRadius: 20,
-            border: "1px solid rgba(45,212,191,0.28)",
-            background:
-              "linear-gradient(135deg, rgba(20,184,166,0.18), rgba(14,165,233,0.12))",
-            color: "white",
-            fontWeight: 900,
-            fontSize: 14,
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 9,
-            cursor: pushLoading ? "not-allowed" : "pointer",
-            opacity: pushLoading ? 0.7 : 1,
-            boxShadow: "0 16px 34px rgba(20,184,166,0.12)",
-          }}
-        >
-          {pushLoading ? (
-            <Loader2 size={18} className="animate-spin" />
-          ) : (
-            <BellRing size={18} strokeWidth={1.8} />
-          )}
-          {pushLoading
-            ? "Attivazione notifiche..."
-            : "Attiva notifiche admin su questo dispositivo"}
-        </button>
+        {pushPermission !== "granted" && pushPermission !== "unsupported" ? (
+  <button
+    type="button"
+    onClick={enableAdminPush}
+    disabled={pushLoading}
+    style={{
+      width: "100%",
+      marginBottom: 18,
+      minHeight: 52,
+      borderRadius: 20,
+      border: "1px solid rgba(45,212,191,0.28)",
+      background:
+        "linear-gradient(135deg, rgba(20,184,166,0.18), rgba(14,165,233,0.12))",
+      color: "white",
+      fontWeight: 900,
+      fontSize: 14,
+      display: "inline-flex",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 9,
+      cursor: pushLoading ? "not-allowed" : "pointer",
+      opacity: pushLoading ? 0.7 : 1,
+      boxShadow: "0 16px 34px rgba(20,184,166,0.12)",
+    }}
+  >
+    {pushLoading ? (
+      <Loader2 size={18} className="animate-spin" />
+    ) : (
+      <BellRing size={18} strokeWidth={1.8} />
+    )}
+    {pushLoading
+      ? "Attivazione notifiche..."
+      : "Attiva notifiche admin su questo dispositivo"}
+  </button>
+) : null}
 
         <div
           style={{
