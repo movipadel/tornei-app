@@ -371,11 +371,156 @@ form.set(
             : "Sospeso";
 
             const certStatus = getCertificateStatus(certificate);
-            const activeRewardRedemptions = (data.redemptions || []).filter(
+const activeRewardRedemptions = (data.redemptions || []).filter(
   (r) => r.status === "requested" && r.qr_token
 );
 
+if (!loading && !user) {
   return (
+    <div
+      className="base44-home-wrap"
+      style={{
+        minHeight: "100dvh",
+        background: pageBg,
+      }}
+    >
+      <PublicNav />
+
+      <div className="base44-home-container" style={{ paddingTop: 18 }}>
+        <section
+          style={{
+            ...glassCard,
+            padding: 22,
+            color: "white",
+            textAlign: "center",
+          }}
+        >
+          <div
+            style={{
+              width: 70,
+              height: 70,
+              borderRadius: 24,
+              margin: "0 auto 16px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              background: "rgba(245,158,11,0.14)",
+              border: "1px solid rgba(245,158,11,0.28)",
+            }}
+          >
+            <Gift className="w-8 h-8" style={{ color: "#fbbf24" }} />
+          </div>
+
+          <div
+            style={{
+              fontSize: 28,
+              fontWeight: 950,
+              letterSpacing: -0.8,
+              lineHeight: 1,
+            }}
+          >
+            Entra in MoviBack
+          </div>
+
+          <div
+            style={{
+              marginTop: 10,
+              color: "rgba(255,255,255,0.66)",
+              fontSize: 14,
+              fontWeight: 560,
+              lineHeight: 1.4,
+            }}
+          >
+            Per attivare il programma fedeltà devi prima creare il tuo account
+            MOVI o accedere con i tuoi dati.
+          </div>
+
+          <div
+            style={{
+              marginTop: 18,
+              display: "grid",
+              gap: 10,
+              textAlign: "left",
+            }}
+          >
+            {[
+              "QR personale per accumulare punti",
+              "Iscrizione tornei più veloce",
+              "Accesso a Store MOVI e premi",
+              "Profilo unico per tutto il mondo MOVI",
+            ].map((item) => (
+              <div
+                key={item}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  padding: "11px 12px",
+                  borderRadius: 16,
+                  background: "rgba(255,255,255,0.055)",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  color: "rgba(255,255,255,0.82)",
+                  fontSize: 13,
+                  fontWeight: 750,
+                }}
+              >
+                <CheckCircle2
+                  className="w-4 h-4"
+                  style={{ color: "#4ade80", flexShrink: 0 }}
+                />
+                {item}
+              </div>
+            ))}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setLoginOpen(true)}
+            style={{
+              marginTop: 18,
+              minHeight: 50,
+              width: "100%",
+              borderRadius: 17,
+              border: 0,
+              background: "linear-gradient(135deg,#f59e0b,#fbbf24)",
+              color: "#111827",
+              fontWeight: 950,
+              fontSize: 15,
+              cursor: "pointer",
+            }}
+          >
+            Accedi / Registrati
+          </button>
+        </section>
+      </div>
+
+      <UserLoginDialog
+  open={loginOpen}
+  onClose={() => setLoginOpen(false)}
+  onSaved={async (u) => {
+    setData((prev) => ({ ...prev, user: u }));
+    setLoginOpen(false);
+    toast.success("Accesso effettuato");
+
+    const res = await fetch("/api/moviback/me", { cache: "no-store" });
+    const json = await res.json().catch(() => ({}));
+
+    if (res.ok) {
+      setData(json as MoviBackMe);
+
+      if (!json.membership) {
+        setRequestOpen(true);
+      }
+    } else {
+      await loadMe();
+    }
+  }}
+/>
+    </div>
+  );
+}
+
+return (
     <div
       className="base44-home-wrap"
       style={{
