@@ -818,52 +818,52 @@ export default function TournamentCard({ tournament, onRegister, status, onCance
               ) : null}
             </div>
 
-            {status !== "none" ? (
-              <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-                <button className="base44-cta base44-cta-disabled" type="button" disabled>
-                  {status === "reserve" ? "In riserva" : "Iscritto"}
-                </button>
+            {live ? (
+  <TournamentLiveDialog
+    tournamentId={tournament.id}
+    tournamentName={tournament.name}
+    trigger={
+      <button
+        type="button"
+        aria-label="Apri avanzamento torneo"
+        style={{
+          background: "linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)",
+          color: "white",
+          fontWeight: 900,
+          padding: "10px 14px",
+          fontSize: 14,
+          borderRadius: 999,
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 8,
+          minWidth: "unset",
+          border: "1px solid rgba(255,255,255,0.25)",
+          boxShadow: "0 12px 26px rgba(239, 68, 68, 0.25)",
+        }}
+      >
+        LIVE
+      </button>
+    }
+  />
+) : status !== "none" ? (
+  <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+    <button className="base44-cta base44-cta-disabled" type="button" disabled>
+      {status === "reserve" ? "In riserva" : "Iscritto"}
+    </button>
 
-                {onCancel ? (
-                  <button
-                    type="button"
-                    title="Cancella iscrizione"
-                    onClick={onCancel}
-                    className="base44-icon-btn"
-                    style={{ width: 40, height: 40, borderRadius: 999, color: "#dc2626" }}
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                ) : null}
-              </div>
-            ) : live ? (
-              <TournamentLiveDialog
-                tournamentId={tournament.id}
-                tournamentName={tournament.name}
-                trigger={
-                  <button
-                    type="button"
-                    aria-label="Apri avanzamento torneo"
-                    style={{
-                      background: "linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)",
-                      color: "white",
-                      fontWeight: 900,
-                      padding: "10px 14px",
-                      fontSize: 14,
-                      borderRadius: 999,
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 8,
-                      minWidth: "unset",
-                      border: "1px solid rgba(255,255,255,0.25)",
-                      boxShadow: "0 12px 26px rgba(239, 68, 68, 0.25)",
-                    }}
-                  >
-                    LIVE
-                  </button>
-                }
-              />
-            ) : registrationsOpen ? (
+    {onCancel ? (
+      <button
+        type="button"
+        title="Cancella iscrizione"
+        onClick={onCancel}
+        className="base44-icon-btn"
+        style={{ width: 40, height: 40, borderRadius: 999, color: "#dc2626" }}
+      >
+        <X className="w-4 h-4" />
+      </button>
+    ) : null}
+  </div>
+) : registrationsOpen ? (
               <button
                 className={`base44-cta ${isFull ? "base44-cta-amber" : "base44-cta-indigo"}`}
                 type="button"
