@@ -325,6 +325,7 @@ async function markAllNotificationsRead() {
     if (!t.date) return false;
 
     const tournamentDate = new Date(`${t.date}T${t.time || "00:00"}`);
+    const tournamentEndOfDay = new Date(`${t.date}T23:59:59.999`);
 
     const now = new Date();
 
@@ -341,7 +342,7 @@ async function markAllNotificationsRead() {
     endOfSecondNextWeek.setDate(startOfCurrentWeek.getDate() + 20);
     endOfSecondNextWeek.setHours(23, 59, 59, 999);
 
-    return tournamentDate >= now && tournamentDate <= endOfSecondNextWeek;
+    return tournamentEndOfDay >= now && tournamentDate <= endOfSecondNextWeek;
   })
   .sort((a, b) => {
     const dateA = new Date(`${a.date}T${a.time || "00:00"}`).getTime();
