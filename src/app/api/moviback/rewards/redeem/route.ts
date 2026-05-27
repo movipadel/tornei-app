@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getUserIdFromCookie } from "@/lib/userAuth";
+import { sendTelegramMessage } from "@/lib/telegram";
+import { sendAdminPushNotification } from "@/lib/adminPush";
 
 export const runtime = "nodejs";
 
@@ -44,7 +46,7 @@ if (!uid) {
 
   const { data: reward, error: rewardErr } = await sb
     .from("rewards_catalog")
-    .select("id,name,points_cost,is_active,stock_qty")
+    .select("id,name,description,category,points_cost,is_active,stock_qty,reward_type")
     .eq("id", rewardId)
     .single();
 
@@ -126,6 +128,89 @@ if (!uid) {
       })
       .eq("id", reward.id);
   }
+
+  const rewardCategory = String(reward.category || "").toLowerCase();
+
+const shouldCreateStoreOrder =
+  rewardCategory.includes("abbigliamento") ||
+  rewardCategory.includes("accessori") ||
+  rewardCategory.includes("accessorio") ||
+  rewardCategory.includes("store");
+
+if (shouldCreateStoreOrder) {
+  const { data: user } = await sb
+    .from("users")
+    .select("id,full_name,phone,email")
+    .eq("id", uid)
+    .maybeSingle();
+
+  const { data: storeOrder, error: storeOrderErr } = await sb
+    .from("store_orders")
+    .insert({
+      user_id: uid,
+      status: "pending",
+      pickup_club: "CENTALLO",
+      payment_mode: "points",
+      total_euro: 0,
+      total_points: Number(reward.points_cost || 0),
+      customer_name: user?.full_name || null,
+      customer_phone: user?.phone || null,
+      customer_email: user?.email || null,
+      notes: `Ordine generato automaticamente da riscatto premio MoviBack.`,
+      admin_notes: `Riscatto premio: ${reward.name}`,
+      order_type: "reward_redemption",
+      related_redemption_id: redemption.id,
+      special_title: `Premio MoviBack - ${reward.name}`,
+      special_notes:
+        `Premio riscattato da catalogo MoviBack. ` +
+        `Verificare eventuali taglie/colori con il cliente prima dell'ordine al fornitore.`,
+    })
+    .select("id")
+    .single();
+
+  if (storeOrderErr || !storeOrder) {
+    console.warn("Store special order creation error:", storeOrderErr);
+  } else {
+    const { error: storeItemErr } = await sb.from("store_order_items").insert({
+      order_id: storeOrder.id,
+      product_id: null,
+      product_name: reward.name,
+      custom_product_name: reward.name,
+      custom_variant: reward.category || null,
+      quantity: 1,
+      unit_price_euro: 0,
+      unit_price_points: Number(reward.points_cost || 0),
+      total_euro: 0,
+      total_points: Number(reward.points_cost || 0),
+      supplier_notes:
+        reward.description ||
+        "Prodotto generato da riscatto premio MoviBack.",
+    });
+
+    if (storeItemErr) {
+      console.warn("Store special order item creation error:", storeItemErr);
+    }
+    try {
+  await sendTelegramMessage(
+    `🎁 NUOVO RISCATTO MOVIBACK\n\n` +
+      `👤 ${user?.full_name || "Cliente"}\n` +
+      `📞 ${user?.phone || "—"}\n` +
+      `🏆 Premio: ${reward.name}\n` +
+      `⭐ Punti: ${reward.points_cost}\n\n` +
+      `📦 Ordine speciale Store creato\n` +
+      `🧾 ID ordine: ${storeOrder.id}`
+  );
+
+  await sendAdminPushNotification({
+    title: "🎁 Nuovo riscatto MoviBack",
+    body: `${user?.full_name || "Cliente"} · ${reward.name}`,
+    url: "/admin/store-orders",
+  });
+} catch (e) {
+  console.warn("Reward redemption store notify error (ignored):", e);
+}
+  }
+}
 
   return NextResponse.json({
     ok: true,

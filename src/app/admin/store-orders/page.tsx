@@ -99,6 +99,9 @@ export default function AdminStoreOrdersPage() {
       o.customer_email,
       o.pickup_club,
       o.status,
+      o.order_type,
+o.special_title,
+o.special_notes,
       o.status === "delivered" && o.is_paid ? "chiuso" : "",
       ...(o.store_order_items ?? []).map((i: any) => i.product_name),
     ]
@@ -558,6 +561,15 @@ function OrderCard({
               {order.customer_phone || "Telefono non indicato"} ·{" "}
               {order.customer_email || "Email non indicata"}
             </div>
+            {order.order_type === "reward_redemption" ? (
+  <div style={{ marginTop: 8 }}>
+    <span style={rewardOrderBadge}>Premio MoviBack</span>
+  </div>
+) : order.order_type === "special" ? (
+  <div style={{ marginTop: 8 }}>
+    <span style={specialOrderBadge}>Ordine speciale</span>
+  </div>
+) : null}
           </div>
 
           <StatusBadge status={order.status} />
@@ -622,6 +634,19 @@ function OrderModal({ order, onClose, onStatus, onTogglePaid, saving }: any) {
 
         <div style={detailBox}>
           <h3 style={sectionTitle}>Ordine</h3>
+          {order.order_type && order.order_type !== "catalog" ? (
+  <>
+    <DetailLine
+      label="Tipo ordine"
+      value={
+        order.order_type === "reward_redemption"
+          ? "Premio MoviBack"
+          : "Ordine speciale"
+      }
+    />
+    <DetailLine label="Titolo speciale" value={order.special_title} />
+  </>
+) : null}
           <DetailLine label="Club ritiro" value={order.pickup_club} />
           <DetailLine label="Pagamento" value={order.payment_mode} />
           <DetailLine label="Totale euro" value={`€${Number(order.total_euro || 0).toFixed(2)}`} />
@@ -646,10 +671,12 @@ function OrderModal({ order, onClose, onStatus, onTogglePaid, saving }: any) {
             {items.map((i: any) => (
               <div key={i.id} style={modalItemRow} className="admin-orders-modal-item-row">
                 <div>
-                  <div style={{ fontWeight: 950 }}>{i.product_name}</div>
+                  <div style={{ fontWeight: 950 }}>
+  {i.custom_product_name || i.product_name}
+</div>
                   <div style={muted}>
-                    {i.color_name}
-                    {i.size_label ? ` / ${i.size_label}` : ""}
+                    {i.custom_variant || i.color_name || ""}
+{i.size_label ? ` / ${i.size_label}` : ""}
                   </div>
                 </div>
                 <div style={{ textAlign: "right" }}>
@@ -1071,4 +1098,28 @@ const economicsButton: React.CSSProperties = {
   fontWeight: 950,
   textDecoration: "none",
   boxShadow: "0 14px 30px rgba(0,0,0,0.18)",
+};
+
+const rewardOrderBadge: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  borderRadius: 999,
+  background: "rgba(245,158,11,0.14)",
+  border: "1px solid rgba(245,158,11,0.28)",
+  color: "#fbbf24",
+  fontSize: 12,
+  fontWeight: 950,
+  padding: "7px 10px",
+};
+
+const specialOrderBadge: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  borderRadius: 999,
+  background: "rgba(56,189,248,0.13)",
+  border: "1px solid rgba(56,189,248,0.25)",
+  color: "#7dd3fc",
+  fontSize: 12,
+  fontWeight: 950,
+  padding: "7px 10px",
 };
