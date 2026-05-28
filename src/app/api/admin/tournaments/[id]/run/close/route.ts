@@ -531,9 +531,13 @@ if (roundLabel.includes("final") && !roundLabel.includes("semi")) {
 }
 }
 
-const finalMatch = mlist.find(
-  (m) => String(m.stage) === "bracket" && normStageKey(m.round_label).includes("final")
-);
+const finalMatch = mlist.find((m) => {
+  if (String(m.stage) !== "bracket") return false;
+
+  const round = normStageKey(m.round_label);
+
+  return round.includes("final") && !round.includes("semi");
+});
 
 if (finalMatch && finalMatch.completed_at) {
   const { data: finalScore, error: finalErr } = await sb
