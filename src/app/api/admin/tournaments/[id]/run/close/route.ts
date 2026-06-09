@@ -500,6 +500,26 @@ export async function POST(
 
         const stageByPairId = new Map<string, string>();
 
+        const stagePriority: Record<string, number> = {
+  others: 0,
+  quarterfinalist: 10,
+  semifinalist: 20,
+  finalist: 30,
+  winner: 40,
+};
+
+function promotePairStage(pairId: string | null, nextStage: string) {
+  if (!pairId) return;
+
+  const currentStage = stageByPairId.get(pairId) ?? "others";
+  const currentPriority = stagePriority[currentStage] ?? 0;
+  const nextPriority = stagePriority[nextStage] ?? 0;
+
+  if (nextPriority > currentPriority) {
+    stageByPairId.set(pairId, nextStage);
+  }
+}
+
 // default: tutti "others"
 for (const p of pairList) {
   stageByPairId.set(String(p.id), "others");
@@ -514,20 +534,18 @@ for (const m of mlist) {
   const awayId = m.away_pair_id ? String(m.away_pair_id) : null;
 
   if (roundLabel.includes("quart")) {
-  if (homeId) stageByPairId.set(homeId, "quarterfinalist");
-  if (awayId) stageByPairId.set(awayId, "quarterfinalist");
+  promotePairStage(homeId, "quarterfinalist");
+  promotePairStage(awayId, "quarterfinalist");
 }
 
 if (roundLabel.includes("semi")) {
-  if (homeId) stageByPairId.set(homeId, "semifinalist");
-  if (awayId) stageByPairId.set(awayId, "semifinalist");
+  promotePairStage(homeId, "semifinalist");
+  promotePairStage(awayId, "semifinalist");
 }
 
-// IMPORTANTISSIMO:
-// finale sì, semifinale no
 if (roundLabel.includes("final") && !roundLabel.includes("semi")) {
-  if (homeId) stageByPairId.set(homeId, "finalist");
-  if (awayId) stageByPairId.set(awayId, "finalist");
+  promotePairStage(homeId, "finalist");
+  promotePairStage(awayId, "finalist");
 }
 }
 
@@ -574,7 +592,7 @@ if (finalMatch && finalMatch.completed_at) {
   }
 
   if (winnerPairId) {
-    stageByPairId.set(winnerPairId, "winner");
+    promotePairStage(winnerPairId, "winner");
   }
 }
 
