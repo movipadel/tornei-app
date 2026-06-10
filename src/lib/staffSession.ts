@@ -32,7 +32,7 @@ export function staffCookieOptions() {
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax" as const,
     path: "/",
-    maxAge: 60 * 60 * 24 * 7,
+    maxAge: 60 * 60 * 24 * 180,
   };
 }
 
@@ -45,7 +45,7 @@ export async function createStaffSessionToken(payload: StaffSessionPayload) {
   })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
-    .setExpirationTime("7d")
+    .setExpirationTime("180d")
     .sign(getSecret());
 }
 
