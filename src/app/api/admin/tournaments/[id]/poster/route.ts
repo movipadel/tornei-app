@@ -76,6 +76,15 @@ function getPadelSeriesBackgroundPath(params: {
     );
   }
 
+  if (category === "maschile" && level === "intermedio") {
+  return join(
+    process.cwd(),
+    "public",
+    "posters",
+    "padelseries-maschile-intermedio.png"
+  );
+}
+
   if (category === "misto" && level === "avanzato") {
     return join(
       process.cwd(),
