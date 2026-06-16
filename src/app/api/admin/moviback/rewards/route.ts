@@ -45,6 +45,12 @@ export async function POST(req: Request) {
       : null;
   const is_active = Boolean(body.is_active ?? true);
 
+  const store_product_id = body.store_product_id
+  ? String(body.store_product_id).trim()
+  : null;
+
+const requires_store_variant = Boolean(body.requires_store_variant);
+
   if (!name) {
     return NextResponse.json(
       { error: "Nome premio richiesto" },
@@ -64,15 +70,17 @@ export async function POST(req: Request) {
   const { data, error } = await sb
     .from("rewards_catalog")
     .insert({
-      name,
-      description,
-      category,
-      points_cost,
-      image_path: image_path || null,
-      stock_qty,
-      is_active,
-      reward_type: "club", // 🔥 sempre club per ora
-    })
+  name,
+  description,
+  category,
+  points_cost,
+  image_path: image_path || null,
+  stock_qty,
+  is_active,
+  reward_type: "club",
+  store_product_id,
+  requires_store_variant: store_product_id ? requires_store_variant : false,
+})
     .select()
     .single();
 

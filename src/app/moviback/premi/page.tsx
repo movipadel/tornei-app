@@ -24,6 +24,33 @@ type Reward = {
   image_path: string | null;
   stock_qty: number | null;
   reward_type: "club" | "partner";
+
+  store_product_id?: string | null;
+  requires_store_variant?: boolean;
+
+  store_product?: {
+    id: string;
+    name: string;
+    description?: string | null;
+
+    colors: {
+      id: string;
+      color_name: string;
+      color_hex?: string | null;
+      image_path?: string | null;
+    }[];
+
+    sizes: {
+      id: string;
+      size_label: string;
+    }[];
+
+    stock: {
+      color_id: string;
+      size_id?: string | null;
+      stock_qty?: number | null;
+    }[];
+  } | null;
 };
 
 type MoviBackMe = {
@@ -76,7 +103,15 @@ export default function MoviBackPremiPage() {
   const [selectedPointRangeId, setSelectedPointRangeId] = useState("all");
 
   const [previewImage, setPreviewImage] = useState<string | null>(null);
-const [previewTitle, setPreviewTitle] = useState<string>("");
+  const [previewTitle, setPreviewTitle] = useState<string>("");
+  const [variantReward, setVariantReward] =
+  useState<Reward | null>(null);
+
+const [selectedColorId, setSelectedColorId] =
+  useState<string>("");
+
+const [selectedSizeId, setSelectedSizeId] =
+  useState<string>("");
 
   const canRedeem = membershipStatus === "approved";
 
@@ -158,51 +193,125 @@ const [previewTitle, setPreviewTitle] = useState<string>("");
     }
   }
 
-  async function redeemReward(reward: Reward) {
-    if (!canRedeem) {
-      toast.error("MoviBack non attivo");
-      return;
+    function redeemReward(reward: Reward) {
+  if (!canRedeem) {
+    toast.error("MoviBack non attivo");
+    return;
+  }
+
+  if (points < reward.points_cost) {
+    toast.error("Punti insufficienti");
+    return;
+  }
+
+  if (reward.stock_qty !== null && reward.stock_qty <= 0) {
+    toast.error("Premio esaurito");
+    return;
+  }
+
+  if (
+    reward.requires_store_variant &&
+    reward.store_product
+  ) {
+    setVariantReward(reward);
+    setSelectedColorId("");
+    setSelectedSizeId("");
+    return;
+  }
+
+  redeemNormalReward(reward);
+}
+
+async function redeemNormalReward(reward: Reward) {
+  const ok = confirm(
+    `Vuoi riscattare "${reward.name}" per ${reward.points_cost} punti?\n\nIl QR premio comparirà nella tua pagina MoviBack.`
+  );
+
+  if (!ok) return;
+
+  try {
+    setRedeemingId(reward.id);
+
+    const res = await fetch("/api/moviback/rewards/redeem", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        reward_id: reward.id,
+      }),
+    });
+
+    const json = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      throw new Error(json.error || "Errore riscatto premio");
     }
 
-    if (points < reward.points_cost) {
-      toast.error("Punti insufficienti");
-      return;
-    }
-
-    if (reward.stock_qty !== null && reward.stock_qty <= 0) {
-      toast.error("Premio esaurito");
-      return;
-    }
-
-    const ok = confirm(
-      `Vuoi riscattare "${reward.name}" per ${reward.points_cost} punti?\n\nIl QR premio comparirà nella tua pagina MoviBack.`
+    toast.success(
+      "Premio riscattato. Trovi il QR nella tua pagina MoviBack."
     );
 
-    if (!ok) return;
-
-    try {
-      setRedeemingId(reward.id);
-
-      const res = await fetch("/api/moviback/rewards/redeem", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reward_id: reward.id }),
-      });
-
-      const json = await res.json().catch(() => ({}));
-
-      if (!res.ok) {
-        throw new Error(json.error || "Errore riscatto premio");
-      }
-
-      toast.success("Premio riscattato. Trovi il QR nella tua pagina MoviBack.");
-      window.location.href = "/moviback";
-    } catch (e: any) {
-      toast.error(e?.message || "Errore");
-    } finally {
-      setRedeemingId(null);
-    }
+    window.location.href = "/moviback";
+  } catch (e: any) {
+    toast.error(e?.message || "Errore");
+  } finally {
+    setRedeemingId(null);
   }
+}
+
+  async function confirmVariantRedemption() {
+  if (!variantReward) return;
+
+  if (!selectedColorId) {
+    toast.error("Seleziona un colore");
+    return;
+  }
+
+  const hasSizes =
+    (variantReward.store_product?.sizes?.length ?? 0) > 0;
+
+  if (hasSizes && !selectedSizeId) {
+    toast.error("Seleziona una taglia");
+    return;
+  }
+
+  try {
+    setRedeemingId(variantReward.id);
+
+    const res = await fetch(
+      "/api/moviback/rewards/redeem",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          reward_id: variantReward.id,
+          store_color_id: selectedColorId,
+          store_size_id: selectedSizeId || null,
+        }),
+      }
+    );
+
+    const json = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      throw new Error(
+        json.error || "Errore riscatto premio"
+      );
+    }
+
+    toast.success(
+      "Premio riscattato con successo"
+    );
+
+    window.location.href = "/moviback";
+  } catch (e: any) {
+    toast.error(e?.message || "Errore");
+  } finally {
+    setRedeemingId(null);
+    setVariantReward(null);
+  }
+}
 
   useEffect(() => {
     loadData();
@@ -754,6 +863,178 @@ const [previewTitle, setPreviewTitle] = useState<string>("");
           {previewTitle}
         </div>
       </div>
+    </div>
+  </div>
+) : null}
+
+{variantReward ? (
+  <div
+    onClick={() => setVariantReward(null)}
+    style={{
+      position: "fixed",
+      inset: 0,
+      zIndex: 130,
+      background: "rgba(0,0,0,0.82)",
+      backdropFilter: "blur(8px)",
+      display: "flex",
+      alignItems: "flex-end",
+      justifyContent: "center",
+      padding: 14,
+    }}
+  >
+    <div
+      onClick={(e) => e.stopPropagation()}
+      style={{
+        width: "100%",
+        maxWidth: 520,
+        borderRadius: "28px 28px 0 0",
+        background:
+          "linear-gradient(180deg, rgba(15,23,42,0.98), rgba(3,7,18,0.98))",
+        border: "1px solid rgba(255,255,255,0.12)",
+        boxShadow: "0 28px 80px rgba(0,0,0,0.55)",
+        color: "white",
+        padding: 18,
+      }}
+    >
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+        <div>
+          <div style={{ fontSize: 21, fontWeight: 950 }}>
+            Scegli variante
+          </div>
+          <div style={{ marginTop: 4, color: "rgba(255,255,255,0.58)", fontSize: 13 }}>
+            {variantReward.name} · {variantReward.points_cost} pt
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setVariantReward(null)}
+          style={{
+            width: 40,
+            height: 40,
+            borderRadius: 999,
+            border: "1px solid rgba(255,255,255,0.14)",
+            background: "rgba(255,255,255,0.06)",
+            color: "white",
+            fontSize: 22,
+            cursor: "pointer",
+          }}
+        >
+          ×
+        </button>
+      </div>
+
+      <div style={{ marginTop: 18 }}>
+        <div style={{ fontSize: 13, fontWeight: 900, marginBottom: 8 }}>
+          Colore
+        </div>
+
+        <div style={{ display: "grid", gap: 8 }}>
+          {(variantReward.store_product?.colors ?? []).map((color) => (
+            <button
+              key={color.id}
+              type="button"
+              onClick={() => setSelectedColorId(color.id)}
+              style={{
+                minHeight: 46,
+                borderRadius: 16,
+                border:
+                  selectedColorId === color.id
+                    ? "1px solid rgba(251,191,36,0.75)"
+                    : "1px solid rgba(255,255,255,0.10)",
+                background:
+                  selectedColorId === color.id
+                    ? "rgba(251,191,36,0.16)"
+                    : "rgba(255,255,255,0.055)",
+                color: "white",
+                fontWeight: 850,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "0 13px",
+                cursor: "pointer",
+              }}
+            >
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
+                <span
+                  style={{
+                    width: 18,
+                    height: 18,
+                    borderRadius: 999,
+                    background: color.color_hex || "rgba(255,255,255,0.35)",
+                    border: "1px solid rgba(255,255,255,0.25)",
+                  }}
+                />
+                {color.color_name}
+              </span>
+
+              {selectedColorId === color.id ? "✓" : ""}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {(variantReward.store_product?.sizes?.length ?? 0) > 0 ? (
+        <div style={{ marginTop: 18 }}>
+          <div style={{ fontSize: 13, fontWeight: 900, marginBottom: 8 }}>
+            Taglia
+          </div>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(70px, 1fr))",
+              gap: 8,
+            }}
+          >
+            {(variantReward.store_product?.sizes ?? []).map((size) => (
+              <button
+                key={size.id}
+                type="button"
+                onClick={() => setSelectedSizeId(size.id)}
+                style={{
+                  minHeight: 42,
+                  borderRadius: 15,
+                  border:
+                    selectedSizeId === size.id
+                      ? "1px solid rgba(251,191,36,0.75)"
+                      : "1px solid rgba(255,255,255,0.10)",
+                  background:
+                    selectedSizeId === size.id
+                      ? "rgba(251,191,36,0.16)"
+                      : "rgba(255,255,255,0.055)",
+                  color: "white",
+                  fontWeight: 950,
+                  cursor: "pointer",
+                }}
+              >
+                {size.size_label}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      <button
+        type="button"
+        disabled={redeemingId === variantReward.id}
+        onClick={confirmVariantRedemption}
+        style={{
+          marginTop: 20,
+          width: "100%",
+          minHeight: 52,
+          borderRadius: 18,
+          border: 0,
+          background: "linear-gradient(135deg,#f59e0b,#fbbf24)",
+          color: "#111827",
+          fontWeight: 950,
+          cursor: "pointer",
+        }}
+      >
+        {redeemingId === variantReward.id
+          ? "Riscatto in corso..."
+          : "Conferma riscatto"}
+      </button>
     </div>
   </div>
 ) : null}

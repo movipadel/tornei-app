@@ -26,6 +26,9 @@ type Reward = {
   reward_type: "club" | "partner";
   created_at: string | null;
   updated_at: string | null;
+
+  store_product_id?: string | null;
+  requires_store_variant?: boolean;
 };
 
 type RewardCategory = {
@@ -52,6 +55,9 @@ const emptyForm = {
   image_path: "",
   stock_qty: "",
   is_active: true,
+
+  store_product_id: "",
+  requires_store_variant: false,
 };
 
 const emptyCategoryForm = {
@@ -73,6 +79,7 @@ export default function AdminMoviBackCatalogPage() {
   const [saving, setSaving] = useState(false);
 
   const [items, setItems] = useState<Reward[]>([]);
+  const [storeProducts, setStoreProducts] = useState<any[]>([]);
   const [editing, setEditing] = useState<Reward | null>(null);
   const [form, setForm] = useState(emptyForm);
 
@@ -112,6 +119,24 @@ export default function AdminMoviBackCatalogPage() {
     }
   }
 
+  async function loadStoreProducts() {
+  try {
+    const res = await fetch("/api/store/products", {
+      cache: "no-store",
+    });
+
+    const json = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      throw new Error(json.error || "Errore prodotti store");
+    }
+
+    setStoreProducts(json.products ?? []);
+  } catch (e) {
+    console.error(e);
+  }
+}
+
   async function loadCategories() {
     try {
       const res = await fetch("/api/admin/moviback/reward-categories", {
@@ -145,8 +170,9 @@ export default function AdminMoviBackCatalogPage() {
   }
 
   useEffect(() => {
-    loadAll();
-  }, []);
+  loadAll();
+  loadStoreProducts();
+}, []);
 
   function resetForm() {
     setEditing(null);
@@ -164,6 +190,10 @@ export default function AdminMoviBackCatalogPage() {
       image_path: reward.image_path ?? "",
       stock_qty: reward.stock_qty === null ? "" : String(reward.stock_qty),
       is_active: Boolean(reward.is_active),
+      store_product_id: reward.store_product_id ?? "",
+      requires_store_variant: Boolean(
+      reward.requires_store_variant
+      ),
     });
     setImageFile(null);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -197,14 +227,16 @@ export default function AdminMoviBackCatalogPage() {
       const imageUrl = await uploadImageIfNeeded();
 
       const payload = {
-        name: form.name,
-        description: form.description,
-        category: form.category,
-        points_cost: Number(form.points_cost),
-        image_path: imageUrl,
-        stock_qty: form.stock_qty === "" ? null : Number(form.stock_qty),
-        is_active: form.is_active,
-      };
+  name: form.name,
+  description: form.description,
+  category: form.category,
+  points_cost: Number(form.points_cost),
+  image_path: imageUrl,
+  stock_qty: form.stock_qty === "" ? null : Number(form.stock_qty),
+  is_active: form.is_active,
+  store_product_id: form.store_product_id || null,
+  requires_store_variant: form.requires_store_variant,
+};
 
       const url = editing
         ? `/api/admin/moviback/rewards/${editing.id}`
@@ -237,14 +269,16 @@ export default function AdminMoviBackCatalogPage() {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: reward.name,
-          description: reward.description ?? "",
-          category: reward.category ?? "",
-          points_cost: reward.points_cost,
-          image_path: reward.image_path ?? "",
-          stock_qty: reward.stock_qty,
-          is_active: !reward.is_active,
-        }),
+  name: reward.name,
+  description: reward.description ?? "",
+  category: reward.category ?? "",
+  points_cost: reward.points_cost,
+  image_path: reward.image_path ?? "",
+  stock_qty: reward.stock_qty,
+  is_active: !reward.is_active,
+  store_product_id: reward.store_product_id ?? null,
+  requires_store_variant: Boolean(reward.requires_store_variant),
+}),
       });
 
       const json = await res.json().catch(() => ({}));
@@ -476,6 +510,46 @@ export default function AdminMoviBackCatalogPage() {
                 style={inputStyle}
               />
             </div>
+
+            <select
+  value={form.store_product_id}
+  onChange={(e) =>
+    setForm((p) => ({
+      ...p,
+      store_product_id: e.target.value,
+      requires_store_variant: e.target.value
+        ? p.requires_store_variant
+        : false,
+    }))
+  }
+  style={selectStyle}
+>
+  <option value="" style={optionStyle}>
+    Nessun collegamento Store
+  </option>
+
+  {storeProducts.map((p) => (
+    <option key={p.id} value={p.id} style={optionStyle}>
+      {p.name}
+    </option>
+  ))}
+</select>
+
+{form.store_product_id ? (
+  <label style={checkboxLabel}>
+    <input
+      type="checkbox"
+      checked={form.requires_store_variant}
+      onChange={(e) =>
+        setForm((p) => ({
+          ...p,
+          requires_store_variant: e.target.checked,
+        }))
+      }
+    />
+    Richiede scelta colore/taglia
+  </label>
+) : null}
 
             <input
               type="number"

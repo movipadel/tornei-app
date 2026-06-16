@@ -28,6 +28,12 @@ export async function PATCH(req: Request, { params }: Params) {
       : null;
   const is_active = Boolean(body.is_active);
 
+  const store_product_id = body.store_product_id
+  ? String(body.store_product_id).trim()
+  : null;
+
+  const requires_store_variant = Boolean(body.requires_store_variant);
+
   if (!id) {
     return NextResponse.json({ error: "ID premio mancante" }, { status: 400 });
   }
@@ -49,15 +55,17 @@ export async function PATCH(req: Request, { params }: Params) {
   const { data, error } = await sb
     .from("rewards_catalog")
     .update({
-      name,
-      description: description || null,
-      category: category || null,
-      points_cost,
-      image_path: image_path || null,
-      stock_qty,
-      is_active,
-      updated_at: new Date().toISOString(),
-    })
+  name,
+  description: description || null,
+  category: category || null,
+  points_cost,
+  image_path: image_path || null,
+  stock_qty,
+  is_active,
+  store_product_id,
+  requires_store_variant: store_product_id ? requires_store_variant : false,
+  updated_at: new Date().toISOString(),
+})
     .eq("id", id)
     .select()
     .single();
