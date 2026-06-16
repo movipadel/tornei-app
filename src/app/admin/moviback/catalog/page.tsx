@@ -131,7 +131,7 @@ export default function AdminMoviBackCatalogPage() {
       throw new Error(json.error || "Errore prodotti store");
     }
 
-    setStoreProducts(json.products ?? []);
+    setStoreProducts(json.data?.products ?? []);
   } catch (e) {
     console.error(e);
   }
