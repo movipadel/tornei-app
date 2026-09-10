@@ -4,6 +4,10 @@ import { getUserIdFromCookie } from "@/lib/userAuth";
 import { sendStoreOrderEmail } from "@/lib/email";
 import { sendTelegramMessage } from "@/lib/telegram";
 import { sendAdminPushNotification } from "@/lib/adminPush";
+import {
+  measureNotificationRequest,
+  schedulePostCommitNotifications,
+} from "@/lib/postCommitNotifications";
 
 export const runtime = "nodejs";
 
@@ -66,6 +70,10 @@ async function insertStorePointsTransaction({
 }
 
 export async function POST(req: Request) {
+  return measureNotificationRequest("/api/store/orders", () => handlePost(req));
+}
+
+async function handlePost(req: Request) {
   const uid = await getUserIdFromCookie();
 
   if (!uid) {
@@ -359,20 +367,6 @@ export async function POST(req: Request) {
     }
   }
 
-  // Email notifica ordine alla segreteria.
-// Non blocca l'ordine se Resend ha problemi.
-try {
-  await sendStoreOrderEmail({
-    order,
-    items: orderItems,
-  });
-} catch (e) {
-  console.error("Errore invio email Store MOVI:", e);
-}
-
-// Telegram + push admin ordine Store.
-// Non bloccano l'ordine se hanno problemi.
-try {
   const itemsSummary = orderItems
     .map((item) => {
       const variant = [item.color_name, item.size_label].filter(Boolean).join(" · ");
@@ -394,24 +388,38 @@ try {
         ? `${pointsToRedeem} punti`
         : `€ ${finalEuro.toFixed(2)} + ${pointsToRedeem} punti`;
 
-  await sendTelegramMessage(
-    `🛍️ NUOVO ORDINE STORE MOVI\n\n` +
-      `👤 ${user.full_name}\n` +
-      `📞 ${user.phone || "—"}\n` +
-      `📍 Ritiro: ${pickup_club}\n` +
-      `💳 Pagamento: ${paymentLabel}\n` +
-      `💰 Totale: ${totalsLine}\n\n` +
-      `${itemsSummary}`
-  );
-
-  await sendAdminPushNotification({
-    title: "🛍️ Nuovo ordine Store",
-    body: `${user.full_name} · ${totalsLine} · ${pickup_club}`,
-    url: "/admin/store-orders",
-  });
-} catch (e) {
-  console.warn("Store order admin notify error (ignored):", e);
-}
+  schedulePostCommitNotifications("/api/store/orders", [
+    {
+      provider: "email",
+      run: () => sendStoreOrderEmail({ order, items: orderItems }),
+      failureLog: "Errore invio email Store MOVI:",
+      failureLogLevel: "error",
+    },
+    {
+      provider: "telegram",
+      run: () =>
+        sendTelegramMessage(
+          `🛍️ NUOVO ORDINE STORE MOVI\n\n` +
+            `👤 ${user.full_name}\n` +
+            `📞 ${user.phone || "—"}\n` +
+            `📍 Ritiro: ${pickup_club}\n` +
+            `💳 Pagamento: ${paymentLabel}\n` +
+            `💰 Totale: ${totalsLine}\n\n` +
+            `${itemsSummary}`
+        ),
+      failureLog: "Store order Telegram notify error (ignored):",
+    },
+    {
+      provider: "push",
+      run: () =>
+        sendAdminPushNotification({
+          title: "🛍️ Nuovo ordine Store",
+          body: `${user.full_name} · ${totalsLine} · ${pickup_club}`,
+          url: "/admin/store-orders",
+        }),
+      failureLog: "Store order admin push notify error (ignored):",
+    },
+  ]);
 
   return NextResponse.json({
     ok: true,

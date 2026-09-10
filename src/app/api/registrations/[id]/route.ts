@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { sendTelegramMessage } from "@/lib/telegram";
 import { sendAdminPushNotification } from "@/lib/adminPush";
+import {
+  measureNotificationRequest,
+  schedulePostCommitNotifications,
+} from "@/lib/postCommitNotifications";
 
 export const runtime = "nodejs";
 
@@ -35,6 +39,12 @@ function fmtWho(reg: any, tType: string) {
 }
 
 export async function DELETE(req: Request, ctx: { params: Promise<{ id: string }> }) {
+  return measureNotificationRequest("/api/registrations/[id]", () =>
+    handleDelete(req, ctx)
+  );
+}
+
+async function handleDelete(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
   const sb = supabaseAdmin();
 
@@ -173,15 +183,19 @@ export async function DELETE(req: Request, ctx: { params: Promise<{ id: string }
     console.warn("renumberPositions error (ignored):", e);
   }
 
-  // 7) TELEGRAM: cancellazione + (eventuale) promozione (non bloccante)
+  let textCancel: string | null = null;
+  let textPromo: string | null = null;
+  let whoPromoted: string | null = null;
+
   try {
-    // conteggi aggiornati
+    // Conteggi aggiornati usati solo per il testo Telegram.
     const { data: regsNow } = await sb
       .from("tournament_registrations")
       .select("is_reserve,p1_gender,p2_gender")
       .eq("tournament_id", tournamentId);
 
-    const isMixedBaraonda = tType === "Baraonda" && String(tCat).toLowerCase() === "misto";
+    const isMixedBaraonda =
+      tType === "Baraonda" && String(tCat).toLowerCase() === "misto";
     const counts = { main: 0, reserve: 0, male: 0, female: 0 };
 
     for (const r of regsNow ?? []) {
@@ -199,59 +213,68 @@ export async function DELETE(req: Request, ctx: { params: Promise<{ id: string }
 
     const lineMain = `👥 ${counts.main}/${tMax}`;
     const lineReserve = counts.reserve > 0 ? `  ⏳ ${counts.reserve}` : "";
-    const lineGender = isMixedBaraonda ? `  ♂ ${counts.male}  ♀ ${counts.female}` : "";
-
+    const lineGender = isMixedBaraonda
+      ? `  ♂ ${counts.male}  ♀ ${counts.female}`
+      : "";
     const header =
       `🏆 ${tName}\n` +
       `${tType}${tCat ? ` · ${tCat}` : ""}\n` +
       `${fmtPrettyDate(tDate)}${tTime ? ` · ${tTime}` : ""}\n` +
       `${tLoc ? `📍 ${tLoc}\n` : ""}`;
 
-    // 7a) Cancellazione
-    const textCancel =
+    textCancel =
       `❌ CANCELLAZIONE ISCRIZIONE\n\n` +
       header +
       `\n👤 ${whoDeleted}\n\n` +
       `📊 Situazione\n` +
       `${lineMain}${lineReserve}${lineGender}`;
 
-    await sendTelegramMessage(textCancel);
-
-    // 7b) Promozione
     if (promoted?.id) {
-      const whoPromoted = fmtWho(promoted, tType);
-      const textPromo =
+      whoPromoted = fmtWho(promoted, tType);
+      textPromo =
         `⬆️ PROMOZIONE DA RISERVA\n\n` +
         header +
         `\n👤 ${whoPromoted}\n✅ ora in MAIN\n\n` +
         `📊 Situazione\n` +
         `${lineMain}${lineReserve}${lineGender}`;
-
-      await sendTelegramMessage(textPromo);
     }
   } catch (e) {
-    console.warn("Telegram notify error (ignored):", e);
+    console.warn("Telegram notify preparation error (ignored):", e);
   }
-    // Push admin best-effort: non deve mai bloccare la cancellazione
-  try {
-    await sendAdminPushNotification({
-      title: "❌ Cancellazione iscrizione",
-      body: `${whoDeleted} · ${tName}`,
-      url: "/admin/tournaments",
-    });
 
-    if (promoted?.id) {
-      const whoPromoted = fmtWho(promoted, tType);
+  schedulePostCommitNotifications("/api/registrations/[id]", [
+    ...(textCancel
+      ? [
+          {
+            provider: "telegram" as const,
+            run: async () => {
+              await sendTelegramMessage(textCancel);
+              if (textPromo) await sendTelegramMessage(textPromo);
+            },
+            failureLog: "Telegram notify error (ignored):",
+          },
+        ]
+      : []),
+    {
+      provider: "push",
+      run: async () => {
+        await sendAdminPushNotification({
+          title: "❌ Cancellazione iscrizione",
+          body: `${whoDeleted} · ${tName}`,
+          url: "/admin/tournaments",
+        });
 
-      await sendAdminPushNotification({
-        title: "⬆️ Promozione da riserva",
-        body: `${whoPromoted} ora in main · ${tName}`,
-        url: "/admin/tournaments",
-      });
-    }
-  } catch (e) {
-    console.warn("Admin push delete notify error (ignored):", e);
-  }
+        if (whoPromoted) {
+          await sendAdminPushNotification({
+            title: "⬆️ Promozione da riserva",
+            body: `${whoPromoted} ora in main · ${tName}`,
+            url: "/admin/tournaments",
+          });
+        }
+      },
+      failureLog: "Admin push delete notify error (ignored):",
+    },
+  ]);
 
   return NextResponse.json({ ok: true, promoted: Boolean(promoted?.id) });
 }

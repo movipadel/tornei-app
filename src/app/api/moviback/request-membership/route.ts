@@ -4,6 +4,10 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getUserIdFromCookie } from "@/lib/userAuth";
 import { sendTelegramMessage } from "@/lib/telegram";
 import { sendAdminPushNotification } from "@/lib/adminPush";
+import {
+  measureNotificationRequest,
+  schedulePostCommitNotifications,
+} from "@/lib/postCommitNotifications";
 
 export const runtime = "nodejs";
 
@@ -34,6 +38,12 @@ function generateMembershipCode() {
 }
 
 export async function POST(req: Request) {
+  return measureNotificationRequest("/api/moviback/request-membership", () =>
+    handlePost(req)
+  );
+}
+
+async function handlePost(req: Request) {
   const uid = await getUserIdFromCookie();
 
   if (!uid) {
@@ -228,22 +238,29 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: certErr.message }, { status: 500 });
   }
 
-  try {
-  await sendTelegramMessage(
-    `🔁 REINVIO RICHIESTA MOVIBACK\n\n` +
-      `👤 Utente ID: ${uid}\n` +
-      `🎫 Tessera: ${membership.membership_type}\n` +
-      `📄 Nuovo certificato caricato`
-  );
-
-  await sendAdminPushNotification({
-    title: "🔁 Reinvio MoviBack",
-    body: `Nuovo certificato caricato · ${membership.membership_type}`,
-    url: "/admin/moviback/requests",
-  });
-} catch (e) {
-  console.warn("MoviBack resubmit notify error (ignored):", e);
-}
+  schedulePostCommitNotifications("/api/moviback/request-membership", [
+    {
+      provider: "telegram",
+      run: () =>
+        sendTelegramMessage(
+          `🔁 REINVIO RICHIESTA MOVIBACK\n\n` +
+            `👤 Utente ID: ${uid}\n` +
+            `🎫 Tessera: ${membership.membership_type}\n` +
+            `📄 Nuovo certificato caricato`
+        ),
+      failureLog: "MoviBack resubmit Telegram notify error (ignored):",
+    },
+    {
+      provider: "push",
+      run: () =>
+        sendAdminPushNotification({
+          title: "🔁 Reinvio MoviBack",
+          body: `Nuovo certificato caricato · ${membership.membership_type}`,
+          url: "/admin/moviback/requests",
+        }),
+      failureLog: "MoviBack resubmit admin push notify error (ignored):",
+    },
+  ]);
 
 
   return NextResponse.json({
@@ -323,23 +340,30 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: certErr.message }, { status: 500 });
   }
 
-  try {
-  await sendTelegramMessage(
-    `🎁 NUOVA RICHIESTA MOVIBACK\n\n` +
-      `👤 Utente ID: ${uid}\n` +
-      `🎫 Tessera: ${membership.membership_type}\n` +
-      `📄 Certificato caricato\n` +
-      `📅 Scadenza: ${expiryDate}`
-  );
-
-  await sendAdminPushNotification({
-    title: "🎁 Nuova richiesta MoviBack",
-    body: `Tessera ${membership.membership_type} · certificato caricato`,
-    url: "/admin/moviback/requests",
-  });
-} catch (e) {
-  console.warn("MoviBack request notify error (ignored):", e);
-}
+  schedulePostCommitNotifications("/api/moviback/request-membership", [
+    {
+      provider: "telegram",
+      run: () =>
+        sendTelegramMessage(
+          `🎁 NUOVA RICHIESTA MOVIBACK\n\n` +
+            `👤 Utente ID: ${uid}\n` +
+            `🎫 Tessera: ${membership.membership_type}\n` +
+            `📄 Certificato caricato\n` +
+            `📅 Scadenza: ${expiryDate}`
+        ),
+      failureLog: "MoviBack request Telegram notify error (ignored):",
+    },
+    {
+      provider: "push",
+      run: () =>
+        sendAdminPushNotification({
+          title: "🎁 Nuova richiesta MoviBack",
+          body: `Tessera ${membership.membership_type} · certificato caricato`,
+          url: "/admin/moviback/requests",
+        }),
+      failureLog: "MoviBack request admin push notify error (ignored):",
+    },
+  ]);
 
   return NextResponse.json({
     ok: true,

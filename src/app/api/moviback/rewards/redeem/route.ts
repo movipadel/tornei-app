@@ -4,6 +4,10 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getUserIdFromCookie } from "@/lib/userAuth";
 import { sendTelegramMessage } from "@/lib/telegram";
 import { sendAdminPushNotification } from "@/lib/adminPush";
+import {
+  measureNotificationRequest,
+  schedulePostCommitNotifications,
+} from "@/lib/postCommitNotifications";
 
 export const runtime = "nodejs";
 
@@ -12,6 +16,12 @@ function makeToken() {
 }
 
 export async function POST(req: Request) {
+  return measureNotificationRequest("/api/moviback/rewards/redeem", () =>
+    handlePost(req)
+  );
+}
+
+async function handlePost(req: Request) {
   const uid = await getUserIdFromCookie();
 
   if (!uid) {
@@ -343,28 +353,35 @@ export async function POST(req: Request) {
         console.warn("Store special order item creation error:", storeItemErr);
       }
 
-      try {
-        await sendTelegramMessage(
-          `🎁 NUOVO RISCATTO MOVIBACK\n\n` +
-            `👤 ${user?.full_name || "Cliente"}\n` +
-            `📞 ${user?.phone || "—"}\n` +
-            `🏆 Premio: ${reward.name}\n` +
-            `${variantText ? `🎨 Variante: ${variantText}\n` : ""}` +
-            `⭐ Punti: ${reward.points_cost}\n\n` +
-            `📦 Ordine Store creato\n` +
-            `🧾 ID ordine: ${storeOrder.id}`
-        );
-
-        await sendAdminPushNotification({
-          title: "🎁 Nuovo riscatto MoviBack",
-          body: `${user?.full_name || "Cliente"} · ${reward.name}${
-            variantText ? ` · ${variantText}` : ""
-          }`,
-          url: "/admin/store-orders",
-        });
-      } catch (e) {
-        console.warn("Reward redemption store notify error (ignored):", e);
-      }
+      schedulePostCommitNotifications("/api/moviback/rewards/redeem", [
+        {
+          provider: "telegram",
+          run: () =>
+            sendTelegramMessage(
+              `🎁 NUOVO RISCATTO MOVIBACK\n\n` +
+                `👤 ${user?.full_name || "Cliente"}\n` +
+                `📞 ${user?.phone || "—"}\n` +
+                `🏆 Premio: ${reward.name}\n` +
+                `${variantText ? `🎨 Variante: ${variantText}\n` : ""}` +
+                `⭐ Punti: ${reward.points_cost}\n\n` +
+                `📦 Ordine Store creato\n` +
+                `🧾 ID ordine: ${storeOrder.id}`
+            ),
+          failureLog: "Reward redemption Telegram notify error (ignored):",
+        },
+        {
+          provider: "push",
+          run: () =>
+            sendAdminPushNotification({
+              title: "🎁 Nuovo riscatto MoviBack",
+              body: `${user?.full_name || "Cliente"} · ${reward.name}${
+                variantText ? ` · ${variantText}` : ""
+              }`,
+              url: "/admin/store-orders",
+            }),
+          failureLog: "Reward redemption admin push notify error (ignored):",
+        },
+      ]);
     }
   }
 

@@ -3,6 +3,10 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getUserIdFromCookie } from "@/lib/userAuth";
 import { sendTelegramMessage } from "@/lib/telegram";
 import { sendAdminPushNotification } from "@/lib/adminPush";
+import {
+  measureNotificationRequest,
+  schedulePostCommitNotifications,
+} from "@/lib/postCommitNotifications";
 
 export const runtime = "nodejs";
 
@@ -18,6 +22,12 @@ const buildPlayerKey = (phone: string) =>
     .replace(/[^\d]/g, "");
 
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
+  return measureNotificationRequest("/api/tournaments/[id]/registrations", () =>
+    handlePost(req, ctx)
+  );
+}
+
+async function handlePost(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
   const sb = supabaseAdmin();
   const body = await req.json().catch(() => ({}));
@@ -268,36 +278,39 @@ if (circuitId) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  // Telegram best-effort: non deve mai bloccare l'iscrizione
-  try {
-    const textRegistration =
-      `${data.is_reserve ? "⏳ NUOVA RISERVA" : "✅ NUOVA ISCRIZIONE"}\n\n` +
-      `${tournamentType}${tournamentCategory ? ` · ${tournamentCategory}` : ""}${tournamentLevel ? ` · ${tournamentLevel}` : ""}\n` +
-      `👤 ${
-        tournamentType === "Coppie fisse"
-          ? `${p1_name}${p2_name_raw ? ` + ${p2_name_raw}` : ""}`
-          : p1_name
-      }\n` +
-      `📞 ${p1_phone}\n` +
-      `#️⃣ Posizione ${data.position}`;
+  const textRegistration =
+    `${data.is_reserve ? "⏳ NUOVA RISERVA" : "✅ NUOVA ISCRIZIONE"}\n\n` +
+    `${tournamentType}${tournamentCategory ? ` · ${tournamentCategory}` : ""}${tournamentLevel ? ` · ${tournamentLevel}` : ""}\n` +
+    `👤 ${
+      tournamentType === "Coppie fisse"
+        ? `${p1_name}${p2_name_raw ? ` + ${p2_name_raw}` : ""}`
+        : p1_name
+    }\n` +
+    `📞 ${p1_phone}\n` +
+    `#️⃣ Posizione ${data.position}`;
 
-    await sendTelegramMessage(textRegistration);
-  } catch (e) {
-    console.warn("Telegram registration notify error (ignored):", e);
-  }
-    // Push admin best-effort: non deve mai bloccare l'iscrizione
-  try {
-    await sendAdminPushNotification({
-      title: data.is_reserve ? "⏳ Nuova riserva torneo" : "✅ Nuova iscrizione torneo",
-      body:
-        tournamentType === "Coppie fisse"
-          ? `${p1_name}${p2_name_raw ? ` + ${p2_name_raw}` : ""} · ${tournamentCategory}`
-          : `${p1_name} · ${tournamentCategory}`,
-      url: "/admin/tournaments",
-    });
-  } catch (e) {
-    console.warn("Admin push registration notify error (ignored):", e);
-  }
+  schedulePostCommitNotifications("/api/tournaments/[id]/registrations", [
+    {
+      provider: "telegram",
+      run: () => sendTelegramMessage(textRegistration),
+      failureLog: "Telegram registration notify error (ignored):",
+    },
+    {
+      provider: "push",
+      run: () =>
+        sendAdminPushNotification({
+          title: data.is_reserve
+            ? "⏳ Nuova riserva torneo"
+            : "✅ Nuova iscrizione torneo",
+          body:
+            tournamentType === "Coppie fisse"
+              ? `${p1_name}${p2_name_raw ? ` + ${p2_name_raw}` : ""} · ${tournamentCategory}`
+              : `${p1_name} · ${tournamentCategory}`,
+          url: "/admin/tournaments",
+        }),
+      failureLog: "Admin push registration notify error (ignored):",
+    },
+  ]);
 
   return NextResponse.json({ data }, { status: 201 });
 }
