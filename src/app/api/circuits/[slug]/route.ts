@@ -16,6 +16,18 @@ type PublicStageResult = {
   placement: number | null;
 };
 
+type PublicResultRow = {
+  ranking_group_id: string;
+  source_tournament_id: string | null;
+  tournament_name: string | null;
+  tournament_type: string | null;
+  tournament_date: string | null;
+  player_name: string | null;
+  points: number | null;
+  placement: number | null;
+  created_at: string;
+};
+
 type PublicStage = {
   tournament_name: string;
   tournament_type: string;
@@ -103,21 +115,34 @@ export async function GET(
       return NextResponse.json({ error: futureErr.message }, { status: 500 });
     }
 
-    const rankingGroups: PublicRankingGroup[] = [];
+    const resultsByGroupId = new Map<string, PublicResultRow[]>();
+    const groupIds = (groups ?? []).map((group) => group.id);
 
-    for (const group of groups ?? []) {
-      const { data: results, error: resultsErr } = await sb
+    if (groupIds.length > 0) {
+      const { data: allResults, error: resultsErr } = await sb
         .from("circuit_results")
         .select(
-          "source_tournament_id,tournament_name,tournament_type,tournament_date,player_name,points,placement,created_at"
+          "ranking_group_id,source_tournament_id,tournament_name,tournament_type,tournament_date,player_name,points,placement,created_at"
         )
-        .eq("ranking_group_id", group.id)
+        .in("ranking_group_id", groupIds)
         .order("tournament_date", { ascending: false, nullsFirst: false })
         .order("created_at", { ascending: true });
 
       if (resultsErr) {
         return NextResponse.json({ error: resultsErr.message }, { status: 500 });
       }
+
+      for (const row of (allResults ?? []) as PublicResultRow[]) {
+        const current = resultsByGroupId.get(row.ranking_group_id) ?? [];
+        current.push(row);
+        resultsByGroupId.set(row.ranking_group_id, current);
+      }
+    }
+
+    const rankingGroups: PublicRankingGroup[] = [];
+
+    for (const group of groups ?? []) {
+      const results = resultsByGroupId.get(group.id) ?? [];
 
       const byPlayer = new Map<
         string,

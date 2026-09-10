@@ -12,6 +12,7 @@ type RankingRow = {
 };
 
 type CircuitResultRow = {
+  ranking_group_id: string;
   player_key: string | null;
   player_name: string | null;
   player_phone: string | null;
@@ -78,13 +79,15 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
     return NextResponse.json({ error: groupsErr.message }, { status: 500 });
   }
 
-  const rankingGroups = [];
+  const resultsByGroupId = new Map<string, CircuitResultRow[]>();
+  const groupIds = (groups ?? []).map((group) => group.id);
 
-  for (const group of groups ?? []) {
-    const { data: results, error: resultsErr } = await sb
+  if (groupIds.length > 0) {
+    const { data: allResults, error: resultsErr } = await sb
       .from("circuit_results")
       .select(
         `
+        ranking_group_id,
         player_key,
         player_name,
         player_phone,
@@ -96,13 +99,23 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
         tournament_date
       `
       )
-      .eq("ranking_group_id", group.id);
+      .in("ranking_group_id", groupIds);
 
     if (resultsErr) {
       return NextResponse.json({ error: resultsErr.message }, { status: 500 });
     }
 
-    const typedResults = (results ?? []) as CircuitResultRow[];
+    for (const row of (allResults ?? []) as CircuitResultRow[]) {
+      const current = resultsByGroupId.get(row.ranking_group_id) ?? [];
+      current.push(row);
+      resultsByGroupId.set(row.ranking_group_id, current);
+    }
+  }
+
+  const rankingGroups = [];
+
+  for (const group of groups ?? []) {
+    const typedResults = resultsByGroupId.get(group.id) ?? [];
 
     const byPlayer = new Map<string, RankingRow>();
     const playedStagesMap = new Map<string, PlayedStage>();

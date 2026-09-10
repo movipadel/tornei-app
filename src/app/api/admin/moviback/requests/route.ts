@@ -4,6 +4,21 @@ import { guardAdmin } from "@/lib/adminGuard";
 
 export const runtime = "nodejs";
 
+type CertificateRow = {
+  id: string;
+  user_id: string;
+  status: string;
+  expiry_date: string | null;
+  file_path: string | null;
+  uploaded_at: string;
+};
+
+type CertificatePayload = Omit<CertificateRow, "user_id">;
+
+type PendingMembershipRow = Record<string, unknown> & {
+  user_id: string | null;
+};
+
 // 📥 LISTA richieste
 export async function GET() {
   const denied = await guardAdmin();
@@ -37,22 +52,41 @@ export async function GET() {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  const enriched = await Promise.all(
-    (data || []).map(async (row: any) => {
-      const { data: cert } = await sb
-        .from("medical_certificates")
-        .select("id,status,expiry_date,file_path,uploaded_at")
-        .eq("user_id", row.user_id)
-        .order("uploaded_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      return {
-        ...row,
-        certificate: cert || null,
-      };
-    })
+  const rows = (data || []) as PendingMembershipRow[];
+  const userIds = Array.from(
+    new Set(
+      rows
+        .map((row) => String(row.user_id ?? "").trim())
+        .filter(Boolean)
+    )
   );
+  const certificateByUserId = new Map<string, CertificatePayload>();
+
+  if (userIds.length > 0) {
+    const { data: certificates } = await sb
+      .from("medical_certificates")
+      .select("id,user_id,status,expiry_date,file_path,uploaded_at")
+      .in("user_id", userIds)
+      .order("uploaded_at", { ascending: false });
+
+    for (const cert of (certificates ?? []) as CertificateRow[]) {
+      if (certificateByUserId.has(cert.user_id)) continue;
+
+      certificateByUserId.set(cert.user_id, {
+        id: cert.id,
+        status: cert.status,
+        expiry_date: cert.expiry_date,
+        file_path: cert.file_path,
+        uploaded_at: cert.uploaded_at,
+      });
+    }
+  }
+
+  const enriched = rows.map((row) => ({
+    ...row,
+    certificate:
+      certificateByUserId.get(String(row.user_id ?? "").trim()) ?? null,
+  }));
 
   return NextResponse.json({ data: enriched });
 }
