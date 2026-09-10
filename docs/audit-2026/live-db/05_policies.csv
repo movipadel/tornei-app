@@ -1,0 +1,11 @@
+schemaname,tablename,policyname,permissive,roles,cmd,qual,with_check
+public,loyalty_memberships,user_can_view_own_membership,PERMISSIVE,{public},SELECT,(auth.uid() = user_id),null
+public,loyalty_transactions,user_can_view_own_transactions,PERMISSIVE,{public},SELECT,"(EXISTS ( SELECT 1
+   FROM loyalty_memberships m
+  WHERE ((m.id = loyalty_transactions.membership_id) AND (m.user_id = auth.uid()))))",null
+public,medical_certificates,user_can_view_own_certificate,PERMISSIVE,{public},SELECT,(auth.uid() = user_id),null
+public,reward_redemptions,user_can_view_own_redemptions,PERMISSIVE,{public},SELECT,"(EXISTS ( SELECT 1
+   FROM loyalty_memberships m
+  WHERE ((m.id = reward_redemptions.membership_id) AND (m.user_id = auth.uid()))))",null
+public,rewards_catalog,public_can_view_rewards,PERMISSIVE,{public},SELECT,true,null
+public,tournament_registrations,Public read tournament registrations,PERMISSIVE,"{anon,authenticated}",SELECT,true,null

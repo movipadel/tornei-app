@@ -1,0 +1,35 @@
+schema_name,function_name,arguments,return_type,definition
+public,set_staff_password,"p_staff_id uuid, p_password text",void,"CREATE OR REPLACE FUNCTION public.set_staff_password(p_staff_id uuid, p_password text)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'extensions'
+AS $function$
+begin
+  update public.staff_users
+  set
+    password_hash = extensions.crypt(p_password, extensions.gen_salt('bf')),
+    updated_at = now()
+  where id = p_staff_id;
+end;
+$function$
+"
+public,verify_staff_login,"p_email text, p_password text","TABLE(id uuid, full_name text, email text, role text, is_active boolean)","CREATE OR REPLACE FUNCTION public.verify_staff_login(p_email text, p_password text)
+ RETURNS TABLE(id uuid, full_name text, email text, role text, is_active boolean)
+ LANGUAGE sql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'extensions'
+AS $function$
+  select
+    su.id,
+    su.full_name,
+    su.email,
+    su.role,
+    su.is_active
+  from public.staff_users su
+  where lower(su.email) = lower(trim(p_email))
+    and su.is_active = true
+    and su.password_hash = extensions.crypt(p_password, su.password_hash)
+  limit 1;
+$function$
+"

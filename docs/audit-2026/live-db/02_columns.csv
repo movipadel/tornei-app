@@ -1,0 +1,906 @@
+table_schema,table_name,ordinal_position,column_name,data_type,is_nullable,column_default
+auth,audit_log_entries,1,instance_id,uuid,YES,null
+auth,audit_log_entries,2,id,uuid,NO,null
+auth,audit_log_entries,3,payload,json,YES,null
+auth,audit_log_entries,4,created_at,timestamp with time zone,YES,null
+auth,audit_log_entries,5,ip_address,character varying,NO,''::character varying
+auth,custom_oauth_providers,1,id,uuid,NO,gen_random_uuid()
+auth,custom_oauth_providers,2,provider_type,text,NO,null
+auth,custom_oauth_providers,3,identifier,text,NO,null
+auth,custom_oauth_providers,4,name,text,NO,null
+auth,custom_oauth_providers,5,client_id,text,NO,null
+auth,custom_oauth_providers,6,client_secret,text,NO,null
+auth,custom_oauth_providers,7,acceptable_client_ids,ARRAY,NO,'{}'::text[]
+auth,custom_oauth_providers,8,scopes,ARRAY,NO,'{}'::text[]
+auth,custom_oauth_providers,9,pkce_enabled,boolean,NO,true
+auth,custom_oauth_providers,10,attribute_mapping,jsonb,NO,'{}'::jsonb
+auth,custom_oauth_providers,11,authorization_params,jsonb,NO,'{}'::jsonb
+auth,custom_oauth_providers,12,enabled,boolean,NO,true
+auth,custom_oauth_providers,13,email_optional,boolean,NO,false
+auth,custom_oauth_providers,14,issuer,text,YES,null
+auth,custom_oauth_providers,15,discovery_url,text,YES,null
+auth,custom_oauth_providers,16,skip_nonce_check,boolean,NO,false
+auth,custom_oauth_providers,17,cached_discovery,jsonb,YES,null
+auth,custom_oauth_providers,18,discovery_cached_at,timestamp with time zone,YES,null
+auth,custom_oauth_providers,19,authorization_url,text,YES,null
+auth,custom_oauth_providers,20,token_url,text,YES,null
+auth,custom_oauth_providers,21,userinfo_url,text,YES,null
+auth,custom_oauth_providers,22,jwks_uri,text,YES,null
+auth,custom_oauth_providers,23,created_at,timestamp with time zone,NO,now()
+auth,custom_oauth_providers,24,updated_at,timestamp with time zone,NO,now()
+auth,custom_oauth_providers,25,custom_claims_allowlist,ARRAY,NO,'{}'::text[]
+auth,flow_state,1,id,uuid,NO,null
+auth,flow_state,2,user_id,uuid,YES,null
+auth,flow_state,3,auth_code,text,YES,null
+auth,flow_state,4,code_challenge_method,USER-DEFINED,YES,null
+auth,flow_state,5,code_challenge,text,YES,null
+auth,flow_state,6,provider_type,text,NO,null
+auth,flow_state,7,provider_access_token,text,YES,null
+auth,flow_state,8,provider_refresh_token,text,YES,null
+auth,flow_state,9,created_at,timestamp with time zone,YES,null
+auth,flow_state,10,updated_at,timestamp with time zone,YES,null
+auth,flow_state,11,authentication_method,text,NO,null
+auth,flow_state,12,auth_code_issued_at,timestamp with time zone,YES,null
+auth,flow_state,13,invite_token,text,YES,null
+auth,flow_state,14,referrer,text,YES,null
+auth,flow_state,15,oauth_client_state_id,uuid,YES,null
+auth,flow_state,16,linking_target_id,uuid,YES,null
+auth,flow_state,17,email_optional,boolean,NO,false
+auth,identities,1,provider_id,text,NO,null
+auth,identities,2,user_id,uuid,NO,null
+auth,identities,3,identity_data,jsonb,NO,null
+auth,identities,4,provider,text,NO,null
+auth,identities,5,last_sign_in_at,timestamp with time zone,YES,null
+auth,identities,6,created_at,timestamp with time zone,YES,null
+auth,identities,7,updated_at,timestamp with time zone,YES,null
+auth,identities,8,email,text,YES,null
+auth,identities,9,id,uuid,NO,gen_random_uuid()
+auth,instances,1,id,uuid,NO,null
+auth,instances,2,uuid,uuid,YES,null
+auth,instances,3,raw_base_config,text,YES,null
+auth,instances,4,created_at,timestamp with time zone,YES,null
+auth,instances,5,updated_at,timestamp with time zone,YES,null
+auth,mfa_amr_claims,1,session_id,uuid,NO,null
+auth,mfa_amr_claims,2,created_at,timestamp with time zone,NO,null
+auth,mfa_amr_claims,3,updated_at,timestamp with time zone,NO,null
+auth,mfa_amr_claims,4,authentication_method,text,NO,null
+auth,mfa_amr_claims,5,id,uuid,NO,null
+auth,mfa_challenges,1,id,uuid,NO,null
+auth,mfa_challenges,2,factor_id,uuid,NO,null
+auth,mfa_challenges,3,created_at,timestamp with time zone,NO,null
+auth,mfa_challenges,4,verified_at,timestamp with time zone,YES,null
+auth,mfa_challenges,5,ip_address,inet,NO,null
+auth,mfa_challenges,6,otp_code,text,YES,null
+auth,mfa_challenges,7,web_authn_session_data,jsonb,YES,null
+auth,mfa_factors,1,id,uuid,NO,null
+auth,mfa_factors,2,user_id,uuid,NO,null
+auth,mfa_factors,3,friendly_name,text,YES,null
+auth,mfa_factors,4,factor_type,USER-DEFINED,NO,null
+auth,mfa_factors,5,status,USER-DEFINED,NO,null
+auth,mfa_factors,6,created_at,timestamp with time zone,NO,null
+auth,mfa_factors,7,updated_at,timestamp with time zone,NO,null
+auth,mfa_factors,8,secret,text,YES,null
+auth,mfa_factors,9,phone,text,YES,null
+auth,mfa_factors,10,last_challenged_at,timestamp with time zone,YES,null
+auth,mfa_factors,11,web_authn_credential,jsonb,YES,null
+auth,mfa_factors,12,web_authn_aaguid,uuid,YES,null
+auth,mfa_factors,13,last_webauthn_challenge_data,jsonb,YES,null
+auth,oauth_authorizations,1,id,uuid,NO,null
+auth,oauth_authorizations,2,authorization_id,text,NO,null
+auth,oauth_authorizations,3,client_id,uuid,NO,null
+auth,oauth_authorizations,4,user_id,uuid,YES,null
+auth,oauth_authorizations,5,redirect_uri,text,NO,null
+auth,oauth_authorizations,6,scope,text,NO,null
+auth,oauth_authorizations,7,state,text,YES,null
+auth,oauth_authorizations,8,resource,text,YES,null
+auth,oauth_authorizations,9,code_challenge,text,YES,null
+auth,oauth_authorizations,10,code_challenge_method,USER-DEFINED,YES,null
+auth,oauth_authorizations,11,response_type,USER-DEFINED,NO,'code'::auth.oauth_response_type
+auth,oauth_authorizations,12,status,USER-DEFINED,NO,'pending'::auth.oauth_authorization_status
+auth,oauth_authorizations,13,authorization_code,text,YES,null
+auth,oauth_authorizations,14,created_at,timestamp with time zone,NO,now()
+auth,oauth_authorizations,15,expires_at,timestamp with time zone,NO,(now() + '00:03:00'::interval)
+auth,oauth_authorizations,16,approved_at,timestamp with time zone,YES,null
+auth,oauth_authorizations,17,nonce,text,YES,null
+auth,oauth_client_states,1,id,uuid,NO,null
+auth,oauth_client_states,2,provider_type,text,NO,null
+auth,oauth_client_states,3,code_verifier,text,YES,null
+auth,oauth_client_states,4,created_at,timestamp with time zone,NO,null
+auth,oauth_clients,1,id,uuid,NO,null
+auth,oauth_clients,3,client_secret_hash,text,YES,null
+auth,oauth_clients,4,registration_type,USER-DEFINED,NO,null
+auth,oauth_clients,5,redirect_uris,text,NO,null
+auth,oauth_clients,6,grant_types,text,NO,null
+auth,oauth_clients,7,client_name,text,YES,null
+auth,oauth_clients,8,client_uri,text,YES,null
+auth,oauth_clients,9,logo_uri,text,YES,null
+auth,oauth_clients,10,created_at,timestamp with time zone,NO,now()
+auth,oauth_clients,11,updated_at,timestamp with time zone,NO,now()
+auth,oauth_clients,12,deleted_at,timestamp with time zone,YES,null
+auth,oauth_clients,13,client_type,USER-DEFINED,NO,'confidential'::auth.oauth_client_type
+auth,oauth_clients,14,token_endpoint_auth_method,text,NO,null
+auth,oauth_consents,1,id,uuid,NO,null
+auth,oauth_consents,2,user_id,uuid,NO,null
+auth,oauth_consents,3,client_id,uuid,NO,null
+auth,oauth_consents,4,scopes,text,NO,null
+auth,oauth_consents,5,granted_at,timestamp with time zone,NO,now()
+auth,oauth_consents,6,revoked_at,timestamp with time zone,YES,null
+auth,one_time_tokens,1,id,uuid,NO,null
+auth,one_time_tokens,2,user_id,uuid,NO,null
+auth,one_time_tokens,3,token_type,USER-DEFINED,NO,null
+auth,one_time_tokens,4,token_hash,text,NO,null
+auth,one_time_tokens,5,relates_to,text,NO,null
+auth,one_time_tokens,6,created_at,timestamp without time zone,NO,now()
+auth,one_time_tokens,7,updated_at,timestamp without time zone,NO,now()
+auth,refresh_tokens,1,instance_id,uuid,YES,null
+auth,refresh_tokens,2,id,bigint,NO,nextval('auth.refresh_tokens_id_seq'::regclass)
+auth,refresh_tokens,3,token,character varying,YES,null
+auth,refresh_tokens,4,user_id,character varying,YES,null
+auth,refresh_tokens,5,revoked,boolean,YES,null
+auth,refresh_tokens,6,created_at,timestamp with time zone,YES,null
+auth,refresh_tokens,7,updated_at,timestamp with time zone,YES,null
+auth,refresh_tokens,8,parent,character varying,YES,null
+auth,refresh_tokens,9,session_id,uuid,YES,null
+auth,saml_providers,1,id,uuid,NO,null
+auth,saml_providers,2,sso_provider_id,uuid,NO,null
+auth,saml_providers,3,entity_id,text,NO,null
+auth,saml_providers,4,metadata_xml,text,NO,null
+auth,saml_providers,5,metadata_url,text,YES,null
+auth,saml_providers,6,attribute_mapping,jsonb,YES,null
+auth,saml_providers,7,created_at,timestamp with time zone,YES,null
+auth,saml_providers,8,updated_at,timestamp with time zone,YES,null
+auth,saml_providers,9,name_id_format,text,YES,null
+auth,saml_relay_states,1,id,uuid,NO,null
+auth,saml_relay_states,2,sso_provider_id,uuid,NO,null
+auth,saml_relay_states,3,request_id,text,NO,null
+auth,saml_relay_states,4,for_email,text,YES,null
+auth,saml_relay_states,5,redirect_to,text,YES,null
+auth,saml_relay_states,7,created_at,timestamp with time zone,YES,null
+auth,saml_relay_states,8,updated_at,timestamp with time zone,YES,null
+auth,saml_relay_states,9,flow_state_id,uuid,YES,null
+auth,schema_migrations,1,version,character varying,NO,null
+auth,sessions,1,id,uuid,NO,null
+auth,sessions,2,user_id,uuid,NO,null
+auth,sessions,3,created_at,timestamp with time zone,YES,null
+auth,sessions,4,updated_at,timestamp with time zone,YES,null
+auth,sessions,5,factor_id,uuid,YES,null
+auth,sessions,6,aal,USER-DEFINED,YES,null
+auth,sessions,7,not_after,timestamp with time zone,YES,null
+auth,sessions,8,refreshed_at,timestamp without time zone,YES,null
+auth,sessions,9,user_agent,text,YES,null
+auth,sessions,10,ip,inet,YES,null
+auth,sessions,11,tag,text,YES,null
+auth,sessions,12,oauth_client_id,uuid,YES,null
+auth,sessions,13,refresh_token_hmac_key,text,YES,null
+auth,sessions,14,refresh_token_counter,bigint,YES,null
+auth,sessions,15,scopes,text,YES,null
+auth,sso_domains,1,id,uuid,NO,null
+auth,sso_domains,2,sso_provider_id,uuid,NO,null
+auth,sso_domains,3,domain,text,NO,null
+auth,sso_domains,4,created_at,timestamp with time zone,YES,null
+auth,sso_domains,5,updated_at,timestamp with time zone,YES,null
+auth,sso_providers,1,id,uuid,NO,null
+auth,sso_providers,2,resource_id,text,YES,null
+auth,sso_providers,3,created_at,timestamp with time zone,YES,null
+auth,sso_providers,4,updated_at,timestamp with time zone,YES,null
+auth,sso_providers,5,disabled,boolean,YES,null
+auth,users,1,instance_id,uuid,YES,null
+auth,users,2,id,uuid,NO,null
+auth,users,3,aud,character varying,YES,null
+auth,users,4,role,character varying,YES,null
+auth,users,5,email,character varying,YES,null
+auth,users,6,encrypted_password,character varying,YES,null
+auth,users,7,email_confirmed_at,timestamp with time zone,YES,null
+auth,users,8,invited_at,timestamp with time zone,YES,null
+auth,users,9,confirmation_token,character varying,YES,null
+auth,users,10,confirmation_sent_at,timestamp with time zone,YES,null
+auth,users,11,recovery_token,character varying,YES,null
+auth,users,12,recovery_sent_at,timestamp with time zone,YES,null
+auth,users,13,email_change_token_new,character varying,YES,null
+auth,users,14,email_change,character varying,YES,null
+auth,users,15,email_change_sent_at,timestamp with time zone,YES,null
+auth,users,16,last_sign_in_at,timestamp with time zone,YES,null
+auth,users,17,raw_app_meta_data,jsonb,YES,null
+auth,users,18,raw_user_meta_data,jsonb,YES,null
+auth,users,19,is_super_admin,boolean,YES,null
+auth,users,20,created_at,timestamp with time zone,YES,null
+auth,users,21,updated_at,timestamp with time zone,YES,null
+auth,users,22,phone,text,YES,NULL::character varying
+auth,users,23,phone_confirmed_at,timestamp with time zone,YES,null
+auth,users,24,phone_change,text,YES,''::character varying
+auth,users,25,phone_change_token,character varying,YES,''::character varying
+auth,users,26,phone_change_sent_at,timestamp with time zone,YES,null
+auth,users,27,confirmed_at,timestamp with time zone,YES,null
+auth,users,28,email_change_token_current,character varying,YES,''::character varying
+auth,users,29,email_change_confirm_status,smallint,YES,0
+auth,users,30,banned_until,timestamp with time zone,YES,null
+auth,users,31,reauthentication_token,character varying,YES,''::character varying
+auth,users,32,reauthentication_sent_at,timestamp with time zone,YES,null
+auth,users,33,is_sso_user,boolean,NO,false
+auth,users,34,deleted_at,timestamp with time zone,YES,null
+auth,users,35,is_anonymous,boolean,NO,false
+auth,webauthn_challenges,1,id,uuid,NO,gen_random_uuid()
+auth,webauthn_challenges,2,user_id,uuid,YES,null
+auth,webauthn_challenges,3,challenge_type,text,NO,null
+auth,webauthn_challenges,4,session_data,jsonb,NO,null
+auth,webauthn_challenges,5,created_at,timestamp with time zone,NO,now()
+auth,webauthn_challenges,6,expires_at,timestamp with time zone,NO,null
+auth,webauthn_credentials,1,id,uuid,NO,gen_random_uuid()
+auth,webauthn_credentials,2,user_id,uuid,NO,null
+auth,webauthn_credentials,3,credential_id,bytea,NO,null
+auth,webauthn_credentials,4,public_key,bytea,NO,null
+auth,webauthn_credentials,5,attestation_type,text,NO,''::text
+auth,webauthn_credentials,6,aaguid,uuid,YES,null
+auth,webauthn_credentials,7,sign_count,bigint,NO,0
+auth,webauthn_credentials,8,transports,jsonb,NO,'[]'::jsonb
+auth,webauthn_credentials,9,backup_eligible,boolean,NO,false
+auth,webauthn_credentials,10,backed_up,boolean,NO,false
+auth,webauthn_credentials,11,friendly_name,text,NO,''::text
+auth,webauthn_credentials,12,created_at,timestamp with time zone,NO,now()
+auth,webauthn_credentials,13,updated_at,timestamp with time zone,NO,now()
+auth,webauthn_credentials,14,last_used_at,timestamp with time zone,YES,null
+extensions,pg_stat_statements,1,userid,oid,YES,null
+extensions,pg_stat_statements,2,dbid,oid,YES,null
+extensions,pg_stat_statements,3,toplevel,boolean,YES,null
+extensions,pg_stat_statements,4,queryid,bigint,YES,null
+extensions,pg_stat_statements,5,query,text,YES,null
+extensions,pg_stat_statements,6,plans,bigint,YES,null
+extensions,pg_stat_statements,7,total_plan_time,double precision,YES,null
+extensions,pg_stat_statements,8,min_plan_time,double precision,YES,null
+extensions,pg_stat_statements,9,max_plan_time,double precision,YES,null
+extensions,pg_stat_statements,10,mean_plan_time,double precision,YES,null
+extensions,pg_stat_statements,11,stddev_plan_time,double precision,YES,null
+extensions,pg_stat_statements,12,calls,bigint,YES,null
+extensions,pg_stat_statements,13,total_exec_time,double precision,YES,null
+extensions,pg_stat_statements,14,min_exec_time,double precision,YES,null
+extensions,pg_stat_statements,15,max_exec_time,double precision,YES,null
+extensions,pg_stat_statements,16,mean_exec_time,double precision,YES,null
+extensions,pg_stat_statements,17,stddev_exec_time,double precision,YES,null
+extensions,pg_stat_statements,18,rows,bigint,YES,null
+extensions,pg_stat_statements,19,shared_blks_hit,bigint,YES,null
+extensions,pg_stat_statements,20,shared_blks_read,bigint,YES,null
+extensions,pg_stat_statements,21,shared_blks_dirtied,bigint,YES,null
+extensions,pg_stat_statements,22,shared_blks_written,bigint,YES,null
+extensions,pg_stat_statements,23,local_blks_hit,bigint,YES,null
+extensions,pg_stat_statements,24,local_blks_read,bigint,YES,null
+extensions,pg_stat_statements,25,local_blks_dirtied,bigint,YES,null
+extensions,pg_stat_statements,26,local_blks_written,bigint,YES,null
+extensions,pg_stat_statements,27,temp_blks_read,bigint,YES,null
+extensions,pg_stat_statements,28,temp_blks_written,bigint,YES,null
+extensions,pg_stat_statements,29,shared_blk_read_time,double precision,YES,null
+extensions,pg_stat_statements,30,shared_blk_write_time,double precision,YES,null
+extensions,pg_stat_statements,31,local_blk_read_time,double precision,YES,null
+extensions,pg_stat_statements,32,local_blk_write_time,double precision,YES,null
+extensions,pg_stat_statements,33,temp_blk_read_time,double precision,YES,null
+extensions,pg_stat_statements,34,temp_blk_write_time,double precision,YES,null
+extensions,pg_stat_statements,35,wal_records,bigint,YES,null
+extensions,pg_stat_statements,36,wal_fpi,bigint,YES,null
+extensions,pg_stat_statements,37,wal_bytes,numeric,YES,null
+extensions,pg_stat_statements,38,jit_functions,bigint,YES,null
+extensions,pg_stat_statements,39,jit_generation_time,double precision,YES,null
+extensions,pg_stat_statements,40,jit_inlining_count,bigint,YES,null
+extensions,pg_stat_statements,41,jit_inlining_time,double precision,YES,null
+extensions,pg_stat_statements,42,jit_optimization_count,bigint,YES,null
+extensions,pg_stat_statements,43,jit_optimization_time,double precision,YES,null
+extensions,pg_stat_statements,44,jit_emission_count,bigint,YES,null
+extensions,pg_stat_statements,45,jit_emission_time,double precision,YES,null
+extensions,pg_stat_statements,46,jit_deform_count,bigint,YES,null
+extensions,pg_stat_statements,47,jit_deform_time,double precision,YES,null
+extensions,pg_stat_statements,48,stats_since,timestamp with time zone,YES,null
+extensions,pg_stat_statements,49,minmax_stats_since,timestamp with time zone,YES,null
+extensions,pg_stat_statements_info,1,dealloc,bigint,YES,null
+extensions,pg_stat_statements_info,2,stats_reset,timestamp with time zone,YES,null
+public,admin_push_subscriptions,1,id,uuid,NO,gen_random_uuid()
+public,admin_push_subscriptions,2,staff_id,uuid,YES,null
+public,admin_push_subscriptions,3,endpoint,text,NO,null
+public,admin_push_subscriptions,4,p256dh,text,NO,null
+public,admin_push_subscriptions,5,auth,text,NO,null
+public,admin_push_subscriptions,6,user_agent,text,YES,null
+public,admin_push_subscriptions,7,is_active,boolean,NO,true
+public,admin_push_subscriptions,8,created_at,timestamp with time zone,NO,now()
+public,admin_push_subscriptions,9,updated_at,timestamp with time zone,NO,now()
+public,app_settings,1,id,uuid,NO,gen_random_uuid()
+public,app_settings,2,home_title,text,NO,'Tornei'::text
+public,app_settings,3,home_subtitle,text,NO,'Iscriviti ai tornei Movi e gestisci le tue iscrizioni'::text
+public,app_settings,4,home_logo_url,text,YES,null
+public,app_settings,5,updated_at,timestamp with time zone,NO,now()
+public,circuit_points_rules,1,id,uuid,NO,gen_random_uuid()
+public,circuit_points_rules,3,min_admissions,integer,NO,null
+public,circuit_points_rules,4,max_admissions,integer,NO,null
+public,circuit_points_rules,5,placement,integer,YES,null
+public,circuit_points_rules,6,points,integer,NO,null
+public,circuit_points_rules,7,created_at,timestamp with time zone,NO,now()
+public,circuit_points_rules,8,rule_type,text,NO,'placement'::text
+public,circuit_points_rules,9,stage,text,YES,null
+public,circuit_points_rules,10,circuit_id,uuid,NO,null
+public,circuit_ranking_groups,1,id,uuid,NO,gen_random_uuid()
+public,circuit_ranking_groups,2,circuit_id,uuid,NO,null
+public,circuit_ranking_groups,3,category,text,NO,null
+public,circuit_ranking_groups,4,level,text,NO,null
+public,circuit_ranking_groups,5,created_at,timestamp with time zone,NO,now()
+public,circuit_results,1,id,uuid,NO,gen_random_uuid()
+public,circuit_results,2,circuit_id,uuid,NO,null
+public,circuit_results,3,ranking_group_id,uuid,NO,null
+public,circuit_results,4,source_tournament_id,uuid,YES,null
+public,circuit_results,5,tournament_name,text,NO,null
+public,circuit_results,6,tournament_type,text,NO,null
+public,circuit_results,7,tournament_date,date,YES,null
+public,circuit_results,8,player_key,text,NO,null
+public,circuit_results,9,player_name,text,NO,null
+public,circuit_results,10,player_phone,text,YES,null
+public,circuit_results,11,placement,integer,YES,null
+public,circuit_results,12,points,integer,NO,0
+public,circuit_results,13,created_at,timestamp with time zone,NO,now()
+public,circuits,1,id,uuid,NO,gen_random_uuid()
+public,circuits,2,name,text,NO,null
+public,circuits,3,slug,text,NO,null
+public,circuits,4,tournament_type,text,NO,null
+public,circuits,5,status,text,NO,'draft'::text
+public,circuits,6,created_at,timestamp with time zone,NO,now()
+public,circuits,7,updated_at,timestamp with time zone,NO,now()
+public,circuits,8,hero_logo_url,text,YES,null
+public,circuits,9,hero_logo_2_url,text,YES,null
+public,circuits,10,hero_logo_3_url,text,YES,null
+public,circuits,11,hero_subtitle,text,YES,null
+public,circuits,12,theme_key,text,YES,null
+public,circuits,13,rules_url,text,YES,null
+public,communication_user_states,1,id,uuid,NO,gen_random_uuid()
+public,communication_user_states,2,user_id,uuid,NO,null
+public,communication_user_states,3,communication_id,uuid,NO,null
+public,communication_user_states,4,read_at,timestamp with time zone,YES,null
+public,communication_user_states,5,dismissed_at,timestamp with time zone,YES,null
+public,communication_user_states,6,created_at,timestamp with time zone,NO,now()
+public,communications,1,id,uuid,NO,gen_random_uuid()
+public,communications,2,target,text,NO,'all'::text
+public,communications,3,title,text,NO,null
+public,communications,4,body,text,NO,null
+public,communications,5,image_path,text,YES,null
+public,communications,6,cta_label,text,YES,null
+public,communications,7,cta_url,text,YES,null
+public,communications,8,is_active,boolean,NO,true
+public,communications,9,starts_at,timestamp with time zone,NO,now()
+public,communications,10,ends_at,timestamp with time zone,YES,null
+public,communications,11,created_by,uuid,YES,null
+public,communications,12,created_at,timestamp with time zone,NO,now()
+public,communications,13,updated_at,timestamp with time zone,YES,null
+public,communications,14,tournament_id,uuid,YES,null
+public,loyalty_global_promos,1,id,uuid,NO,gen_random_uuid()
+public,loyalty_global_promos,2,title,text,NO,null
+public,loyalty_global_promos,3,multiplier,numeric,NO,1
+public,loyalty_global_promos,4,starts_at,timestamp with time zone,NO,now()
+public,loyalty_global_promos,5,ends_at,timestamp with time zone,NO,null
+public,loyalty_global_promos,6,is_active,boolean,NO,true
+public,loyalty_global_promos,7,notes,text,YES,null
+public,loyalty_global_promos,8,created_by,uuid,YES,null
+public,loyalty_global_promos,9,created_at,timestamp with time zone,NO,now()
+public,loyalty_global_promos,10,updated_at,timestamp with time zone,YES,null
+public,loyalty_global_promos,11,schedule_type,text,NO,'always'::text
+public,loyalty_global_promos,12,days_of_week,ARRAY,YES,null
+public,loyalty_global_promos,13,start_time,time without time zone,YES,null
+public,loyalty_global_promos,14,end_time,time without time zone,YES,null
+public,loyalty_global_promos,15,target_type,text,NO,'all'::text
+public,loyalty_global_promos,16,target_gender,text,YES,null
+public,loyalty_global_promos,17,min_age,integer,YES,null
+public,loyalty_global_promos,18,max_age,integer,YES,null
+public,loyalty_global_promos,19,new_member_days,integer,YES,null
+public,loyalty_memberships,1,id,uuid,NO,gen_random_uuid()
+public,loyalty_memberships,2,user_id,uuid,NO,null
+public,loyalty_memberships,3,status,text,NO,'pending_review'::text
+public,loyalty_memberships,4,membership_code,text,NO,null
+public,loyalty_memberships,5,tax_code,text,NO,null
+public,loyalty_memberships,6,approved_at,timestamp with time zone,YES,null
+public,loyalty_memberships,7,approved_by,uuid,YES,null
+public,loyalty_memberships,8,suspended_at,timestamp with time zone,YES,null
+public,loyalty_memberships,9,suspension_reason,text,YES,null
+public,loyalty_memberships,10,created_at,timestamp with time zone,NO,now()
+public,loyalty_memberships,11,updated_at,timestamp with time zone,NO,now()
+public,loyalty_memberships,12,membership_type,text,YES,null
+public,loyalty_memberships,13,fee_points,integer,NO,0
+public,loyalty_memberships,14,fee_paid,boolean,NO,false
+public,loyalty_memberships,15,has_existing_membership,boolean,NO,false
+public,loyalty_memberships,16,existing_membership_type,text,YES,null
+public,loyalty_memberships,17,existing_membership_number,text,YES,null
+public,loyalty_memberships,18,health_data_consent_at,timestamp with time zone,YES,null
+public,loyalty_memberships,19,rejection_reason,text,YES,null
+public,loyalty_memberships,20,rejected_at,timestamp with time zone,YES,null
+public,loyalty_transactions,1,id,uuid,NO,gen_random_uuid()
+public,loyalty_transactions,2,membership_id,uuid,NO,null
+public,loyalty_transactions,3,type,text,NO,null
+public,loyalty_transactions,4,source,text,NO,null
+public,loyalty_transactions,5,euro_amount,numeric,YES,null
+public,loyalty_transactions,6,points_delta,integer,NO,null
+public,loyalty_transactions,7,created_by,uuid,YES,null
+public,loyalty_transactions,8,notes,text,YES,null
+public,loyalty_transactions,9,related_redemption_id,uuid,YES,null
+public,loyalty_transactions,10,related_partner_id,uuid,YES,null
+public,loyalty_transactions,11,created_at,timestamp with time zone,NO,now()
+public,loyalty_transactions,12,club,text,YES,null
+public,loyalty_user_promos,1,id,uuid,NO,gen_random_uuid()
+public,loyalty_user_promos,2,membership_id,uuid,NO,null
+public,loyalty_user_promos,3,multiplier,numeric,NO,1
+public,loyalty_user_promos,4,starts_at,timestamp with time zone,NO,now()
+public,loyalty_user_promos,5,ends_at,timestamp with time zone,NO,null
+public,loyalty_user_promos,6,is_active,boolean,NO,true
+public,loyalty_user_promos,7,notes,text,YES,null
+public,loyalty_user_promos,8,created_by,uuid,YES,null
+public,loyalty_user_promos,9,created_at,timestamp with time zone,NO,now()
+public,loyalty_user_promos,10,updated_at,timestamp with time zone,YES,null
+public,medical_certificates,1,id,uuid,NO,gen_random_uuid()
+public,medical_certificates,2,user_id,uuid,NO,null
+public,medical_certificates,3,file_path,text,NO,null
+public,medical_certificates,4,status,text,NO,'uploaded'::text
+public,medical_certificates,5,uploaded_at,timestamp with time zone,NO,now()
+public,medical_certificates,6,reviewed_at,timestamp with time zone,YES,null
+public,medical_certificates,7,reviewed_by,uuid,YES,null
+public,medical_certificates,8,expiry_date,date,YES,null
+public,medical_certificates,9,notes,text,YES,null
+public,reward_categories,1,id,uuid,NO,gen_random_uuid()
+public,reward_categories,2,name,text,NO,null
+public,reward_categories,3,sort_order,integer,NO,0
+public,reward_categories,4,is_active,boolean,NO,true
+public,reward_categories,5,created_at,timestamp with time zone,NO,now()
+public,reward_categories,6,updated_at,timestamp with time zone,YES,null
+public,reward_point_ranges,1,id,uuid,NO,gen_random_uuid()
+public,reward_point_ranges,2,label,text,NO,null
+public,reward_point_ranges,3,min_points,integer,YES,null
+public,reward_point_ranges,4,max_points,integer,YES,null
+public,reward_point_ranges,5,sort_order,integer,NO,0
+public,reward_point_ranges,6,is_active,boolean,NO,true
+public,reward_point_ranges,7,created_at,timestamp with time zone,NO,now()
+public,reward_point_ranges,8,updated_at,timestamp with time zone,YES,null
+public,reward_redemptions,1,id,uuid,NO,gen_random_uuid()
+public,reward_redemptions,2,membership_id,uuid,NO,null
+public,reward_redemptions,3,reward_id,uuid,NO,null
+public,reward_redemptions,4,points_cost,integer,NO,null
+public,reward_redemptions,5,status,text,NO,'requested'::text
+public,reward_redemptions,6,requested_at,timestamp with time zone,YES,now()
+public,reward_redemptions,7,approved_at,timestamp with time zone,YES,null
+public,reward_redemptions,8,delivered_at,timestamp with time zone,YES,null
+public,reward_redemptions,9,cancelled_at,timestamp with time zone,YES,null
+public,reward_redemptions,10,handled_by,uuid,YES,null
+public,reward_redemptions,11,notes,text,YES,null
+public,reward_redemptions,12,qr_token,text,YES,null
+public,rewards_catalog,1,id,uuid,NO,gen_random_uuid()
+public,rewards_catalog,2,name,text,NO,null
+public,rewards_catalog,3,description,text,YES,null
+public,rewards_catalog,4,category,text,YES,null
+public,rewards_catalog,5,points_cost,integer,NO,null
+public,rewards_catalog,6,image_path,text,YES,null
+public,rewards_catalog,7,is_active,boolean,NO,true
+public,rewards_catalog,8,stock_qty,integer,YES,null
+public,rewards_catalog,9,reward_type,text,NO,'club'::text
+public,rewards_catalog,10,created_at,timestamp with time zone,YES,now()
+public,rewards_catalog,11,updated_at,timestamp with time zone,YES,now()
+public,rewards_catalog,12,store_product_id,uuid,YES,null
+public,rewards_catalog,13,requires_store_variant,boolean,NO,false
+public,staff_users,1,id,uuid,NO,gen_random_uuid()
+public,staff_users,2,full_name,text,NO,null
+public,staff_users,3,email,text,NO,null
+public,staff_users,4,password_hash,text,YES,null
+public,staff_users,5,role,text,NO,null
+public,staff_users,6,is_active,boolean,NO,true
+public,staff_users,7,last_login_at,timestamp with time zone,YES,null
+public,staff_users,8,created_at,timestamp with time zone,NO,now()
+public,staff_users,9,updated_at,timestamp with time zone,NO,now()
+public,store_categories,1,id,uuid,NO,gen_random_uuid()
+public,store_categories,2,name,text,NO,null
+public,store_categories,3,slug,text,NO,null
+public,store_categories,4,is_active,boolean,NO,true
+public,store_categories,5,sort_order,integer,NO,0
+public,store_categories,6,created_at,timestamp with time zone,NO,now()
+public,store_categories,7,updated_at,timestamp with time zone,YES,null
+public,store_lines,1,id,uuid,NO,gen_random_uuid()
+public,store_lines,2,name,text,NO,null
+public,store_lines,3,slug,text,NO,null
+public,store_lines,4,is_active,boolean,NO,true
+public,store_lines,5,sort_order,integer,NO,0
+public,store_lines,6,created_at,timestamp with time zone,NO,now()
+public,store_lines,7,updated_at,timestamp with time zone,YES,null
+public,store_order_economics,1,id,uuid,NO,gen_random_uuid()
+public,store_order_economics,2,order_id,uuid,NO,null
+public,store_order_economics,3,supplier_paid_by,text,YES,null
+public,store_order_economics,4,supplier_paid_by_name,text,YES,null
+public,store_order_economics,5,is_supplier_paid,boolean,NO,false
+public,store_order_economics,6,supplier_paid_at,timestamp with time zone,YES,null
+public,store_order_economics,7,notes,text,YES,null
+public,store_order_economics,8,updated_by,text,YES,null
+public,store_order_economics,9,created_at,timestamp with time zone,NO,now()
+public,store_order_economics,10,updated_at,timestamp with time zone,NO,now()
+public,store_order_items,1,id,uuid,NO,gen_random_uuid()
+public,store_order_items,2,order_id,uuid,NO,null
+public,store_order_items,3,product_id,uuid,YES,null
+public,store_order_items,4,color_id,uuid,YES,null
+public,store_order_items,5,size_id,uuid,YES,null
+public,store_order_items,6,product_name,text,NO,null
+public,store_order_items,7,color_name,text,YES,null
+public,store_order_items,8,size_label,text,YES,null
+public,store_order_items,9,quantity,integer,NO,1
+public,store_order_items,10,unit_price_euro,numeric,NO,0
+public,store_order_items,11,unit_price_points,integer,NO,0
+public,store_order_items,12,total_euro,numeric,NO,0
+public,store_order_items,13,total_points,integer,NO,0
+public,store_order_items,14,created_at,timestamp with time zone,NO,now()
+public,store_order_items,15,custom_product_name,text,YES,null
+public,store_order_items,16,custom_variant,text,YES,null
+public,store_order_items,17,supplier_notes,text,YES,null
+public,store_orders,1,id,uuid,NO,gen_random_uuid()
+public,store_orders,2,user_id,uuid,YES,null
+public,store_orders,3,status,text,NO,'pending'::text
+public,store_orders,4,pickup_club,text,NO,null
+public,store_orders,5,payment_mode,text,NO,null
+public,store_orders,6,total_euro,numeric,NO,0
+public,store_orders,7,total_points,integer,NO,0
+public,store_orders,8,customer_name,text,YES,null
+public,store_orders,9,customer_phone,text,YES,null
+public,store_orders,10,customer_email,text,YES,null
+public,store_orders,11,notes,text,YES,null
+public,store_orders,12,admin_notes,text,YES,null
+public,store_orders,13,created_at,timestamp with time zone,NO,now()
+public,store_orders,14,updated_at,timestamp with time zone,YES,null
+public,store_orders,15,confirmed_at,timestamp with time zone,YES,null
+public,store_orders,16,ordered_to_supplier_at,timestamp with time zone,YES,null
+public,store_orders,17,ready_at,timestamp with time zone,YES,null
+public,store_orders,18,delivered_at,timestamp with time zone,YES,null
+public,store_orders,19,cancelled_at,timestamp with time zone,YES,null
+public,store_orders,20,is_paid,boolean,YES,false
+public,store_orders,21,paid_at,timestamp with time zone,YES,null
+public,store_orders,22,supplier_paid,boolean,NO,false
+public,store_orders,23,supplier_paid_at,timestamp with time zone,YES,null
+public,store_orders,24,supplier_paid_by_type,text,YES,null
+public,store_orders,25,supplier_paid_by_name,text,YES,null
+public,store_orders,26,supplier_paid_by_club,text,YES,null
+public,store_orders,27,supplier_payment_notes,text,YES,null
+public,store_orders,28,order_type,text,NO,'catalog'::text
+public,store_orders,29,related_redemption_id,uuid,YES,null
+public,store_orders,30,special_title,text,YES,null
+public,store_orders,31,special_notes,text,YES,null
+public,store_product_colors,1,id,uuid,NO,gen_random_uuid()
+public,store_product_colors,2,product_id,uuid,NO,null
+public,store_product_colors,3,color_name,text,NO,null
+public,store_product_colors,4,color_hex,text,YES,null
+public,store_product_colors,5,image_path,text,YES,null
+public,store_product_colors,6,is_active,boolean,NO,true
+public,store_product_colors,7,sort_order,integer,NO,0
+public,store_product_colors,8,created_at,timestamp with time zone,NO,now()
+public,store_product_colors,9,updated_at,timestamp with time zone,YES,null
+public,store_product_costs,1,id,uuid,NO,gen_random_uuid()
+public,store_product_costs,2,product_id,uuid,NO,null
+public,store_product_costs,3,purchase_cost_euro,numeric,NO,0
+public,store_product_costs,4,supplier_name,text,YES,null
+public,store_product_costs,5,notes,text,YES,null
+public,store_product_costs,6,updated_by,text,YES,null
+public,store_product_costs,7,created_at,timestamp with time zone,NO,now()
+public,store_product_costs,8,updated_at,timestamp with time zone,NO,now()
+public,store_product_sizes,1,id,uuid,NO,gen_random_uuid()
+public,store_product_sizes,2,product_id,uuid,NO,null
+public,store_product_sizes,3,size_label,text,NO,null
+public,store_product_sizes,4,sort_order,integer,NO,0
+public,store_product_sizes,5,is_active,boolean,NO,true
+public,store_product_sizes,6,created_at,timestamp with time zone,NO,now()
+public,store_product_stock,1,id,uuid,NO,gen_random_uuid()
+public,store_product_stock,2,product_id,uuid,NO,null
+public,store_product_stock,3,color_id,uuid,NO,null
+public,store_product_stock,4,size_id,uuid,YES,null
+public,store_product_stock,5,stock_qty,integer,YES,null
+public,store_product_stock,6,sku,text,YES,null
+public,store_product_stock,7,is_active,boolean,NO,true
+public,store_product_stock,8,created_at,timestamp with time zone,NO,now()
+public,store_product_stock,9,updated_at,timestamp with time zone,YES,null
+public,store_products,1,id,uuid,NO,gen_random_uuid()
+public,store_products,2,category_id,uuid,NO,null
+public,store_products,3,line_id,uuid,YES,null
+public,store_products,4,name,text,NO,null
+public,store_products,5,description,text,YES,null
+public,store_products,6,base_price_euro,numeric,NO,0
+public,store_products,7,base_price_points,integer,YES,null
+public,store_products,8,allow_euro,boolean,NO,true
+public,store_products,9,allow_points,boolean,NO,false
+public,store_products,10,allow_mixed,boolean,NO,false
+public,store_products,11,is_active,boolean,NO,true
+public,store_products,12,sort_order,integer,NO,0
+public,store_products,13,created_at,timestamp with time zone,NO,now()
+public,store_products,14,updated_at,timestamp with time zone,YES,null
+public,store_promos,1,id,uuid,NO,gen_random_uuid()
+public,store_promos,2,name,text,NO,null
+public,store_promos,3,discount_percent,integer,NO,0
+public,store_promos,4,is_active,boolean,NO,true
+public,store_promos,5,starts_at,timestamp with time zone,YES,null
+public,store_promos,6,ends_at,timestamp with time zone,YES,null
+public,store_promos,7,created_at,timestamp with time zone,NO,now()
+public,store_promos,8,updated_at,timestamp with time zone,NO,now()
+public,store_special_orders,1,id,uuid,NO,gen_random_uuid()
+public,store_special_orders,2,customer_name,text,NO,null
+public,store_special_orders,3,customer_contact,text,YES,null
+public,store_special_orders,4,item_description,text,NO,null
+public,store_special_orders,5,sale_price_euro,numeric,NO,0
+public,store_special_orders,6,purchase_cost_euro,numeric,NO,0
+public,store_special_orders,7,pickup_club,text,YES,null
+public,store_special_orders,8,is_customer_paid,boolean,NO,false
+public,store_special_orders,9,customer_paid_at,timestamp with time zone,YES,null
+public,store_special_orders,10,supplier_paid_by,text,YES,null
+public,store_special_orders,11,supplier_paid_by_name,text,YES,null
+public,store_special_orders,12,is_supplier_paid,boolean,NO,false
+public,store_special_orders,13,supplier_paid_at,timestamp with time zone,YES,null
+public,store_special_orders,14,notes,text,YES,null
+public,store_special_orders,15,order_month,date,NO,"(date_trunc('month'::text, now()))::date"
+public,store_special_orders,16,created_by,text,YES,null
+public,store_special_orders,17,created_at,timestamp with time zone,NO,now()
+public,store_special_orders,18,updated_at,timestamp with time zone,NO,now()
+public,store_supplier_batch_orders,1,id,uuid,NO,gen_random_uuid()
+public,store_supplier_batch_orders,2,batch_id,uuid,NO,null
+public,store_supplier_batch_orders,3,order_id,uuid,NO,null
+public,store_supplier_batch_orders,4,created_at,timestamp with time zone,NO,now()
+public,store_supplier_batches,1,id,uuid,NO,gen_random_uuid()
+public,store_supplier_batches,2,batch_number,text,YES,null
+public,store_supplier_batches,3,status,text,NO,'draft'::text
+public,store_supplier_batches,4,title,text,YES,null
+public,store_supplier_batches,5,notes,text,YES,null
+public,store_supplier_batches,6,total_orders,integer,NO,0
+public,store_supplier_batches,7,total_items,integer,NO,0
+public,store_supplier_batches,8,total_euro,numeric,NO,0
+public,store_supplier_batches,9,total_points,integer,NO,0
+public,store_supplier_batches,10,pdf_path,text,YES,null
+public,store_supplier_batches,11,created_by,uuid,YES,null
+public,store_supplier_batches,12,created_at,timestamp with time zone,NO,now()
+public,store_supplier_batches,13,generated_at,timestamp with time zone,YES,null
+public,store_supplier_batches,14,sent_at,timestamp with time zone,YES,null
+public,store_supplier_batches,15,updated_at,timestamp with time zone,YES,null
+public,tournament_registrations,1,id,uuid,NO,gen_random_uuid()
+public,tournament_registrations,2,tournament_id,uuid,NO,null
+public,tournament_registrations,3,position,integer,NO,0
+public,tournament_registrations,4,is_reserve,boolean,NO,false
+public,tournament_registrations,5,p1_name,text,NO,null
+public,tournament_registrations,6,p1_phone,text,NO,null
+public,tournament_registrations,7,p1_gender,text,YES,null
+public,tournament_registrations,8,p2_name,text,YES,null
+public,tournament_registrations,9,p2_phone,text,YES,null
+public,tournament_registrations,10,p2_gender,text,YES,null
+public,tournament_registrations,11,notes,text,YES,null
+public,tournament_registrations,12,created_at,timestamp with time zone,NO,now()
+public,tournament_registrations,13,user_id,uuid,YES,null
+public,tournament_run_bracket_slots,1,id,uuid,NO,gen_random_uuid()
+public,tournament_run_bracket_slots,2,run_id,uuid,NO,null
+public,tournament_run_bracket_slots,3,position,integer,NO,null
+public,tournament_run_bracket_slots,4,pair_id,uuid,YES,null
+public,tournament_run_bracket_slots,5,is_bye,boolean,NO,false
+public,tournament_run_bracket_slots,6,created_at,timestamp with time zone,NO,now()
+public,tournament_run_group_pairs,1,id,uuid,NO,gen_random_uuid()
+public,tournament_run_group_pairs,2,group_id,uuid,NO,null
+public,tournament_run_group_pairs,3,pair_id,uuid,NO,null
+public,tournament_run_group_pairs,4,created_at,timestamp with time zone,NO,now()
+public,tournament_run_group_standings,1,run_id,uuid,YES,null
+public,tournament_run_group_standings,2,group_id,uuid,YES,null
+public,tournament_run_group_standings,3,pair_id,uuid,YES,null
+public,tournament_run_group_standings,4,points,integer,YES,null
+public,tournament_run_group_standings,5,gw,integer,YES,null
+public,tournament_run_group_standings,6,gl,integer,YES,null
+public,tournament_run_group_standings,7,dg,integer,YES,null
+public,tournament_run_group_standings,8,played,integer,YES,null
+public,tournament_run_groups,1,id,uuid,NO,gen_random_uuid()
+public,tournament_run_groups,2,run_id,uuid,NO,null
+public,tournament_run_groups,3,name,text,NO,null
+public,tournament_run_groups,4,position,integer,NO,null
+public,tournament_run_groups,5,created_at,timestamp with time zone,NO,now()
+public,tournament_run_matches,1,id,uuid,NO,gen_random_uuid()
+public,tournament_run_matches,2,turn_id,uuid,NO,null
+public,tournament_run_matches,3,match_number,integer,NO,null
+public,tournament_run_matches,4,p1_id,uuid,NO,null
+public,tournament_run_matches,5,p2_id,uuid,NO,null
+public,tournament_run_matches,6,p3_id,uuid,NO,null
+public,tournament_run_matches,7,p4_id,uuid,NO,null
+public,tournament_run_matches,8,team1_games,integer,YES,null
+public,tournament_run_matches,9,team2_games,integer,YES,null
+public,tournament_run_matches,10,completed_at,timestamp without time zone,YES,null
+public,tournament_run_matches,11,created_at,timestamp without time zone,NO,now()
+public,tournament_run_matches_fp,1,id,uuid,NO,gen_random_uuid()
+public,tournament_run_matches_fp,2,run_id,uuid,NO,null
+public,tournament_run_matches_fp,3,stage,text,NO,null
+public,tournament_run_matches_fp,4,group_id,uuid,YES,null
+public,tournament_run_matches_fp,5,round_label,text,YES,null
+public,tournament_run_matches_fp,6,home_pair_id,uuid,YES,null
+public,tournament_run_matches_fp,7,away_pair_id,uuid,YES,null
+public,tournament_run_matches_fp,8,court,integer,YES,null
+public,tournament_run_matches_fp,9,starts_at,time without time zone,YES,null
+public,tournament_run_matches_fp,10,home_games,integer,YES,null
+public,tournament_run_matches_fp,11,away_games,integer,YES,null
+public,tournament_run_matches_fp,12,completed_at,timestamp with time zone,YES,null
+public,tournament_run_matches_fp,13,created_at,timestamp with time zone,NO,now()
+public,tournament_run_matches_fp,14,set1_home_games,integer,YES,null
+public,tournament_run_matches_fp,15,set1_away_games,integer,YES,null
+public,tournament_run_matches_fp,16,set2_home_games,integer,YES,null
+public,tournament_run_matches_fp,17,set2_away_games,integer,YES,null
+public,tournament_run_matches_fp,18,set3_home_games,integer,YES,null
+public,tournament_run_matches_fp,19,set3_away_games,integer,YES,null
+public,tournament_run_matches_fp,20,home_sets,integer,YES,null
+public,tournament_run_matches_fp,21,away_sets,integer,YES,null
+public,tournament_run_matches_fp_view,1,id,uuid,YES,null
+public,tournament_run_matches_fp_view,2,run_id,uuid,YES,null
+public,tournament_run_matches_fp_view,3,stage,text,YES,null
+public,tournament_run_matches_fp_view,4,group_id,uuid,YES,null
+public,tournament_run_matches_fp_view,5,round_label,text,YES,null
+public,tournament_run_matches_fp_view,6,home_pair_id,uuid,YES,null
+public,tournament_run_matches_fp_view,7,away_pair_id,uuid,YES,null
+public,tournament_run_matches_fp_view,8,court,integer,YES,null
+public,tournament_run_matches_fp_view,9,starts_at,time without time zone,YES,null
+public,tournament_run_matches_fp_view,10,home_games,integer,YES,null
+public,tournament_run_matches_fp_view,11,away_games,integer,YES,null
+public,tournament_run_matches_fp_view,12,completed_at,timestamp with time zone,YES,null
+public,tournament_run_matches_fp_view,13,created_at,timestamp with time zone,YES,null
+public,tournament_run_matches_fp_view,14,home_pair_name,text,YES,null
+public,tournament_run_matches_fp_view,15,away_pair_name,text,YES,null
+public,tournament_run_matches_fp_view,16,group_name,text,YES,null
+public,tournament_run_pairs,1,id,uuid,NO,gen_random_uuid()
+public,tournament_run_pairs,2,run_id,uuid,NO,null
+public,tournament_run_pairs,3,registration_id,uuid,YES,null
+public,tournament_run_pairs,4,name,text,NO,null
+public,tournament_run_pairs,5,created_at,timestamp with time zone,NO,now()
+public,tournament_run_participants,1,id,uuid,NO,gen_random_uuid()
+public,tournament_run_participants,2,run_id,uuid,NO,null
+public,tournament_run_participants,3,user_id,uuid,YES,null
+public,tournament_run_participants,4,name,text,NO,null
+public,tournament_run_participants,5,phone,text,YES,null
+public,tournament_run_participants,6,sex,text,NO,null
+public,tournament_run_participants,7,created_at,timestamp without time zone,NO,now()
+public,tournament_run_standings,1,run_id,uuid,YES,null
+public,tournament_run_standings,2,participant_id,uuid,YES,null
+public,tournament_run_standings,3,name,text,YES,null
+public,tournament_run_standings,4,games_won,bigint,YES,null
+public,tournament_run_standings,5,games_lost,bigint,YES,null
+public,tournament_run_standings,6,matches_won,numeric,YES,null
+public,tournament_run_turns,1,id,uuid,NO,gen_random_uuid()
+public,tournament_run_turns,2,run_id,uuid,NO,null
+public,tournament_run_turns,3,turn_number,integer,NO,null
+public,tournament_run_turns,4,status,text,NO,'pending'::text
+public,tournament_run_turns,5,created_at,timestamp without time zone,NO,now()
+public,tournament_runs,1,id,uuid,NO,gen_random_uuid()
+public,tournament_runs,2,tournament_id,uuid,NO,null
+public,tournament_runs,3,mode,text,NO,null
+public,tournament_runs,4,category,text,NO,null
+public,tournament_runs,5,status,text,NO,null
+public,tournament_runs,6,rules,jsonb,NO,'{}'::jsonb
+public,tournament_runs,7,locked_at,timestamp without time zone,YES,null
+public,tournament_runs,8,started_at,timestamp without time zone,YES,null
+public,tournament_runs,9,completed_at,timestamp without time zone,YES,null
+public,tournament_runs,10,created_at,timestamp without time zone,NO,now()
+public,tournament_runs,11,type,text,YES,null
+public,tournament_runs,12,settings,jsonb,YES,null
+public,tournaments,1,id,uuid,NO,gen_random_uuid()
+public,tournaments,2,name,text,NO,null
+public,tournaments,3,type,text,NO,null
+public,tournaments,4,category,text,NO,null
+public,tournaments,5,date,date,NO,null
+public,tournaments,6,time,text,NO,null
+public,tournaments,7,location,text,NO,null
+public,tournaments,8,max_participants,integer,NO,null
+public,tournaments,9,created_at,timestamp with time zone,NO,now()
+public,tournaments,10,start_at,timestamp with time zone,YES,null
+public,tournaments,11,max_teams,integer,YES,null
+public,tournaments,12,notes,text,YES,null
+public,tournaments,13,updated_at,timestamp with time zone,YES,now()
+public,tournaments,14,image_url,text,YES,null
+public,tournaments,15,level,text,YES,null
+public,tournaments,16,show_participants,boolean,NO,false
+public,tournaments,17,registrations_open,boolean,NO,true
+public,tournaments,18,circuit_id,uuid,YES,null
+public,tournaments,19,circuit_snapshot_created,boolean,NO,false
+public,tournaments,20,closed_at,timestamp with time zone,YES,null
+public,users,1,id,uuid,NO,gen_random_uuid()
+public,users,2,full_name,text,NO,null
+public,users,3,phone,text,NO,null
+public,users,4,email,text,YES,null
+public,users,5,gender,text,NO,null
+public,users,6,created_at,timestamp with time zone,NO,now()
+public,users,7,updated_at,timestamp with time zone,NO,now()
+public,users,8,privacy_accepted_at,timestamp with time zone,YES,null
+public,users,9,terms_accepted_at,timestamp with time zone,YES,null
+public,users,10,marketing_accepted,boolean,YES,false
+public,users,11,marketing_accepted_at,timestamp with time zone,YES,null
+public,users,12,age_confirmed_at,timestamp with time zone,YES,null
+realtime,messages,3,topic,text,NO,null
+realtime,messages,4,extension,text,NO,null
+realtime,messages,5,payload,jsonb,YES,null
+realtime,messages,6,event,text,YES,null
+realtime,messages,7,private,boolean,YES,false
+realtime,messages,8,updated_at,timestamp without time zone,NO,now()
+realtime,messages,9,inserted_at,timestamp without time zone,NO,now()
+realtime,messages,10,id,uuid,NO,gen_random_uuid()
+realtime,messages,11,binary_payload,bytea,YES,null
+realtime,schema_migrations,1,version,bigint,NO,null
+realtime,schema_migrations,2,inserted_at,timestamp without time zone,YES,null
+realtime,subscription,1,id,bigint,NO,null
+realtime,subscription,2,subscription_id,uuid,NO,null
+realtime,subscription,4,entity,regclass,NO,null
+realtime,subscription,5,filters,ARRAY,NO,'{}'::realtime.user_defined_filter[]
+realtime,subscription,7,claims,jsonb,NO,null
+realtime,subscription,8,claims_role,regrole,NO,null
+realtime,subscription,9,created_at,timestamp without time zone,NO,"timezone('utc'::text, now())"
+realtime,subscription,10,action_filter,text,YES,'*'::text
+realtime,subscription,11,selected_columns,ARRAY,YES,null
+storage,buckets,1,id,text,NO,null
+storage,buckets,2,name,text,NO,null
+storage,buckets,3,owner,uuid,YES,null
+storage,buckets,4,created_at,timestamp with time zone,YES,now()
+storage,buckets,5,updated_at,timestamp with time zone,YES,now()
+storage,buckets,6,public,boolean,YES,false
+storage,buckets,7,avif_autodetection,boolean,YES,false
+storage,buckets,8,file_size_limit,bigint,YES,null
+storage,buckets,9,allowed_mime_types,ARRAY,YES,null
+storage,buckets,10,owner_id,text,YES,null
+storage,buckets,11,type,USER-DEFINED,NO,'STANDARD'::storage.buckettype
+storage,buckets,12,versioning_status,text,NO,'DISABLED'::text
+storage,buckets_analytics,1,name,text,NO,null
+storage,buckets_analytics,2,type,USER-DEFINED,NO,'ANALYTICS'::storage.buckettype
+storage,buckets_analytics,3,format,text,NO,'ICEBERG'::text
+storage,buckets_analytics,4,created_at,timestamp with time zone,NO,now()
+storage,buckets_analytics,5,updated_at,timestamp with time zone,NO,now()
+storage,buckets_analytics,6,id,uuid,NO,gen_random_uuid()
+storage,buckets_analytics,7,deleted_at,timestamp with time zone,YES,null
+storage,buckets_vectors,1,id,text,NO,null
+storage,buckets_vectors,2,type,USER-DEFINED,NO,'VECTOR'::storage.buckettype
+storage,buckets_vectors,3,created_at,timestamp with time zone,NO,now()
+storage,buckets_vectors,4,updated_at,timestamp with time zone,NO,now()
+storage,migrations,1,id,integer,NO,null
+storage,migrations,2,name,character varying,NO,null
+storage,migrations,3,hash,character varying,NO,null
+storage,migrations,4,executed_at,timestamp without time zone,YES,CURRENT_TIMESTAMP
+storage,objects,1,id,uuid,NO,gen_random_uuid()
+storage,objects,2,bucket_id,text,YES,null
+storage,objects,3,name,text,YES,null
+storage,objects,4,owner,uuid,YES,null
+storage,objects,5,created_at,timestamp with time zone,YES,now()
+storage,objects,6,updated_at,timestamp with time zone,YES,now()
+storage,objects,7,last_accessed_at,timestamp with time zone,YES,now()
+storage,objects,8,metadata,jsonb,YES,null
+storage,objects,9,path_tokens,ARRAY,YES,null
+storage,objects,10,version,text,YES,null
+storage,objects,11,owner_id,text,YES,null
+storage,objects,12,user_metadata,jsonb,YES,null
+storage,objects,14,archived_at,timestamp with time zone,YES,null
+storage,objects,15,is_delete_marker,boolean,NO,false
+storage,objects,16,is_versioned,boolean,NO,false
+storage,s3_multipart_uploads,1,id,text,NO,null
+storage,s3_multipart_uploads,2,in_progress_size,bigint,NO,0
+storage,s3_multipart_uploads,3,upload_signature,text,NO,null
+storage,s3_multipart_uploads,4,bucket_id,text,NO,null
+storage,s3_multipart_uploads,5,key,text,NO,null
+storage,s3_multipart_uploads,6,version,text,NO,null
+storage,s3_multipart_uploads,7,owner_id,text,YES,null
+storage,s3_multipart_uploads,8,created_at,timestamp with time zone,NO,now()
+storage,s3_multipart_uploads,9,user_metadata,jsonb,YES,null
+storage,s3_multipart_uploads,10,metadata,jsonb,YES,null
+storage,s3_multipart_uploads_parts,1,id,uuid,NO,gen_random_uuid()
+storage,s3_multipart_uploads_parts,2,upload_id,text,NO,null
+storage,s3_multipart_uploads_parts,3,size,bigint,NO,0
+storage,s3_multipart_uploads_parts,4,part_number,integer,NO,null
+storage,s3_multipart_uploads_parts,5,bucket_id,text,NO,null
+storage,s3_multipart_uploads_parts,6,key,text,NO,null
+storage,s3_multipart_uploads_parts,7,etag,text,NO,null
+storage,s3_multipart_uploads_parts,8,owner_id,text,YES,null
+storage,s3_multipart_uploads_parts,9,version,text,NO,null
+storage,s3_multipart_uploads_parts,10,created_at,timestamp with time zone,NO,now()
+storage,vector_indexes,1,id,text,NO,gen_random_uuid()
+storage,vector_indexes,2,name,text,NO,null
+storage,vector_indexes,3,bucket_id,text,NO,null
+storage,vector_indexes,4,data_type,text,NO,null
+storage,vector_indexes,5,dimension,integer,NO,null
+storage,vector_indexes,6,distance_metric,text,NO,null
+storage,vector_indexes,7,metadata_configuration,jsonb,YES,null
+storage,vector_indexes,8,created_at,timestamp with time zone,NO,now()
+storage,vector_indexes,9,updated_at,timestamp with time zone,NO,now()
+vault,decrypted_secrets,1,id,uuid,YES,null
+vault,decrypted_secrets,2,name,text,YES,null
+vault,decrypted_secrets,3,description,text,YES,null
+vault,decrypted_secrets,4,secret,text,YES,null
+vault,decrypted_secrets,5,decrypted_secret,text,YES,null
+vault,decrypted_secrets,6,key_id,uuid,YES,null
+vault,decrypted_secrets,7,nonce,bytea,YES,null
+vault,decrypted_secrets,8,created_at,timestamp with time zone,YES,null
+vault,decrypted_secrets,9,updated_at,timestamp with time zone,YES,null
+vault,secrets,1,id,uuid,NO,gen_random_uuid()
+vault,secrets,2,name,text,YES,null
+vault,secrets,3,description,text,NO,''::text
+vault,secrets,4,secret,text,NO,null
+vault,secrets,5,key_id,uuid,YES,null
+vault,secrets,6,nonce,bytea,YES,vault._crypto_aead_det_noncegen()
+vault,secrets,7,created_at,timestamp with time zone,NO,CURRENT_TIMESTAMP
+vault,secrets,8,updated_at,timestamp with time zone,NO,CURRENT_TIMESTAMP

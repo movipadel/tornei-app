@@ -1,0 +1,789 @@
+table_schema,table_name,constraint_name,constraint_type,column_name,foreign_table_schema,foreign_table_name,foreign_column_name
+auth,audit_log_entries,16494_16525_2_not_null,CHECK,null,null,null,null
+auth,audit_log_entries,16494_16525_5_not_null,CHECK,null,null,null,null
+auth,audit_log_entries,audit_log_entries_pkey,PRIMARY KEY,id,null,null,null
+auth,custom_oauth_providers,16494_64611_10_not_null,CHECK,null,null,null,null
+auth,custom_oauth_providers,16494_64611_11_not_null,CHECK,null,null,null,null
+auth,custom_oauth_providers,16494_64611_12_not_null,CHECK,null,null,null,null
+auth,custom_oauth_providers,16494_64611_13_not_null,CHECK,null,null,null,null
+auth,custom_oauth_providers,16494_64611_16_not_null,CHECK,null,null,null,null
+auth,custom_oauth_providers,16494_64611_1_not_null,CHECK,null,null,null,null
+auth,custom_oauth_providers,16494_64611_23_not_null,CHECK,null,null,null,null
+auth,custom_oauth_providers,16494_64611_24_not_null,CHECK,null,null,null,null
+auth,custom_oauth_providers,16494_64611_25_not_null,CHECK,null,null,null,null
+auth,custom_oauth_providers,16494_64611_2_not_null,CHECK,null,null,null,null
+auth,custom_oauth_providers,16494_64611_3_not_null,CHECK,null,null,null,null
+auth,custom_oauth_providers,16494_64611_4_not_null,CHECK,null,null,null,null
+auth,custom_oauth_providers,16494_64611_5_not_null,CHECK,null,null,null,null
+auth,custom_oauth_providers,16494_64611_6_not_null,CHECK,null,null,null,null
+auth,custom_oauth_providers,16494_64611_7_not_null,CHECK,null,null,null,null
+auth,custom_oauth_providers,16494_64611_8_not_null,CHECK,null,null,null,null
+auth,custom_oauth_providers,16494_64611_9_not_null,CHECK,null,null,null,null
+auth,custom_oauth_providers,custom_oauth_providers_authorization_url_https,CHECK,null,null,null,null
+auth,custom_oauth_providers,custom_oauth_providers_authorization_url_length,CHECK,null,null,null,null
+auth,custom_oauth_providers,custom_oauth_providers_client_id_length,CHECK,null,null,null,null
+auth,custom_oauth_providers,custom_oauth_providers_discovery_url_length,CHECK,null,null,null,null
+auth,custom_oauth_providers,custom_oauth_providers_identifier_format,CHECK,null,null,null,null
+auth,custom_oauth_providers,custom_oauth_providers_issuer_length,CHECK,null,null,null,null
+auth,custom_oauth_providers,custom_oauth_providers_jwks_uri_https,CHECK,null,null,null,null
+auth,custom_oauth_providers,custom_oauth_providers_jwks_uri_length,CHECK,null,null,null,null
+auth,custom_oauth_providers,custom_oauth_providers_name_length,CHECK,null,null,null,null
+auth,custom_oauth_providers,custom_oauth_providers_oauth2_requires_endpoints,CHECK,null,null,null,null
+auth,custom_oauth_providers,custom_oauth_providers_oidc_discovery_url_https,CHECK,null,null,null,null
+auth,custom_oauth_providers,custom_oauth_providers_oidc_issuer_https,CHECK,null,null,null,null
+auth,custom_oauth_providers,custom_oauth_providers_oidc_requires_issuer,CHECK,null,null,null,null
+auth,custom_oauth_providers,custom_oauth_providers_provider_type_check,CHECK,null,null,null,null
+auth,custom_oauth_providers,custom_oauth_providers_token_url_https,CHECK,null,null,null,null
+auth,custom_oauth_providers,custom_oauth_providers_token_url_length,CHECK,null,null,null,null
+auth,custom_oauth_providers,custom_oauth_providers_userinfo_url_https,CHECK,null,null,null,null
+auth,custom_oauth_providers,custom_oauth_providers_userinfo_url_length,CHECK,null,null,null,null
+auth,custom_oauth_providers,custom_oauth_providers_pkey,PRIMARY KEY,id,null,null,null
+auth,custom_oauth_providers,custom_oauth_providers_identifier_key,UNIQUE,identifier,null,null,null
+auth,flow_state,16494_16883_11_not_null,CHECK,null,null,null,null
+auth,flow_state,16494_16883_17_not_null,CHECK,null,null,null,null
+auth,flow_state,16494_16883_1_not_null,CHECK,null,null,null,null
+auth,flow_state,16494_16883_6_not_null,CHECK,null,null,null,null
+auth,flow_state,flow_state_pkey,PRIMARY KEY,id,null,null,null
+auth,identities,16494_16681_1_not_null,CHECK,null,null,null,null
+auth,identities,16494_16681_2_not_null,CHECK,null,null,null,null
+auth,identities,16494_16681_3_not_null,CHECK,null,null,null,null
+auth,identities,16494_16681_4_not_null,CHECK,null,null,null,null
+auth,identities,16494_16681_9_not_null,CHECK,null,null,null,null
+auth,identities,identities_user_id_fkey,FOREIGN KEY,user_id,null,null,null
+auth,identities,identities_pkey,PRIMARY KEY,id,null,null,null
+auth,identities,identities_provider_id_provider_unique,UNIQUE,provider_id,null,null,null
+auth,identities,identities_provider_id_provider_unique,UNIQUE,provider,null,null,null
+auth,instances,16494_16518_1_not_null,CHECK,null,null,null,null
+auth,instances,instances_pkey,PRIMARY KEY,id,null,null,null
+auth,mfa_amr_claims,16494_16770_1_not_null,CHECK,null,null,null,null
+auth,mfa_amr_claims,16494_16770_2_not_null,CHECK,null,null,null,null
+auth,mfa_amr_claims,16494_16770_3_not_null,CHECK,null,null,null,null
+auth,mfa_amr_claims,16494_16770_4_not_null,CHECK,null,null,null,null
+auth,mfa_amr_claims,16494_16770_5_not_null,CHECK,null,null,null,null
+auth,mfa_amr_claims,mfa_amr_claims_session_id_fkey,FOREIGN KEY,session_id,null,null,null
+auth,mfa_amr_claims,amr_id_pk,PRIMARY KEY,id,null,null,null
+auth,mfa_amr_claims,mfa_amr_claims_session_id_authentication_method_pkey,UNIQUE,session_id,null,null,null
+auth,mfa_amr_claims,mfa_amr_claims_session_id_authentication_method_pkey,UNIQUE,authentication_method,null,null,null
+auth,mfa_challenges,16494_16758_1_not_null,CHECK,null,null,null,null
+auth,mfa_challenges,16494_16758_2_not_null,CHECK,null,null,null,null
+auth,mfa_challenges,16494_16758_3_not_null,CHECK,null,null,null,null
+auth,mfa_challenges,16494_16758_5_not_null,CHECK,null,null,null,null
+auth,mfa_challenges,mfa_challenges_auth_factor_id_fkey,FOREIGN KEY,factor_id,null,null,null
+auth,mfa_challenges,mfa_challenges_pkey,PRIMARY KEY,id,null,null,null
+auth,mfa_factors,16494_16745_1_not_null,CHECK,null,null,null,null
+auth,mfa_factors,16494_16745_2_not_null,CHECK,null,null,null,null
+auth,mfa_factors,16494_16745_4_not_null,CHECK,null,null,null,null
+auth,mfa_factors,16494_16745_5_not_null,CHECK,null,null,null,null
+auth,mfa_factors,16494_16745_6_not_null,CHECK,null,null,null,null
+auth,mfa_factors,16494_16745_7_not_null,CHECK,null,null,null,null
+auth,mfa_factors,mfa_factors_user_id_fkey,FOREIGN KEY,user_id,null,null,null
+auth,mfa_factors,mfa_factors_pkey,PRIMARY KEY,id,null,null,null
+auth,mfa_factors,mfa_factors_last_challenged_at_key,UNIQUE,last_challenged_at,null,null,null
+auth,oauth_authorizations,16494_16995_11_not_null,CHECK,null,null,null,null
+auth,oauth_authorizations,16494_16995_12_not_null,CHECK,null,null,null,null
+auth,oauth_authorizations,16494_16995_14_not_null,CHECK,null,null,null,null
+auth,oauth_authorizations,16494_16995_15_not_null,CHECK,null,null,null,null
+auth,oauth_authorizations,16494_16995_1_not_null,CHECK,null,null,null,null
+auth,oauth_authorizations,16494_16995_2_not_null,CHECK,null,null,null,null
+auth,oauth_authorizations,16494_16995_3_not_null,CHECK,null,null,null,null
+auth,oauth_authorizations,16494_16995_5_not_null,CHECK,null,null,null,null
+auth,oauth_authorizations,16494_16995_6_not_null,CHECK,null,null,null,null
+auth,oauth_authorizations,oauth_authorizations_authorization_code_length,CHECK,null,null,null,null
+auth,oauth_authorizations,oauth_authorizations_code_challenge_length,CHECK,null,null,null,null
+auth,oauth_authorizations,oauth_authorizations_expires_at_future,CHECK,null,null,null,null
+auth,oauth_authorizations,oauth_authorizations_nonce_length,CHECK,null,null,null,null
+auth,oauth_authorizations,oauth_authorizations_redirect_uri_length,CHECK,null,null,null,null
+auth,oauth_authorizations,oauth_authorizations_resource_length,CHECK,null,null,null,null
+auth,oauth_authorizations,oauth_authorizations_scope_length,CHECK,null,null,null,null
+auth,oauth_authorizations,oauth_authorizations_state_length,CHECK,null,null,null,null
+auth,oauth_authorizations,oauth_authorizations_client_id_fkey,FOREIGN KEY,client_id,null,null,null
+auth,oauth_authorizations,oauth_authorizations_user_id_fkey,FOREIGN KEY,user_id,null,null,null
+auth,oauth_authorizations,oauth_authorizations_pkey,PRIMARY KEY,id,null,null,null
+auth,oauth_authorizations,oauth_authorizations_authorization_code_key,UNIQUE,authorization_code,null,null,null
+auth,oauth_authorizations,oauth_authorizations_authorization_id_key,UNIQUE,authorization_id,null,null,null
+auth,oauth_client_states,16494_17068_1_not_null,CHECK,null,null,null,null
+auth,oauth_client_states,16494_17068_2_not_null,CHECK,null,null,null,null
+auth,oauth_client_states,16494_17068_4_not_null,CHECK,null,null,null,null
+auth,oauth_client_states,oauth_client_states_pkey,PRIMARY KEY,id,null,null,null
+auth,oauth_clients,16494_16965_10_not_null,CHECK,null,null,null,null
+auth,oauth_clients,16494_16965_11_not_null,CHECK,null,null,null,null
+auth,oauth_clients,16494_16965_13_not_null,CHECK,null,null,null,null
+auth,oauth_clients,16494_16965_14_not_null,CHECK,null,null,null,null
+auth,oauth_clients,16494_16965_1_not_null,CHECK,null,null,null,null
+auth,oauth_clients,16494_16965_4_not_null,CHECK,null,null,null,null
+auth,oauth_clients,16494_16965_5_not_null,CHECK,null,null,null,null
+auth,oauth_clients,16494_16965_6_not_null,CHECK,null,null,null,null
+auth,oauth_clients,oauth_clients_client_name_length,CHECK,null,null,null,null
+auth,oauth_clients,oauth_clients_client_uri_length,CHECK,null,null,null,null
+auth,oauth_clients,oauth_clients_logo_uri_length,CHECK,null,null,null,null
+auth,oauth_clients,oauth_clients_token_endpoint_auth_method_check,CHECK,null,null,null,null
+auth,oauth_clients,oauth_clients_pkey,PRIMARY KEY,id,null,null,null
+auth,oauth_consents,16494_17028_1_not_null,CHECK,null,null,null,null
+auth,oauth_consents,16494_17028_2_not_null,CHECK,null,null,null,null
+auth,oauth_consents,16494_17028_3_not_null,CHECK,null,null,null,null
+auth,oauth_consents,16494_17028_4_not_null,CHECK,null,null,null,null
+auth,oauth_consents,16494_17028_5_not_null,CHECK,null,null,null,null
+auth,oauth_consents,oauth_consents_revoked_after_granted,CHECK,null,null,null,null
+auth,oauth_consents,oauth_consents_scopes_length,CHECK,null,null,null,null
+auth,oauth_consents,oauth_consents_scopes_not_empty,CHECK,null,null,null,null
+auth,oauth_consents,oauth_consents_client_id_fkey,FOREIGN KEY,client_id,null,null,null
+auth,oauth_consents,oauth_consents_user_id_fkey,FOREIGN KEY,user_id,null,null,null
+auth,oauth_consents,oauth_consents_pkey,PRIMARY KEY,id,null,null,null
+auth,oauth_consents,oauth_consents_user_client_unique,UNIQUE,user_id,null,null,null
+auth,oauth_consents,oauth_consents_user_client_unique,UNIQUE,client_id,null,null,null
+auth,one_time_tokens,16494_16933_1_not_null,CHECK,null,null,null,null
+auth,one_time_tokens,16494_16933_2_not_null,CHECK,null,null,null,null
+auth,one_time_tokens,16494_16933_3_not_null,CHECK,null,null,null,null
+auth,one_time_tokens,16494_16933_4_not_null,CHECK,null,null,null,null
+auth,one_time_tokens,16494_16933_5_not_null,CHECK,null,null,null,null
+auth,one_time_tokens,16494_16933_6_not_null,CHECK,null,null,null,null
+auth,one_time_tokens,16494_16933_7_not_null,CHECK,null,null,null,null
+auth,one_time_tokens,one_time_tokens_token_hash_check,CHECK,null,null,null,null
+auth,one_time_tokens,one_time_tokens_user_id_fkey,FOREIGN KEY,user_id,null,null,null
+auth,one_time_tokens,one_time_tokens_pkey,PRIMARY KEY,id,null,null,null
+auth,refresh_tokens,16494_16507_2_not_null,CHECK,null,null,null,null
+auth,refresh_tokens,refresh_tokens_session_id_fkey,FOREIGN KEY,session_id,null,null,null
+auth,refresh_tokens,refresh_tokens_pkey,PRIMARY KEY,id,null,null,null
+auth,refresh_tokens,refresh_tokens_token_unique,UNIQUE,token,null,null,null
+auth,saml_providers,16494_16812_1_not_null,CHECK,null,null,null,null
+auth,saml_providers,16494_16812_2_not_null,CHECK,null,null,null,null
+auth,saml_providers,16494_16812_3_not_null,CHECK,null,null,null,null
+auth,saml_providers,16494_16812_4_not_null,CHECK,null,null,null,null
+auth,saml_providers,entity_id not empty,CHECK,null,null,null,null
+auth,saml_providers,metadata_url not empty,CHECK,null,null,null,null
+auth,saml_providers,metadata_xml not empty,CHECK,null,null,null,null
+auth,saml_providers,saml_providers_sso_provider_id_fkey,FOREIGN KEY,sso_provider_id,null,null,null
+auth,saml_providers,saml_providers_pkey,PRIMARY KEY,id,null,null,null
+auth,saml_providers,saml_providers_entity_id_key,UNIQUE,entity_id,null,null,null
+auth,saml_relay_states,16494_16830_1_not_null,CHECK,null,null,null,null
+auth,saml_relay_states,16494_16830_2_not_null,CHECK,null,null,null,null
+auth,saml_relay_states,16494_16830_3_not_null,CHECK,null,null,null,null
+auth,saml_relay_states,request_id not empty,CHECK,null,null,null,null
+auth,saml_relay_states,saml_relay_states_flow_state_id_fkey,FOREIGN KEY,flow_state_id,null,null,null
+auth,saml_relay_states,saml_relay_states_sso_provider_id_fkey,FOREIGN KEY,sso_provider_id,null,null,null
+auth,saml_relay_states,saml_relay_states_pkey,PRIMARY KEY,id,null,null,null
+auth,sessions,16494_16711_1_not_null,CHECK,null,null,null,null
+auth,sessions,16494_16711_2_not_null,CHECK,null,null,null,null
+auth,sessions,sessions_scopes_length,CHECK,null,null,null,null
+auth,sessions,sessions_oauth_client_id_fkey,FOREIGN KEY,oauth_client_id,null,null,null
+auth,sessions,sessions_user_id_fkey,FOREIGN KEY,user_id,null,null,null
+auth,sessions,sessions_pkey,PRIMARY KEY,id,null,null,null
+auth,sso_domains,16494_16797_1_not_null,CHECK,null,null,null,null
+auth,sso_domains,16494_16797_2_not_null,CHECK,null,null,null,null
+auth,sso_domains,16494_16797_3_not_null,CHECK,null,null,null,null
+auth,sso_domains,domain not empty,CHECK,null,null,null,null
+auth,sso_domains,sso_domains_sso_provider_id_fkey,FOREIGN KEY,sso_provider_id,null,null,null
+auth,sso_domains,sso_domains_pkey,PRIMARY KEY,id,null,null,null
+auth,sso_providers,16494_16788_1_not_null,CHECK,null,null,null,null
+auth,sso_providers,resource_id not empty,CHECK,null,null,null,null
+auth,sso_providers,sso_providers_pkey,PRIMARY KEY,id,null,null,null
+auth,users,16494_16495_2_not_null,CHECK,null,null,null,null
+auth,users,16494_16495_33_not_null,CHECK,null,null,null,null
+auth,users,16494_16495_35_not_null,CHECK,null,null,null,null
+auth,users,users_email_change_confirm_status_check,CHECK,null,null,null,null
+auth,users,users_pkey,PRIMARY KEY,id,null,null,null
+auth,users,users_phone_key,UNIQUE,phone,null,null,null
+auth,webauthn_challenges,16494_74617_1_not_null,CHECK,null,null,null,null
+auth,webauthn_challenges,16494_74617_3_not_null,CHECK,null,null,null,null
+auth,webauthn_challenges,16494_74617_4_not_null,CHECK,null,null,null,null
+auth,webauthn_challenges,16494_74617_5_not_null,CHECK,null,null,null,null
+auth,webauthn_challenges,16494_74617_6_not_null,CHECK,null,null,null,null
+auth,webauthn_challenges,webauthn_challenges_challenge_type_check,CHECK,null,null,null,null
+auth,webauthn_challenges,webauthn_challenges_user_id_fkey,FOREIGN KEY,user_id,null,null,null
+auth,webauthn_challenges,webauthn_challenges_pkey,PRIMARY KEY,id,null,null,null
+auth,webauthn_credentials,16494_74594_10_not_null,CHECK,null,null,null,null
+auth,webauthn_credentials,16494_74594_11_not_null,CHECK,null,null,null,null
+auth,webauthn_credentials,16494_74594_12_not_null,CHECK,null,null,null,null
+auth,webauthn_credentials,16494_74594_13_not_null,CHECK,null,null,null,null
+auth,webauthn_credentials,16494_74594_1_not_null,CHECK,null,null,null,null
+auth,webauthn_credentials,16494_74594_2_not_null,CHECK,null,null,null,null
+auth,webauthn_credentials,16494_74594_3_not_null,CHECK,null,null,null,null
+auth,webauthn_credentials,16494_74594_4_not_null,CHECK,null,null,null,null
+auth,webauthn_credentials,16494_74594_5_not_null,CHECK,null,null,null,null
+auth,webauthn_credentials,16494_74594_7_not_null,CHECK,null,null,null,null
+auth,webauthn_credentials,16494_74594_8_not_null,CHECK,null,null,null,null
+auth,webauthn_credentials,16494_74594_9_not_null,CHECK,null,null,null,null
+auth,webauthn_credentials,webauthn_credentials_user_id_fkey,FOREIGN KEY,user_id,null,null,null
+auth,webauthn_credentials,webauthn_credentials_pkey,PRIMARY KEY,id,null,null,null
+public,admin_push_subscriptions,2200_94700_1_not_null,CHECK,null,null,null,null
+public,admin_push_subscriptions,2200_94700_3_not_null,CHECK,null,null,null,null
+public,admin_push_subscriptions,2200_94700_4_not_null,CHECK,null,null,null,null
+public,admin_push_subscriptions,2200_94700_5_not_null,CHECK,null,null,null,null
+public,admin_push_subscriptions,2200_94700_7_not_null,CHECK,null,null,null,null
+public,admin_push_subscriptions,2200_94700_8_not_null,CHECK,null,null,null,null
+public,admin_push_subscriptions,2200_94700_9_not_null,CHECK,null,null,null,null
+public,admin_push_subscriptions,admin_push_subscriptions_pkey,PRIMARY KEY,id,public,admin_push_subscriptions,id
+public,admin_push_subscriptions,admin_push_subscriptions_endpoint_key,UNIQUE,endpoint,public,admin_push_subscriptions,endpoint
+public,app_settings,2200_24187_1_not_null,CHECK,null,null,null,null
+public,app_settings,2200_24187_2_not_null,CHECK,null,null,null,null
+public,app_settings,2200_24187_3_not_null,CHECK,null,null,null,null
+public,app_settings,2200_24187_5_not_null,CHECK,null,null,null,null
+public,app_settings,app_settings_pkey,PRIMARY KEY,id,public,app_settings,id
+public,circuit_points_rules,2200_93555_10_not_null,CHECK,null,null,null,null
+public,circuit_points_rules,2200_93555_1_not_null,CHECK,null,null,null,null
+public,circuit_points_rules,2200_93555_3_not_null,CHECK,null,null,null,null
+public,circuit_points_rules,2200_93555_4_not_null,CHECK,null,null,null,null
+public,circuit_points_rules,2200_93555_6_not_null,CHECK,null,null,null,null
+public,circuit_points_rules,2200_93555_7_not_null,CHECK,null,null,null,null
+public,circuit_points_rules,2200_93555_8_not_null,CHECK,null,null,null,null
+public,circuit_points_rules,circuit_points_rules_placement_check,CHECK,null,public,circuit_points_rules,placement
+public,circuit_points_rules,circuit_points_rules_points_check,CHECK,null,public,circuit_points_rules,points
+public,circuit_points_rules,circuit_points_rules_range_check,CHECK,null,public,circuit_points_rules,min_admissions
+public,circuit_points_rules,circuit_points_rules_range_check,CHECK,null,public,circuit_points_rules,max_admissions
+public,circuit_points_rules,circuit_points_rules_rule_type_check,CHECK,null,public,circuit_points_rules,rule_type
+public,circuit_points_rules,circuit_points_rules_stage_check,CHECK,null,public,circuit_points_rules,stage
+public,circuit_points_rules,circuit_points_rules_circuit_id_fkey,FOREIGN KEY,circuit_id,public,circuits,id
+public,circuit_points_rules,circuit_points_rules_pkey,PRIMARY KEY,id,public,circuit_points_rules,id
+public,circuit_ranking_groups,2200_93537_1_not_null,CHECK,null,null,null,null
+public,circuit_ranking_groups,2200_93537_2_not_null,CHECK,null,null,null,null
+public,circuit_ranking_groups,2200_93537_3_not_null,CHECK,null,null,null,null
+public,circuit_ranking_groups,2200_93537_4_not_null,CHECK,null,null,null,null
+public,circuit_ranking_groups,2200_93537_5_not_null,CHECK,null,null,null,null
+public,circuit_ranking_groups,circuit_ranking_groups_category_check,CHECK,null,public,circuit_ranking_groups,category
+public,circuit_ranking_groups,circuit_ranking_groups_level_check,CHECK,null,public,circuit_ranking_groups,level
+public,circuit_ranking_groups,circuit_ranking_groups_circuit_id_fkey,FOREIGN KEY,circuit_id,public,circuits,id
+public,circuit_ranking_groups,circuit_ranking_groups_pkey,PRIMARY KEY,id,public,circuit_ranking_groups,id
+public,circuit_ranking_groups,circuit_ranking_groups_circuit_id_category_level_key,UNIQUE,category,public,circuit_ranking_groups,level
+public,circuit_ranking_groups,circuit_ranking_groups_circuit_id_category_level_key,UNIQUE,circuit_id,public,circuit_ranking_groups,level
+public,circuit_ranking_groups,circuit_ranking_groups_circuit_id_category_level_key,UNIQUE,circuit_id,public,circuit_ranking_groups,circuit_id
+public,circuit_ranking_groups,circuit_ranking_groups_circuit_id_category_level_key,UNIQUE,circuit_id,public,circuit_ranking_groups,category
+public,circuit_ranking_groups,circuit_ranking_groups_circuit_id_category_level_key,UNIQUE,category,public,circuit_ranking_groups,circuit_id
+public,circuit_ranking_groups,circuit_ranking_groups_circuit_id_category_level_key,UNIQUE,category,public,circuit_ranking_groups,category
+public,circuit_ranking_groups,circuit_ranking_groups_circuit_id_category_level_key,UNIQUE,level,public,circuit_ranking_groups,level
+public,circuit_ranking_groups,circuit_ranking_groups_circuit_id_category_level_key,UNIQUE,level,public,circuit_ranking_groups,circuit_id
+public,circuit_ranking_groups,circuit_ranking_groups_circuit_id_category_level_key,UNIQUE,level,public,circuit_ranking_groups,category
+public,circuit_results,2200_93572_12_not_null,CHECK,null,null,null,null
+public,circuit_results,2200_93572_13_not_null,CHECK,null,null,null,null
+public,circuit_results,2200_93572_1_not_null,CHECK,null,null,null,null
+public,circuit_results,2200_93572_2_not_null,CHECK,null,null,null,null
+public,circuit_results,2200_93572_3_not_null,CHECK,null,null,null,null
+public,circuit_results,2200_93572_5_not_null,CHECK,null,null,null,null
+public,circuit_results,2200_93572_6_not_null,CHECK,null,null,null,null
+public,circuit_results,2200_93572_8_not_null,CHECK,null,null,null,null
+public,circuit_results,2200_93572_9_not_null,CHECK,null,null,null,null
+public,circuit_results,circuit_results_points_check,CHECK,null,public,circuit_results,points
+public,circuit_results,circuit_results_circuit_id_fkey,FOREIGN KEY,circuit_id,public,circuits,id
+public,circuit_results,circuit_results_ranking_group_id_fkey,FOREIGN KEY,ranking_group_id,public,circuit_ranking_groups,id
+public,circuit_results,circuit_results_pkey,PRIMARY KEY,id,public,circuit_results,id
+public,circuit_results,circuit_results_ranking_group_id_source_tournament_id_playe_key,UNIQUE,source_tournament_id,public,circuit_results,player_key
+public,circuit_results,circuit_results_ranking_group_id_source_tournament_id_playe_key,UNIQUE,ranking_group_id,public,circuit_results,source_tournament_id
+public,circuit_results,circuit_results_ranking_group_id_source_tournament_id_playe_key,UNIQUE,ranking_group_id,public,circuit_results,ranking_group_id
+public,circuit_results,circuit_results_ranking_group_id_source_tournament_id_playe_key,UNIQUE,ranking_group_id,public,circuit_results,player_key
+public,circuit_results,circuit_results_ranking_group_id_source_tournament_id_playe_key,UNIQUE,source_tournament_id,public,circuit_results,ranking_group_id
+public,circuit_results,circuit_results_ranking_group_id_source_tournament_id_playe_key,UNIQUE,source_tournament_id,public,circuit_results,source_tournament_id
+public,circuit_results,circuit_results_ranking_group_id_source_tournament_id_playe_key,UNIQUE,player_key,public,circuit_results,player_key
+public,circuit_results,circuit_results_ranking_group_id_source_tournament_id_playe_key,UNIQUE,player_key,public,circuit_results,ranking_group_id
+public,circuit_results,circuit_results_ranking_group_id_source_tournament_id_playe_key,UNIQUE,player_key,public,circuit_results,source_tournament_id
+public,circuits,2200_93522_1_not_null,CHECK,null,null,null,null
+public,circuits,2200_93522_2_not_null,CHECK,null,null,null,null
+public,circuits,2200_93522_3_not_null,CHECK,null,null,null,null
+public,circuits,2200_93522_4_not_null,CHECK,null,null,null,null
+public,circuits,2200_93522_5_not_null,CHECK,null,null,null,null
+public,circuits,2200_93522_6_not_null,CHECK,null,null,null,null
+public,circuits,2200_93522_7_not_null,CHECK,null,null,null,null
+public,circuits,circuits_status_check,CHECK,null,public,circuits,status
+public,circuits,circuits_tournament_type_check,CHECK,null,public,circuits,tournament_type
+public,circuits,circuits_pkey,PRIMARY KEY,id,public,circuits,id
+public,circuits,circuits_slug_key,UNIQUE,slug,public,circuits,slug
+public,communication_user_states,2200_94181_1_not_null,CHECK,null,null,null,null
+public,communication_user_states,2200_94181_2_not_null,CHECK,null,null,null,null
+public,communication_user_states,2200_94181_3_not_null,CHECK,null,null,null,null
+public,communication_user_states,2200_94181_6_not_null,CHECK,null,null,null,null
+public,communication_user_states,communication_user_states_communication_id_fkey,FOREIGN KEY,communication_id,public,communications,id
+public,communication_user_states,communication_user_states_user_id_fkey,FOREIGN KEY,user_id,public,users,id
+public,communication_user_states,communication_user_states_pkey,PRIMARY KEY,id,public,communication_user_states,id
+public,communication_user_states,communication_user_states_user_id_communication_id_key,UNIQUE,communication_id,public,communication_user_states,communication_id
+public,communication_user_states,communication_user_states_user_id_communication_id_key,UNIQUE,communication_id,public,communication_user_states,user_id
+public,communication_user_states,communication_user_states_user_id_communication_id_key,UNIQUE,user_id,public,communication_user_states,communication_id
+public,communication_user_states,communication_user_states_user_id_communication_id_key,UNIQUE,user_id,public,communication_user_states,user_id
+public,communications,2200_94159_12_not_null,CHECK,null,null,null,null
+public,communications,2200_94159_1_not_null,CHECK,null,null,null,null
+public,communications,2200_94159_2_not_null,CHECK,null,null,null,null
+public,communications,2200_94159_3_not_null,CHECK,null,null,null,null
+public,communications,2200_94159_4_not_null,CHECK,null,null,null,null
+public,communications,2200_94159_8_not_null,CHECK,null,null,null,null
+public,communications,2200_94159_9_not_null,CHECK,null,null,null,null
+public,communications,communications_target_check,CHECK,null,public,communications,target
+public,communications,communications_tournament_id_fkey,FOREIGN KEY,tournament_id,public,tournaments,id
+public,communications,communications_pkey,PRIMARY KEY,id,public,communications,id
+public,loyalty_global_promos,2200_94141_11_not_null,CHECK,null,null,null,null
+public,loyalty_global_promos,2200_94141_15_not_null,CHECK,null,null,null,null
+public,loyalty_global_promos,2200_94141_1_not_null,CHECK,null,null,null,null
+public,loyalty_global_promos,2200_94141_2_not_null,CHECK,null,null,null,null
+public,loyalty_global_promos,2200_94141_3_not_null,CHECK,null,null,null,null
+public,loyalty_global_promos,2200_94141_4_not_null,CHECK,null,null,null,null
+public,loyalty_global_promos,2200_94141_5_not_null,CHECK,null,null,null,null
+public,loyalty_global_promos,2200_94141_6_not_null,CHECK,null,null,null,null
+public,loyalty_global_promos,2200_94141_9_not_null,CHECK,null,null,null,null
+public,loyalty_global_promos,loyalty_global_promos_schedule_type_check,CHECK,null,public,loyalty_global_promos,schedule_type
+public,loyalty_global_promos,loyalty_global_promos_target_gender_check,CHECK,null,public,loyalty_global_promos,target_gender
+public,loyalty_global_promos,loyalty_global_promos_target_type_check,CHECK,null,public,loyalty_global_promos,target_type
+public,loyalty_global_promos,loyalty_global_promos_pkey,PRIMARY KEY,id,public,loyalty_global_promos,id
+public,loyalty_memberships,2200_93839_10_not_null,CHECK,null,null,null,null
+public,loyalty_memberships,2200_93839_11_not_null,CHECK,null,null,null,null
+public,loyalty_memberships,2200_93839_13_not_null,CHECK,null,null,null,null
+public,loyalty_memberships,2200_93839_14_not_null,CHECK,null,null,null,null
+public,loyalty_memberships,2200_93839_15_not_null,CHECK,null,null,null,null
+public,loyalty_memberships,2200_93839_1_not_null,CHECK,null,null,null,null
+public,loyalty_memberships,2200_93839_2_not_null,CHECK,null,null,null,null
+public,loyalty_memberships,2200_93839_3_not_null,CHECK,null,null,null,null
+public,loyalty_memberships,2200_93839_4_not_null,CHECK,null,null,null,null
+public,loyalty_memberships,2200_93839_5_not_null,CHECK,null,null,null,null
+public,loyalty_memberships,existing_membership_type_check,CHECK,null,public,loyalty_memberships,existing_membership_type
+public,loyalty_memberships,loyalty_status_check,CHECK,null,public,loyalty_memberships,status
+public,loyalty_memberships,membership_type_check,CHECK,null,public,loyalty_memberships,membership_type
+public,loyalty_memberships,loyalty_memberships_user_id_fkey,FOREIGN KEY,user_id,public,users,id
+public,loyalty_memberships,loyalty_memberships_pkey,PRIMARY KEY,id,public,loyalty_memberships,id
+public,loyalty_memberships,loyalty_memberships_membership_code_key,UNIQUE,membership_code,public,loyalty_memberships,membership_code
+public,loyalty_transactions,2200_93875_11_not_null,CHECK,null,null,null,null
+public,loyalty_transactions,2200_93875_1_not_null,CHECK,null,null,null,null
+public,loyalty_transactions,2200_93875_2_not_null,CHECK,null,null,null,null
+public,loyalty_transactions,2200_93875_3_not_null,CHECK,null,null,null,null
+public,loyalty_transactions,2200_93875_4_not_null,CHECK,null,null,null,null
+public,loyalty_transactions,2200_93875_6_not_null,CHECK,null,null,null,null
+public,loyalty_transactions,loyalty_source_check,CHECK,null,public,loyalty_transactions,source
+public,loyalty_transactions,loyalty_type_check,CHECK,null,public,loyalty_transactions,type
+public,loyalty_transactions,loyalty_transactions_membership_id_fkey,FOREIGN KEY,membership_id,public,loyalty_memberships,id
+public,loyalty_transactions,loyalty_transactions_pkey,PRIMARY KEY,id,public,loyalty_transactions,id
+public,loyalty_user_promos,2200_94121_1_not_null,CHECK,null,null,null,null
+public,loyalty_user_promos,2200_94121_2_not_null,CHECK,null,null,null,null
+public,loyalty_user_promos,2200_94121_3_not_null,CHECK,null,null,null,null
+public,loyalty_user_promos,2200_94121_4_not_null,CHECK,null,null,null,null
+public,loyalty_user_promos,2200_94121_5_not_null,CHECK,null,null,null,null
+public,loyalty_user_promos,2200_94121_6_not_null,CHECK,null,null,null,null
+public,loyalty_user_promos,2200_94121_9_not_null,CHECK,null,null,null,null
+public,loyalty_user_promos,loyalty_user_promos_membership_id_fkey,FOREIGN KEY,membership_id,public,loyalty_memberships,id
+public,loyalty_user_promos,loyalty_user_promos_pkey,PRIMARY KEY,id,public,loyalty_user_promos,id
+public,medical_certificates,2200_93858_1_not_null,CHECK,null,null,null,null
+public,medical_certificates,2200_93858_2_not_null,CHECK,null,null,null,null
+public,medical_certificates,2200_93858_3_not_null,CHECK,null,null,null,null
+public,medical_certificates,2200_93858_4_not_null,CHECK,null,null,null,null
+public,medical_certificates,2200_93858_5_not_null,CHECK,null,null,null,null
+public,medical_certificates,medical_status_check,CHECK,null,public,medical_certificates,status
+public,medical_certificates,medical_certificates_user_id_fkey,FOREIGN KEY,user_id,public,users,id
+public,medical_certificates,medical_certificates_pkey,PRIMARY KEY,id,public,medical_certificates,id
+public,reward_categories,2200_94206_1_not_null,CHECK,null,null,null,null
+public,reward_categories,2200_94206_2_not_null,CHECK,null,null,null,null
+public,reward_categories,2200_94206_3_not_null,CHECK,null,null,null,null
+public,reward_categories,2200_94206_4_not_null,CHECK,null,null,null,null
+public,reward_categories,2200_94206_5_not_null,CHECK,null,null,null,null
+public,reward_categories,reward_categories_pkey,PRIMARY KEY,id,public,reward_categories,id
+public,reward_categories,reward_categories_name_key,UNIQUE,name,public,reward_categories,name
+public,reward_point_ranges,2200_94219_1_not_null,CHECK,null,null,null,null
+public,reward_point_ranges,2200_94219_2_not_null,CHECK,null,null,null,null
+public,reward_point_ranges,2200_94219_5_not_null,CHECK,null,null,null,null
+public,reward_point_ranges,2200_94219_6_not_null,CHECK,null,null,null,null
+public,reward_point_ranges,2200_94219_7_not_null,CHECK,null,null,null,null
+public,reward_point_ranges,reward_point_ranges_valid,CHECK,null,public,reward_point_ranges,min_points
+public,reward_point_ranges,reward_point_ranges_valid,CHECK,null,public,reward_point_ranges,max_points
+public,reward_point_ranges,reward_point_ranges_pkey,PRIMARY KEY,id,public,reward_point_ranges,id
+public,reward_redemptions,2200_93904_1_not_null,CHECK,null,null,null,null
+public,reward_redemptions,2200_93904_2_not_null,CHECK,null,null,null,null
+public,reward_redemptions,2200_93904_3_not_null,CHECK,null,null,null,null
+public,reward_redemptions,2200_93904_4_not_null,CHECK,null,null,null,null
+public,reward_redemptions,2200_93904_5_not_null,CHECK,null,null,null,null
+public,reward_redemptions,redemption_status_check,CHECK,null,public,reward_redemptions,status
+public,reward_redemptions,reward_redemptions_membership_id_fkey,FOREIGN KEY,membership_id,public,loyalty_memberships,id
+public,reward_redemptions,reward_redemptions_reward_id_fkey,FOREIGN KEY,reward_id,public,rewards_catalog,id
+public,reward_redemptions,reward_redemptions_pkey,PRIMARY KEY,id,public,reward_redemptions,id
+public,rewards_catalog,2200_93891_13_not_null,CHECK,null,null,null,null
+public,rewards_catalog,2200_93891_1_not_null,CHECK,null,null,null,null
+public,rewards_catalog,2200_93891_2_not_null,CHECK,null,null,null,null
+public,rewards_catalog,2200_93891_5_not_null,CHECK,null,null,null,null
+public,rewards_catalog,2200_93891_7_not_null,CHECK,null,null,null,null
+public,rewards_catalog,2200_93891_9_not_null,CHECK,null,null,null,null
+public,rewards_catalog,reward_type_check,CHECK,null,public,rewards_catalog,reward_type
+public,rewards_catalog,rewards_catalog_store_product_id_fkey,FOREIGN KEY,store_product_id,public,store_products,id
+public,rewards_catalog,rewards_catalog_pkey,PRIMARY KEY,id,public,rewards_catalog,id
+public,staff_users,2200_93958_1_not_null,CHECK,null,null,null,null
+public,staff_users,2200_93958_2_not_null,CHECK,null,null,null,null
+public,staff_users,2200_93958_3_not_null,CHECK,null,null,null,null
+public,staff_users,2200_93958_5_not_null,CHECK,null,null,null,null
+public,staff_users,2200_93958_6_not_null,CHECK,null,null,null,null
+public,staff_users,2200_93958_8_not_null,CHECK,null,null,null,null
+public,staff_users,2200_93958_9_not_null,CHECK,null,null,null,null
+public,staff_users,staff_users_role_check,CHECK,null,public,staff_users,role
+public,staff_users,staff_users_pkey,PRIMARY KEY,id,public,staff_users,id
+public,staff_users,staff_users_email_key,UNIQUE,email,public,staff_users,email
+public,store_categories,2200_94237_1_not_null,CHECK,null,null,null,null
+public,store_categories,2200_94237_2_not_null,CHECK,null,null,null,null
+public,store_categories,2200_94237_3_not_null,CHECK,null,null,null,null
+public,store_categories,2200_94237_4_not_null,CHECK,null,null,null,null
+public,store_categories,2200_94237_5_not_null,CHECK,null,null,null,null
+public,store_categories,2200_94237_6_not_null,CHECK,null,null,null,null
+public,store_categories,store_categories_pkey,PRIMARY KEY,id,public,store_categories,id
+public,store_categories,store_categories_name_key,UNIQUE,name,public,store_categories,name
+public,store_categories,store_categories_slug_key,UNIQUE,slug,public,store_categories,slug
+public,store_lines,2200_94252_1_not_null,CHECK,null,null,null,null
+public,store_lines,2200_94252_2_not_null,CHECK,null,null,null,null
+public,store_lines,2200_94252_3_not_null,CHECK,null,null,null,null
+public,store_lines,2200_94252_4_not_null,CHECK,null,null,null,null
+public,store_lines,2200_94252_5_not_null,CHECK,null,null,null,null
+public,store_lines,2200_94252_6_not_null,CHECK,null,null,null,null
+public,store_lines,store_lines_pkey,PRIMARY KEY,id,public,store_lines,id
+public,store_lines,store_lines_name_key,UNIQUE,name,public,store_lines,name
+public,store_lines,store_lines_slug_key,UNIQUE,slug,public,store_lines,slug
+public,store_order_economics,2200_94570_10_not_null,CHECK,null,null,null,null
+public,store_order_economics,2200_94570_1_not_null,CHECK,null,null,null,null
+public,store_order_economics,2200_94570_2_not_null,CHECK,null,null,null,null
+public,store_order_economics,2200_94570_5_not_null,CHECK,null,null,null,null
+public,store_order_economics,2200_94570_9_not_null,CHECK,null,null,null,null
+public,store_order_economics,store_order_economics_supplier_paid_by_check,CHECK,null,public,store_order_economics,supplier_paid_by
+public,store_order_economics,store_order_economics_order_id_fkey,FOREIGN KEY,order_id,public,store_orders,id
+public,store_order_economics,store_order_economics_pkey,PRIMARY KEY,id,public,store_order_economics,id
+public,store_order_economics,store_order_economics_order_id_key,UNIQUE,order_id,public,store_order_economics,order_id
+public,store_order_items,2200_94373_10_not_null,CHECK,null,null,null,null
+public,store_order_items,2200_94373_11_not_null,CHECK,null,null,null,null
+public,store_order_items,2200_94373_12_not_null,CHECK,null,null,null,null
+public,store_order_items,2200_94373_13_not_null,CHECK,null,null,null,null
+public,store_order_items,2200_94373_14_not_null,CHECK,null,null,null,null
+public,store_order_items,2200_94373_1_not_null,CHECK,null,null,null,null
+public,store_order_items,2200_94373_2_not_null,CHECK,null,null,null,null
+public,store_order_items,2200_94373_6_not_null,CHECK,null,null,null,null
+public,store_order_items,2200_94373_9_not_null,CHECK,null,null,null,null
+public,store_order_items,store_order_items_quantity_check,CHECK,null,public,store_order_items,quantity
+public,store_order_items,store_order_items_color_id_fkey,FOREIGN KEY,color_id,public,store_product_colors,id
+public,store_order_items,store_order_items_order_id_fkey,FOREIGN KEY,order_id,public,store_orders,id
+public,store_order_items,store_order_items_product_id_fkey,FOREIGN KEY,product_id,public,store_products,id
+public,store_order_items,store_order_items_size_id_fkey,FOREIGN KEY,size_id,public,store_product_sizes,id
+public,store_order_items,store_order_items_pkey,PRIMARY KEY,id,public,store_order_items,id
+public,store_orders,2200_94353_13_not_null,CHECK,null,null,null,null
+public,store_orders,2200_94353_1_not_null,CHECK,null,null,null,null
+public,store_orders,2200_94353_22_not_null,CHECK,null,null,null,null
+public,store_orders,2200_94353_28_not_null,CHECK,null,null,null,null
+public,store_orders,2200_94353_3_not_null,CHECK,null,null,null,null
+public,store_orders,2200_94353_4_not_null,CHECK,null,null,null,null
+public,store_orders,2200_94353_5_not_null,CHECK,null,null,null,null
+public,store_orders,2200_94353_6_not_null,CHECK,null,null,null,null
+public,store_orders,2200_94353_7_not_null,CHECK,null,null,null,null
+public,store_orders,store_orders_order_type_check,CHECK,null,public,store_orders,order_type
+public,store_orders,store_orders_payment_mode_check,CHECK,null,public,store_orders,payment_mode
+public,store_orders,store_orders_pickup_club_check,CHECK,null,public,store_orders,pickup_club
+public,store_orders,store_orders_status_check,CHECK,null,public,store_orders,status
+public,store_orders,store_orders_supplier_paid_by_type_check,CHECK,null,public,store_orders,supplier_paid_by_type
+public,store_orders,store_orders_related_redemption_fkey,FOREIGN KEY,related_redemption_id,public,reward_redemptions,id
+public,store_orders,store_orders_user_id_fkey,FOREIGN KEY,user_id,public,users,id
+public,store_orders,store_orders_pkey,PRIMARY KEY,id,public,store_orders,id
+public,store_product_colors,2200_94292_1_not_null,CHECK,null,null,null,null
+public,store_product_colors,2200_94292_2_not_null,CHECK,null,null,null,null
+public,store_product_colors,2200_94292_3_not_null,CHECK,null,null,null,null
+public,store_product_colors,2200_94292_6_not_null,CHECK,null,null,null,null
+public,store_product_colors,2200_94292_7_not_null,CHECK,null,null,null,null
+public,store_product_colors,2200_94292_8_not_null,CHECK,null,null,null,null
+public,store_product_colors,store_product_colors_product_id_fkey,FOREIGN KEY,product_id,public,store_products,id
+public,store_product_colors,store_product_colors_pkey,PRIMARY KEY,id,public,store_product_colors,id
+public,store_product_costs,2200_94536_1_not_null,CHECK,null,null,null,null
+public,store_product_costs,2200_94536_2_not_null,CHECK,null,null,null,null
+public,store_product_costs,2200_94536_3_not_null,CHECK,null,null,null,null
+public,store_product_costs,2200_94536_7_not_null,CHECK,null,null,null,null
+public,store_product_costs,2200_94536_8_not_null,CHECK,null,null,null,null
+public,store_product_costs,store_product_costs_product_id_fkey,FOREIGN KEY,product_id,public,store_products,id
+public,store_product_costs,store_product_costs_pkey,PRIMARY KEY,id,public,store_product_costs,id
+public,store_product_costs,store_product_costs_product_id_key,UNIQUE,product_id,public,store_product_costs,product_id
+public,store_product_sizes,2200_94308_1_not_null,CHECK,null,null,null,null
+public,store_product_sizes,2200_94308_2_not_null,CHECK,null,null,null,null
+public,store_product_sizes,2200_94308_3_not_null,CHECK,null,null,null,null
+public,store_product_sizes,2200_94308_4_not_null,CHECK,null,null,null,null
+public,store_product_sizes,2200_94308_5_not_null,CHECK,null,null,null,null
+public,store_product_sizes,2200_94308_6_not_null,CHECK,null,null,null,null
+public,store_product_sizes,store_product_sizes_product_id_fkey,FOREIGN KEY,product_id,public,store_products,id
+public,store_product_sizes,store_product_sizes_pkey,PRIMARY KEY,id,public,store_product_sizes,id
+public,store_product_sizes,store_product_sizes_product_id_size_label_key,UNIQUE,size_label,public,store_product_sizes,product_id
+public,store_product_sizes,store_product_sizes_product_id_size_label_key,UNIQUE,product_id,public,store_product_sizes,product_id
+public,store_product_sizes,store_product_sizes_product_id_size_label_key,UNIQUE,product_id,public,store_product_sizes,size_label
+public,store_product_sizes,store_product_sizes_product_id_size_label_key,UNIQUE,size_label,public,store_product_sizes,size_label
+public,store_product_stock,2200_94326_1_not_null,CHECK,null,null,null,null
+public,store_product_stock,2200_94326_2_not_null,CHECK,null,null,null,null
+public,store_product_stock,2200_94326_3_not_null,CHECK,null,null,null,null
+public,store_product_stock,2200_94326_7_not_null,CHECK,null,null,null,null
+public,store_product_stock,2200_94326_8_not_null,CHECK,null,null,null,null
+public,store_product_stock,store_product_stock_color_id_fkey,FOREIGN KEY,color_id,public,store_product_colors,id
+public,store_product_stock,store_product_stock_product_id_fkey,FOREIGN KEY,product_id,public,store_products,id
+public,store_product_stock,store_product_stock_size_id_fkey,FOREIGN KEY,size_id,public,store_product_sizes,id
+public,store_product_stock,store_product_stock_pkey,PRIMARY KEY,id,public,store_product_stock,id
+public,store_product_stock,store_product_stock_product_id_color_id_size_id_key,UNIQUE,size_id,public,store_product_stock,color_id
+public,store_product_stock,store_product_stock_product_id_color_id_size_id_key,UNIQUE,size_id,public,store_product_stock,product_id
+public,store_product_stock,store_product_stock_product_id_color_id_size_id_key,UNIQUE,size_id,public,store_product_stock,size_id
+public,store_product_stock,store_product_stock_product_id_color_id_size_id_key,UNIQUE,color_id,public,store_product_stock,color_id
+public,store_product_stock,store_product_stock_product_id_color_id_size_id_key,UNIQUE,color_id,public,store_product_stock,product_id
+public,store_product_stock,store_product_stock_product_id_color_id_size_id_key,UNIQUE,color_id,public,store_product_stock,size_id
+public,store_product_stock,store_product_stock_product_id_color_id_size_id_key,UNIQUE,product_id,public,store_product_stock,color_id
+public,store_product_stock,store_product_stock_product_id_color_id_size_id_key,UNIQUE,product_id,public,store_product_stock,product_id
+public,store_product_stock,store_product_stock_product_id_color_id_size_id_key,UNIQUE,product_id,public,store_product_stock,size_id
+public,store_products,2200_94267_10_not_null,CHECK,null,null,null,null
+public,store_products,2200_94267_11_not_null,CHECK,null,null,null,null
+public,store_products,2200_94267_12_not_null,CHECK,null,null,null,null
+public,store_products,2200_94267_13_not_null,CHECK,null,null,null,null
+public,store_products,2200_94267_1_not_null,CHECK,null,null,null,null
+public,store_products,2200_94267_2_not_null,CHECK,null,null,null,null
+public,store_products,2200_94267_4_not_null,CHECK,null,null,null,null
+public,store_products,2200_94267_6_not_null,CHECK,null,null,null,null
+public,store_products,2200_94267_8_not_null,CHECK,null,null,null,null
+public,store_products,2200_94267_9_not_null,CHECK,null,null,null,null
+public,store_products,store_products_category_id_fkey,FOREIGN KEY,category_id,public,store_categories,id
+public,store_products,store_products_line_id_fkey,FOREIGN KEY,line_id,public,store_lines,id
+public,store_products,store_products_pkey,PRIMARY KEY,id,public,store_products,id
+public,store_promos,2200_94516_1_not_null,CHECK,null,null,null,null
+public,store_promos,2200_94516_2_not_null,CHECK,null,null,null,null
+public,store_promos,2200_94516_3_not_null,CHECK,null,null,null,null
+public,store_promos,2200_94516_4_not_null,CHECK,null,null,null,null
+public,store_promos,2200_94516_7_not_null,CHECK,null,null,null,null
+public,store_promos,2200_94516_8_not_null,CHECK,null,null,null,null
+public,store_promos,store_promos_discount_percent_check,CHECK,null,public,store_promos,discount_percent
+public,store_promos,store_promos_pkey,PRIMARY KEY,id,public,store_promos,id
+public,store_special_orders,2200_94554_12_not_null,CHECK,null,null,null,null
+public,store_special_orders,2200_94554_15_not_null,CHECK,null,null,null,null
+public,store_special_orders,2200_94554_17_not_null,CHECK,null,null,null,null
+public,store_special_orders,2200_94554_18_not_null,CHECK,null,null,null,null
+public,store_special_orders,2200_94554_1_not_null,CHECK,null,null,null,null
+public,store_special_orders,2200_94554_2_not_null,CHECK,null,null,null,null
+public,store_special_orders,2200_94554_4_not_null,CHECK,null,null,null,null
+public,store_special_orders,2200_94554_5_not_null,CHECK,null,null,null,null
+public,store_special_orders,2200_94554_6_not_null,CHECK,null,null,null,null
+public,store_special_orders,2200_94554_8_not_null,CHECK,null,null,null,null
+public,store_special_orders,store_special_orders_supplier_paid_by_check,CHECK,null,public,store_special_orders,supplier_paid_by
+public,store_special_orders,store_special_orders_pkey,PRIMARY KEY,id,public,store_special_orders,id
+public,store_supplier_batch_orders,2200_94425_1_not_null,CHECK,null,null,null,null
+public,store_supplier_batch_orders,2200_94425_2_not_null,CHECK,null,null,null,null
+public,store_supplier_batch_orders,2200_94425_3_not_null,CHECK,null,null,null,null
+public,store_supplier_batch_orders,2200_94425_4_not_null,CHECK,null,null,null,null
+public,store_supplier_batch_orders,store_supplier_batch_orders_batch_id_fkey,FOREIGN KEY,batch_id,public,store_supplier_batches,id
+public,store_supplier_batch_orders,store_supplier_batch_orders_order_id_fkey,FOREIGN KEY,order_id,public,store_orders,id
+public,store_supplier_batch_orders,store_supplier_batch_orders_pkey,PRIMARY KEY,id,public,store_supplier_batch_orders,id
+public,store_supplier_batch_orders,store_supplier_batch_orders_batch_id_order_id_key,UNIQUE,batch_id,public,store_supplier_batch_orders,order_id
+public,store_supplier_batch_orders,store_supplier_batch_orders_batch_id_order_id_key,UNIQUE,order_id,public,store_supplier_batch_orders,batch_id
+public,store_supplier_batch_orders,store_supplier_batch_orders_batch_id_order_id_key,UNIQUE,order_id,public,store_supplier_batch_orders,order_id
+public,store_supplier_batch_orders,store_supplier_batch_orders_batch_id_order_id_key,UNIQUE,batch_id,public,store_supplier_batch_orders,batch_id
+public,store_supplier_batches,2200_94408_12_not_null,CHECK,null,null,null,null
+public,store_supplier_batches,2200_94408_1_not_null,CHECK,null,null,null,null
+public,store_supplier_batches,2200_94408_3_not_null,CHECK,null,null,null,null
+public,store_supplier_batches,2200_94408_6_not_null,CHECK,null,null,null,null
+public,store_supplier_batches,2200_94408_7_not_null,CHECK,null,null,null,null
+public,store_supplier_batches,2200_94408_8_not_null,CHECK,null,null,null,null
+public,store_supplier_batches,2200_94408_9_not_null,CHECK,null,null,null,null
+public,store_supplier_batches,store_supplier_batches_status_check,CHECK,null,public,store_supplier_batches,status
+public,store_supplier_batches,store_supplier_batches_pkey,PRIMARY KEY,id,public,store_supplier_batches,id
+public,store_supplier_batches,store_supplier_batches_batch_number_key,UNIQUE,batch_number,public,store_supplier_batches,batch_number
+public,tournament_registrations,2200_17539_12_not_null,CHECK,null,null,null,null
+public,tournament_registrations,2200_17539_1_not_null,CHECK,null,null,null,null
+public,tournament_registrations,2200_17539_2_not_null,CHECK,null,null,null,null
+public,tournament_registrations,2200_17539_3_not_null,CHECK,null,null,null,null
+public,tournament_registrations,2200_17539_4_not_null,CHECK,null,null,null,null
+public,tournament_registrations,2200_17539_5_not_null,CHECK,null,null,null,null
+public,tournament_registrations,2200_17539_6_not_null,CHECK,null,null,null,null
+public,tournament_registrations,tournament_registrations_p1_gender_check,CHECK,null,public,tournament_registrations,p1_gender
+public,tournament_registrations,tournament_registrations_p2_gender_check,CHECK,null,public,tournament_registrations,p2_gender
+public,tournament_registrations,tournament_registrations_tournament_id_fkey,FOREIGN KEY,tournament_id,public,tournaments,id
+public,tournament_registrations,tournament_registrations_user_fkey,FOREIGN KEY,user_id,public,users,id
+public,tournament_registrations,tournament_registrations_pkey,PRIMARY KEY,id,public,tournament_registrations,id
+public,tournament_run_bracket_slots,2200_28857_1_not_null,CHECK,null,null,null,null
+public,tournament_run_bracket_slots,2200_28857_2_not_null,CHECK,null,null,null,null
+public,tournament_run_bracket_slots,2200_28857_3_not_null,CHECK,null,null,null,null
+public,tournament_run_bracket_slots,2200_28857_5_not_null,CHECK,null,null,null,null
+public,tournament_run_bracket_slots,2200_28857_6_not_null,CHECK,null,null,null,null
+public,tournament_run_bracket_slots,chk_bye_pair_exclusive,CHECK,null,public,tournament_run_bracket_slots,is_bye
+public,tournament_run_bracket_slots,chk_bye_pair_exclusive,CHECK,null,public,tournament_run_bracket_slots,pair_id
+public,tournament_run_bracket_slots,tournament_run_bracket_slots_pair_id_fkey,FOREIGN KEY,pair_id,public,tournament_run_pairs,id
+public,tournament_run_bracket_slots,tournament_run_bracket_slots_run_id_fkey,FOREIGN KEY,run_id,public,tournament_runs,id
+public,tournament_run_bracket_slots,tournament_run_bracket_slots_pkey,PRIMARY KEY,id,public,tournament_run_bracket_slots,id
+public,tournament_run_bracket_slots,tournament_run_bracket_slots_run_id_position_key,UNIQUE,position,public,tournament_run_bracket_slots,run_id
+public,tournament_run_bracket_slots,tournament_run_bracket_slots_run_id_position_key,UNIQUE,position,public,tournament_run_bracket_slots,position
+public,tournament_run_bracket_slots,tournament_run_bracket_slots_run_id_position_key,UNIQUE,run_id,public,tournament_run_bracket_slots,position
+public,tournament_run_bracket_slots,tournament_run_bracket_slots_run_id_position_key,UNIQUE,run_id,public,tournament_run_bracket_slots,run_id
+public,tournament_run_group_pairs,2200_28798_1_not_null,CHECK,null,null,null,null
+public,tournament_run_group_pairs,2200_28798_2_not_null,CHECK,null,null,null,null
+public,tournament_run_group_pairs,2200_28798_3_not_null,CHECK,null,null,null,null
+public,tournament_run_group_pairs,2200_28798_4_not_null,CHECK,null,null,null,null
+public,tournament_run_group_pairs,tournament_run_group_pairs_group_id_fkey,FOREIGN KEY,group_id,public,tournament_run_groups,id
+public,tournament_run_group_pairs,tournament_run_group_pairs_pair_id_fkey,FOREIGN KEY,pair_id,public,tournament_run_pairs,id
+public,tournament_run_group_pairs,tournament_run_group_pairs_pkey,PRIMARY KEY,id,public,tournament_run_group_pairs,id
+public,tournament_run_group_pairs,tournament_run_group_pairs_group_id_pair_id_key,UNIQUE,pair_id,public,tournament_run_group_pairs,pair_id
+public,tournament_run_group_pairs,tournament_run_group_pairs_group_id_pair_id_key,UNIQUE,pair_id,public,tournament_run_group_pairs,group_id
+public,tournament_run_group_pairs,tournament_run_group_pairs_group_id_pair_id_key,UNIQUE,group_id,public,tournament_run_group_pairs,pair_id
+public,tournament_run_group_pairs,tournament_run_group_pairs_group_id_pair_id_key,UNIQUE,group_id,public,tournament_run_group_pairs,group_id
+public,tournament_run_groups,2200_28779_1_not_null,CHECK,null,null,null,null
+public,tournament_run_groups,2200_28779_2_not_null,CHECK,null,null,null,null
+public,tournament_run_groups,2200_28779_3_not_null,CHECK,null,null,null,null
+public,tournament_run_groups,2200_28779_4_not_null,CHECK,null,null,null,null
+public,tournament_run_groups,2200_28779_5_not_null,CHECK,null,null,null,null
+public,tournament_run_groups,tournament_run_groups_run_id_fkey,FOREIGN KEY,run_id,public,tournament_runs,id
+public,tournament_run_groups,tournament_run_groups_pkey,PRIMARY KEY,id,public,tournament_run_groups,id
+public,tournament_run_groups,tournament_run_groups_run_id_name_key,UNIQUE,name,public,tournament_run_groups,run_id
+public,tournament_run_groups,tournament_run_groups_run_id_name_key,UNIQUE,run_id,public,tournament_run_groups,name
+public,tournament_run_groups,tournament_run_groups_run_id_name_key,UNIQUE,run_id,public,tournament_run_groups,run_id
+public,tournament_run_groups,tournament_run_groups_run_id_name_key,UNIQUE,name,public,tournament_run_groups,name
+public,tournament_run_groups,tournament_run_groups_run_id_position_key,UNIQUE,run_id,public,tournament_run_groups,position
+public,tournament_run_groups,tournament_run_groups_run_id_position_key,UNIQUE,run_id,public,tournament_run_groups,run_id
+public,tournament_run_groups,tournament_run_groups_run_id_position_key,UNIQUE,position,public,tournament_run_groups,position
+public,tournament_run_groups,tournament_run_groups_run_id_position_key,UNIQUE,position,public,tournament_run_groups,run_id
+public,tournament_run_matches,2200_25371_11_not_null,CHECK,null,null,null,null
+public,tournament_run_matches,2200_25371_1_not_null,CHECK,null,null,null,null
+public,tournament_run_matches,2200_25371_2_not_null,CHECK,null,null,null,null
+public,tournament_run_matches,2200_25371_3_not_null,CHECK,null,null,null,null
+public,tournament_run_matches,2200_25371_4_not_null,CHECK,null,null,null,null
+public,tournament_run_matches,2200_25371_5_not_null,CHECK,null,null,null,null
+public,tournament_run_matches,2200_25371_6_not_null,CHECK,null,null,null,null
+public,tournament_run_matches,2200_25371_7_not_null,CHECK,null,null,null,null
+public,tournament_run_matches,tournament_run_matches_p1_id_fkey,FOREIGN KEY,p1_id,public,tournament_run_participants,id
+public,tournament_run_matches,tournament_run_matches_p2_id_fkey,FOREIGN KEY,p2_id,public,tournament_run_participants,id
+public,tournament_run_matches,tournament_run_matches_p3_id_fkey,FOREIGN KEY,p3_id,public,tournament_run_participants,id
+public,tournament_run_matches,tournament_run_matches_p4_id_fkey,FOREIGN KEY,p4_id,public,tournament_run_participants,id
+public,tournament_run_matches,tournament_run_matches_turn_id_fkey,FOREIGN KEY,turn_id,public,tournament_run_turns,id
+public,tournament_run_matches,tournament_run_matches_pkey,PRIMARY KEY,id,public,tournament_run_matches,id
+public,tournament_run_matches,tournament_run_matches_turn_id_match_number_key,UNIQUE,match_number,public,tournament_run_matches,match_number
+public,tournament_run_matches,tournament_run_matches_turn_id_match_number_key,UNIQUE,turn_id,public,tournament_run_matches,turn_id
+public,tournament_run_matches,tournament_run_matches_turn_id_match_number_key,UNIQUE,turn_id,public,tournament_run_matches,match_number
+public,tournament_run_matches,tournament_run_matches_turn_id_match_number_key,UNIQUE,match_number,public,tournament_run_matches,turn_id
+public,tournament_run_matches_fp,2200_28819_13_not_null,CHECK,null,null,null,null
+public,tournament_run_matches_fp,2200_28819_1_not_null,CHECK,null,null,null,null
+public,tournament_run_matches_fp,2200_28819_2_not_null,CHECK,null,null,null,null
+public,tournament_run_matches_fp,2200_28819_3_not_null,CHECK,null,null,null,null
+public,tournament_run_matches_fp,chk_fp_away_sets_range,CHECK,null,public,tournament_run_matches_fp,away_sets
+public,tournament_run_matches_fp,chk_fp_home_sets_range,CHECK,null,public,tournament_run_matches_fp,home_sets
+public,tournament_run_matches_fp,chk_fp_not_same_team,CHECK,null,public,tournament_run_matches_fp,home_pair_id
+public,tournament_run_matches_fp,chk_fp_not_same_team,CHECK,null,public,tournament_run_matches_fp,away_pair_id
+public,tournament_run_matches_fp,chk_fp_set1_away_ge0,CHECK,null,public,tournament_run_matches_fp,set1_away_games
+public,tournament_run_matches_fp,chk_fp_set1_home_ge0,CHECK,null,public,tournament_run_matches_fp,set1_home_games
+public,tournament_run_matches_fp,chk_fp_set2_away_ge0,CHECK,null,public,tournament_run_matches_fp,set2_away_games
+public,tournament_run_matches_fp,chk_fp_set2_home_ge0,CHECK,null,public,tournament_run_matches_fp,set2_home_games
+public,tournament_run_matches_fp,chk_fp_set3_away_ge0,CHECK,null,public,tournament_run_matches_fp,set3_away_games
+public,tournament_run_matches_fp,chk_fp_set3_home_ge0,CHECK,null,public,tournament_run_matches_fp,set3_home_games
+public,tournament_run_matches_fp,chk_group_pairs_not_null,CHECK,null,public,tournament_run_matches_fp,home_pair_id
+public,tournament_run_matches_fp,chk_group_pairs_not_null,CHECK,null,public,tournament_run_matches_fp,stage
+public,tournament_run_matches_fp,chk_group_pairs_not_null,CHECK,null,public,tournament_run_matches_fp,away_pair_id
+public,tournament_run_matches_fp,tournament_run_matches_fp_away_games_check,CHECK,null,public,tournament_run_matches_fp,away_games
+public,tournament_run_matches_fp,tournament_run_matches_fp_home_games_check,CHECK,null,public,tournament_run_matches_fp,home_games
+public,tournament_run_matches_fp,tournament_run_matches_fp_stage_check,CHECK,null,public,tournament_run_matches_fp,stage
+public,tournament_run_matches_fp,tournament_run_matches_fp_away_pair_id_fkey,FOREIGN KEY,away_pair_id,public,tournament_run_pairs,id
+public,tournament_run_matches_fp,tournament_run_matches_fp_group_id_fkey,FOREIGN KEY,group_id,public,tournament_run_groups,id
+public,tournament_run_matches_fp,tournament_run_matches_fp_home_pair_id_fkey,FOREIGN KEY,home_pair_id,public,tournament_run_pairs,id
+public,tournament_run_matches_fp,tournament_run_matches_fp_run_id_fkey,FOREIGN KEY,run_id,public,tournament_runs,id
+public,tournament_run_matches_fp,tournament_run_matches_fp_pkey,PRIMARY KEY,id,public,tournament_run_matches_fp,id
+public,tournament_run_pairs,2200_28764_1_not_null,CHECK,null,null,null,null
+public,tournament_run_pairs,2200_28764_2_not_null,CHECK,null,null,null,null
+public,tournament_run_pairs,2200_28764_4_not_null,CHECK,null,null,null,null
+public,tournament_run_pairs,2200_28764_5_not_null,CHECK,null,null,null,null
+public,tournament_run_pairs,tournament_run_pairs_run_id_fkey,FOREIGN KEY,run_id,public,tournament_runs,id
+public,tournament_run_pairs,tournament_run_pairs_pkey,PRIMARY KEY,id,public,tournament_run_pairs,id
+public,tournament_run_participants,2200_25336_1_not_null,CHECK,null,null,null,null
+public,tournament_run_participants,2200_25336_2_not_null,CHECK,null,null,null,null
+public,tournament_run_participants,2200_25336_4_not_null,CHECK,null,null,null,null
+public,tournament_run_participants,2200_25336_6_not_null,CHECK,null,null,null,null
+public,tournament_run_participants,2200_25336_7_not_null,CHECK,null,null,null,null
+public,tournament_run_participants,tournament_run_participants_sex_check,CHECK,null,public,tournament_run_participants,sex
+public,tournament_run_participants,tournament_run_participants_run_id_fkey,FOREIGN KEY,run_id,public,tournament_runs,id
+public,tournament_run_participants,tournament_run_participants_pkey,PRIMARY KEY,id,public,tournament_run_participants,id
+public,tournament_run_turns,2200_25352_1_not_null,CHECK,null,null,null,null
+public,tournament_run_turns,2200_25352_2_not_null,CHECK,null,null,null,null
+public,tournament_run_turns,2200_25352_3_not_null,CHECK,null,null,null,null
+public,tournament_run_turns,2200_25352_4_not_null,CHECK,null,null,null,null
+public,tournament_run_turns,2200_25352_5_not_null,CHECK,null,null,null,null
+public,tournament_run_turns,tournament_run_turns_status_check,CHECK,null,public,tournament_run_turns,status
+public,tournament_run_turns,tournament_run_turns_run_id_fkey,FOREIGN KEY,run_id,public,tournament_runs,id
+public,tournament_run_turns,tournament_run_turns_pkey,PRIMARY KEY,id,public,tournament_run_turns,id
+public,tournament_run_turns,tournament_run_turns_run_id_turn_number_key,UNIQUE,turn_number,public,tournament_run_turns,turn_number
+public,tournament_run_turns,tournament_run_turns_run_id_turn_number_key,UNIQUE,run_id,public,tournament_run_turns,turn_number
+public,tournament_run_turns,tournament_run_turns_run_id_turn_number_key,UNIQUE,turn_number,public,tournament_run_turns,run_id
+public,tournament_run_turns,tournament_run_turns_run_id_turn_number_key,UNIQUE,run_id,public,tournament_run_turns,run_id
+public,tournament_runs,2200_25317_10_not_null,CHECK,null,null,null,null
+public,tournament_runs,2200_25317_1_not_null,CHECK,null,null,null,null
+public,tournament_runs,2200_25317_2_not_null,CHECK,null,null,null,null
+public,tournament_runs,2200_25317_3_not_null,CHECK,null,null,null,null
+public,tournament_runs,2200_25317_4_not_null,CHECK,null,null,null,null
+public,tournament_runs,2200_25317_5_not_null,CHECK,null,null,null,null
+public,tournament_runs,2200_25317_6_not_null,CHECK,null,null,null,null
+public,tournament_runs,tournament_runs_category_check,CHECK,null,public,tournament_runs,category
+public,tournament_runs,tournament_runs_mode_check,CHECK,null,public,tournament_runs,mode
+public,tournament_runs,tournament_runs_status_check,CHECK,null,public,tournament_runs,status
+public,tournament_runs,tournament_runs_tournament_id_fkey,FOREIGN KEY,tournament_id,public,tournaments,id
+public,tournament_runs,tournament_runs_pkey,PRIMARY KEY,id,public,tournament_runs,id
+public,tournaments,2200_17485_16_not_null,CHECK,null,null,null,null
+public,tournaments,2200_17485_17_not_null,CHECK,null,null,null,null
+public,tournaments,2200_17485_19_not_null,CHECK,null,null,null,null
+public,tournaments,2200_17485_1_not_null,CHECK,null,null,null,null
+public,tournaments,2200_17485_2_not_null,CHECK,null,null,null,null
+public,tournaments,2200_17485_3_not_null,CHECK,null,null,null,null
+public,tournaments,2200_17485_4_not_null,CHECK,null,null,null,null
+public,tournaments,2200_17485_5_not_null,CHECK,null,null,null,null
+public,tournaments,2200_17485_6_not_null,CHECK,null,null,null,null
+public,tournaments,2200_17485_7_not_null,CHECK,null,null,null,null
+public,tournaments,2200_17485_8_not_null,CHECK,null,null,null,null
+public,tournaments,2200_17485_9_not_null,CHECK,null,null,null,null
+public,tournaments,tournaments_category_check,CHECK,null,public,tournaments,category
+public,tournaments,tournaments_max_participants_check,CHECK,null,public,tournaments,max_participants
+public,tournaments,tournaments_type_check,CHECK,null,public,tournaments,type
+public,tournaments,tournaments_circuit_id_fkey,FOREIGN KEY,circuit_id,public,circuits,id
+public,tournaments,tournaments_pkey,PRIMARY KEY,id,public,tournaments,id
+public,users,2200_25303_1_not_null,CHECK,null,null,null,null
+public,users,2200_25303_2_not_null,CHECK,null,null,null,null
+public,users,2200_25303_3_not_null,CHECK,null,null,null,null
+public,users,2200_25303_5_not_null,CHECK,null,null,null,null
+public,users,2200_25303_6_not_null,CHECK,null,null,null,null
+public,users,2200_25303_7_not_null,CHECK,null,null,null,null
+public,users,users_gender_check,CHECK,null,public,users,gender
+public,users,users_pkey,PRIMARY KEY,id,public,users,id
+public,users,users_phone_key,UNIQUE,phone,public,users,phone
+realtime,messages,16555_17239_10_not_null,CHECK,null,null,null,null
+realtime,messages,16555_17239_3_not_null,CHECK,null,null,null,null
+realtime,messages,16555_17239_4_not_null,CHECK,null,null,null,null
+realtime,messages,16555_17239_8_not_null,CHECK,null,null,null,null
+realtime,messages,16555_17239_9_not_null,CHECK,null,null,null,null
+realtime,messages,messages_payload_exclusive,CHECK,null,null,null,null
+realtime,messages,messages_pkey,PRIMARY KEY,inserted_at,null,null,null
+realtime,messages,messages_pkey,PRIMARY KEY,id,null,null,null
+realtime,subscription,16555_17099_1_not_null,CHECK,null,null,null,null
+realtime,subscription,16555_17099_2_not_null,CHECK,null,null,null,null
+realtime,subscription,16555_17099_4_not_null,CHECK,null,null,null,null
+realtime,subscription,16555_17099_5_not_null,CHECK,null,null,null,null
+realtime,subscription,16555_17099_7_not_null,CHECK,null,null,null,null
+realtime,subscription,16555_17099_8_not_null,CHECK,null,null,null,null
+realtime,subscription,16555_17099_9_not_null,CHECK,null,null,null,null
+realtime,subscription,subscription_action_filter_check,CHECK,null,null,null,null
+realtime,subscription,pk_subscription,PRIMARY KEY,id,null,null,null
+storage,buckets,16542_17264_11_not_null,CHECK,null,null,null,null
+storage,buckets,16542_17264_12_not_null,CHECK,null,null,null,null
+storage,buckets,16542_17264_1_not_null,CHECK,null,null,null,null
+storage,buckets,16542_17264_2_not_null,CHECK,null,null,null,null
+storage,buckets,buckets_versioning_dark_check,CHECK,null,null,null,null
+storage,buckets,buckets_versioning_standard_only_check,CHECK,null,null,null,null
+storage,buckets,buckets_versioning_status_check,CHECK,null,null,null,null
+storage,buckets,buckets_pkey,PRIMARY KEY,id,null,null,null
+storage,buckets_analytics,16542_17422_1_not_null,CHECK,null,null,null,null
+storage,buckets_analytics,16542_17422_2_not_null,CHECK,null,null,null,null
+storage,buckets_analytics,16542_17422_3_not_null,CHECK,null,null,null,null
+storage,buckets_analytics,16542_17422_4_not_null,CHECK,null,null,null,null
+storage,buckets_analytics,16542_17422_5_not_null,CHECK,null,null,null,null
+storage,buckets_analytics,16542_17422_6_not_null,CHECK,null,null,null,null
+storage,buckets_analytics,buckets_analytics_pkey,PRIMARY KEY,id,null,null,null
+storage,objects,16542_17274_15_not_null,CHECK,null,null,null,null
+storage,objects,16542_17274_16_not_null,CHECK,null,null,null,null
+storage,objects,16542_17274_1_not_null,CHECK,null,null,null,null
+storage,objects,objects_bucketId_fkey,FOREIGN KEY,bucket_id,null,null,null
+storage,objects,objects_pkey,PRIMARY KEY,id,null,null,null
+storage,s3_multipart_uploads,16542_17324_1_not_null,CHECK,null,null,null,null
+storage,s3_multipart_uploads,16542_17324_2_not_null,CHECK,null,null,null,null
+storage,s3_multipart_uploads,16542_17324_3_not_null,CHECK,null,null,null,null
+storage,s3_multipart_uploads,16542_17324_4_not_null,CHECK,null,null,null,null
+storage,s3_multipart_uploads,16542_17324_5_not_null,CHECK,null,null,null,null
+storage,s3_multipart_uploads,16542_17324_6_not_null,CHECK,null,null,null,null
+storage,s3_multipart_uploads,16542_17324_8_not_null,CHECK,null,null,null,null
+storage,s3_multipart_uploads,s3_multipart_uploads_bucket_id_fkey,FOREIGN KEY,bucket_id,null,null,null
+storage,s3_multipart_uploads,s3_multipart_uploads_pkey,PRIMARY KEY,id,null,null,null
+storage,s3_multipart_uploads_parts,16542_17338_10_not_null,CHECK,null,null,null,null
+storage,s3_multipart_uploads_parts,16542_17338_1_not_null,CHECK,null,null,null,null
+storage,s3_multipart_uploads_parts,16542_17338_2_not_null,CHECK,null,null,null,null
+storage,s3_multipart_uploads_parts,16542_17338_3_not_null,CHECK,null,null,null,null
+storage,s3_multipart_uploads_parts,16542_17338_4_not_null,CHECK,null,null,null,null
+storage,s3_multipart_uploads_parts,16542_17338_5_not_null,CHECK,null,null,null,null
+storage,s3_multipart_uploads_parts,16542_17338_6_not_null,CHECK,null,null,null,null
+storage,s3_multipart_uploads_parts,16542_17338_7_not_null,CHECK,null,null,null,null
+storage,s3_multipart_uploads_parts,16542_17338_9_not_null,CHECK,null,null,null,null
+storage,s3_multipart_uploads_parts,s3_multipart_uploads_parts_bucket_id_fkey,FOREIGN KEY,bucket_id,null,null,null
+storage,s3_multipart_uploads_parts,s3_multipart_uploads_parts_upload_id_fkey,FOREIGN KEY,upload_id,null,null,null
+storage,s3_multipart_uploads_parts,s3_multipart_uploads_parts_pkey,PRIMARY KEY,id,null,null,null
+vault,secrets,16603_16608_1_not_null,CHECK,null,null,null,null
+vault,secrets,16603_16608_3_not_null,CHECK,null,null,null,null
+vault,secrets,16603_16608_4_not_null,CHECK,null,null,null,null
+vault,secrets,16603_16608_7_not_null,CHECK,null,null,null,null
+vault,secrets,16603_16608_8_not_null,CHECK,null,null,null,null
+vault,secrets,secrets_pkey,PRIMARY KEY,id,null,null,null

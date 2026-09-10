@@ -1,0 +1,241 @@
+schemaname,tablename,indexname,indexdef
+auth,audit_log_entries,audit_log_entries_pkey,CREATE UNIQUE INDEX audit_log_entries_pkey ON auth.audit_log_entries USING btree (id)
+auth,audit_log_entries,audit_logs_instance_id_idx,CREATE INDEX audit_logs_instance_id_idx ON auth.audit_log_entries USING btree (instance_id)
+auth,custom_oauth_providers,custom_oauth_providers_created_at_idx,CREATE INDEX custom_oauth_providers_created_at_idx ON auth.custom_oauth_providers USING btree (created_at)
+auth,custom_oauth_providers,custom_oauth_providers_enabled_idx,CREATE INDEX custom_oauth_providers_enabled_idx ON auth.custom_oauth_providers USING btree (enabled)
+auth,custom_oauth_providers,custom_oauth_providers_identifier_idx,CREATE INDEX custom_oauth_providers_identifier_idx ON auth.custom_oauth_providers USING btree (identifier)
+auth,custom_oauth_providers,custom_oauth_providers_identifier_key,CREATE UNIQUE INDEX custom_oauth_providers_identifier_key ON auth.custom_oauth_providers USING btree (identifier)
+auth,custom_oauth_providers,custom_oauth_providers_pkey,CREATE UNIQUE INDEX custom_oauth_providers_pkey ON auth.custom_oauth_providers USING btree (id)
+auth,custom_oauth_providers,custom_oauth_providers_provider_type_idx,CREATE INDEX custom_oauth_providers_provider_type_idx ON auth.custom_oauth_providers USING btree (provider_type)
+auth,flow_state,flow_state_created_at_idx,CREATE INDEX flow_state_created_at_idx ON auth.flow_state USING btree (created_at DESC)
+auth,flow_state,flow_state_pkey,CREATE UNIQUE INDEX flow_state_pkey ON auth.flow_state USING btree (id)
+auth,flow_state,idx_auth_code,CREATE INDEX idx_auth_code ON auth.flow_state USING btree (auth_code)
+auth,flow_state,idx_user_id_auth_method,"CREATE INDEX idx_user_id_auth_method ON auth.flow_state USING btree (user_id, authentication_method)"
+auth,identities,identities_email_idx,CREATE INDEX identities_email_idx ON auth.identities USING btree (email text_pattern_ops)
+auth,identities,identities_pkey,CREATE UNIQUE INDEX identities_pkey ON auth.identities USING btree (id)
+auth,identities,identities_provider_id_provider_unique,"CREATE UNIQUE INDEX identities_provider_id_provider_unique ON auth.identities USING btree (provider_id, provider)"
+auth,identities,identities_user_id_idx,CREATE INDEX identities_user_id_idx ON auth.identities USING btree (user_id)
+auth,instances,instances_pkey,CREATE UNIQUE INDEX instances_pkey ON auth.instances USING btree (id)
+auth,mfa_amr_claims,amr_id_pk,CREATE UNIQUE INDEX amr_id_pk ON auth.mfa_amr_claims USING btree (id)
+auth,mfa_amr_claims,mfa_amr_claims_session_id_authentication_method_pkey,"CREATE UNIQUE INDEX mfa_amr_claims_session_id_authentication_method_pkey ON auth.mfa_amr_claims USING btree (session_id, authentication_method)"
+auth,mfa_challenges,mfa_challenge_created_at_idx,CREATE INDEX mfa_challenge_created_at_idx ON auth.mfa_challenges USING btree (created_at DESC)
+auth,mfa_challenges,mfa_challenges_pkey,CREATE UNIQUE INDEX mfa_challenges_pkey ON auth.mfa_challenges USING btree (id)
+auth,mfa_factors,factor_id_created_at_idx,"CREATE INDEX factor_id_created_at_idx ON auth.mfa_factors USING btree (user_id, created_at)"
+auth,mfa_factors,mfa_factors_last_challenged_at_key,CREATE UNIQUE INDEX mfa_factors_last_challenged_at_key ON auth.mfa_factors USING btree (last_challenged_at)
+auth,mfa_factors,mfa_factors_pkey,CREATE UNIQUE INDEX mfa_factors_pkey ON auth.mfa_factors USING btree (id)
+auth,mfa_factors,mfa_factors_user_friendly_name_unique,"CREATE UNIQUE INDEX mfa_factors_user_friendly_name_unique ON auth.mfa_factors USING btree (friendly_name, user_id) WHERE (TRIM(BOTH FROM friendly_name) <> ''::text)"
+auth,mfa_factors,mfa_factors_user_id_idx,CREATE INDEX mfa_factors_user_id_idx ON auth.mfa_factors USING btree (user_id)
+auth,mfa_factors,unique_phone_factor_per_user,"CREATE UNIQUE INDEX unique_phone_factor_per_user ON auth.mfa_factors USING btree (user_id, phone)"
+auth,oauth_authorizations,oauth_auth_pending_exp_idx,CREATE INDEX oauth_auth_pending_exp_idx ON auth.oauth_authorizations USING btree (expires_at) WHERE (status = 'pending'::auth.oauth_authorization_status)
+auth,oauth_authorizations,oauth_authorizations_authorization_code_key,CREATE UNIQUE INDEX oauth_authorizations_authorization_code_key ON auth.oauth_authorizations USING btree (authorization_code)
+auth,oauth_authorizations,oauth_authorizations_authorization_id_key,CREATE UNIQUE INDEX oauth_authorizations_authorization_id_key ON auth.oauth_authorizations USING btree (authorization_id)
+auth,oauth_authorizations,oauth_authorizations_pkey,CREATE UNIQUE INDEX oauth_authorizations_pkey ON auth.oauth_authorizations USING btree (id)
+auth,oauth_client_states,idx_oauth_client_states_created_at,CREATE INDEX idx_oauth_client_states_created_at ON auth.oauth_client_states USING btree (created_at)
+auth,oauth_client_states,oauth_client_states_pkey,CREATE UNIQUE INDEX oauth_client_states_pkey ON auth.oauth_client_states USING btree (id)
+auth,oauth_clients,oauth_clients_deleted_at_idx,CREATE INDEX oauth_clients_deleted_at_idx ON auth.oauth_clients USING btree (deleted_at)
+auth,oauth_clients,oauth_clients_pkey,CREATE UNIQUE INDEX oauth_clients_pkey ON auth.oauth_clients USING btree (id)
+auth,oauth_consents,oauth_consents_active_client_idx,CREATE INDEX oauth_consents_active_client_idx ON auth.oauth_consents USING btree (client_id) WHERE (revoked_at IS NULL)
+auth,oauth_consents,oauth_consents_active_user_client_idx,"CREATE INDEX oauth_consents_active_user_client_idx ON auth.oauth_consents USING btree (user_id, client_id) WHERE (revoked_at IS NULL)"
+auth,oauth_consents,oauth_consents_pkey,CREATE UNIQUE INDEX oauth_consents_pkey ON auth.oauth_consents USING btree (id)
+auth,oauth_consents,oauth_consents_user_client_unique,"CREATE UNIQUE INDEX oauth_consents_user_client_unique ON auth.oauth_consents USING btree (user_id, client_id)"
+auth,oauth_consents,oauth_consents_user_order_idx,"CREATE INDEX oauth_consents_user_order_idx ON auth.oauth_consents USING btree (user_id, granted_at DESC)"
+auth,one_time_tokens,one_time_tokens_pkey,CREATE UNIQUE INDEX one_time_tokens_pkey ON auth.one_time_tokens USING btree (id)
+auth,one_time_tokens,one_time_tokens_relates_to_hash_idx,CREATE INDEX one_time_tokens_relates_to_hash_idx ON auth.one_time_tokens USING hash (relates_to)
+auth,one_time_tokens,one_time_tokens_token_hash_hash_idx,CREATE INDEX one_time_tokens_token_hash_hash_idx ON auth.one_time_tokens USING hash (token_hash)
+auth,one_time_tokens,one_time_tokens_user_id_token_type_key,"CREATE UNIQUE INDEX one_time_tokens_user_id_token_type_key ON auth.one_time_tokens USING btree (user_id, token_type)"
+auth,refresh_tokens,refresh_tokens_instance_id_idx,CREATE INDEX refresh_tokens_instance_id_idx ON auth.refresh_tokens USING btree (instance_id)
+auth,refresh_tokens,refresh_tokens_instance_id_user_id_idx,"CREATE INDEX refresh_tokens_instance_id_user_id_idx ON auth.refresh_tokens USING btree (instance_id, user_id)"
+auth,refresh_tokens,refresh_tokens_parent_idx,CREATE INDEX refresh_tokens_parent_idx ON auth.refresh_tokens USING btree (parent)
+auth,refresh_tokens,refresh_tokens_pkey,CREATE UNIQUE INDEX refresh_tokens_pkey ON auth.refresh_tokens USING btree (id)
+auth,refresh_tokens,refresh_tokens_session_id_revoked_idx,"CREATE INDEX refresh_tokens_session_id_revoked_idx ON auth.refresh_tokens USING btree (session_id, revoked)"
+auth,refresh_tokens,refresh_tokens_token_unique,CREATE UNIQUE INDEX refresh_tokens_token_unique ON auth.refresh_tokens USING btree (token)
+auth,refresh_tokens,refresh_tokens_updated_at_idx,CREATE INDEX refresh_tokens_updated_at_idx ON auth.refresh_tokens USING btree (updated_at DESC)
+auth,saml_providers,saml_providers_entity_id_key,CREATE UNIQUE INDEX saml_providers_entity_id_key ON auth.saml_providers USING btree (entity_id)
+auth,saml_providers,saml_providers_pkey,CREATE UNIQUE INDEX saml_providers_pkey ON auth.saml_providers USING btree (id)
+auth,saml_providers,saml_providers_sso_provider_id_idx,CREATE INDEX saml_providers_sso_provider_id_idx ON auth.saml_providers USING btree (sso_provider_id)
+auth,saml_relay_states,saml_relay_states_created_at_idx,CREATE INDEX saml_relay_states_created_at_idx ON auth.saml_relay_states USING btree (created_at DESC)
+auth,saml_relay_states,saml_relay_states_for_email_idx,CREATE INDEX saml_relay_states_for_email_idx ON auth.saml_relay_states USING btree (for_email)
+auth,saml_relay_states,saml_relay_states_pkey,CREATE UNIQUE INDEX saml_relay_states_pkey ON auth.saml_relay_states USING btree (id)
+auth,saml_relay_states,saml_relay_states_sso_provider_id_idx,CREATE INDEX saml_relay_states_sso_provider_id_idx ON auth.saml_relay_states USING btree (sso_provider_id)
+auth,schema_migrations,schema_migrations_pkey,CREATE UNIQUE INDEX schema_migrations_pkey ON auth.schema_migrations USING btree (version)
+auth,sessions,sessions_not_after_idx,CREATE INDEX sessions_not_after_idx ON auth.sessions USING btree (not_after DESC)
+auth,sessions,sessions_oauth_client_id_idx,CREATE INDEX sessions_oauth_client_id_idx ON auth.sessions USING btree (oauth_client_id)
+auth,sessions,sessions_pkey,CREATE UNIQUE INDEX sessions_pkey ON auth.sessions USING btree (id)
+auth,sessions,sessions_user_id_idx,CREATE INDEX sessions_user_id_idx ON auth.sessions USING btree (user_id)
+auth,sessions,user_id_created_at_idx,"CREATE INDEX user_id_created_at_idx ON auth.sessions USING btree (user_id, created_at)"
+auth,sso_domains,sso_domains_domain_idx,CREATE UNIQUE INDEX sso_domains_domain_idx ON auth.sso_domains USING btree (lower(domain))
+auth,sso_domains,sso_domains_pkey,CREATE UNIQUE INDEX sso_domains_pkey ON auth.sso_domains USING btree (id)
+auth,sso_domains,sso_domains_sso_provider_id_idx,CREATE INDEX sso_domains_sso_provider_id_idx ON auth.sso_domains USING btree (sso_provider_id)
+auth,sso_providers,sso_providers_pkey,CREATE UNIQUE INDEX sso_providers_pkey ON auth.sso_providers USING btree (id)
+auth,sso_providers,sso_providers_resource_id_idx,CREATE UNIQUE INDEX sso_providers_resource_id_idx ON auth.sso_providers USING btree (lower(resource_id))
+auth,sso_providers,sso_providers_resource_id_pattern_idx,CREATE INDEX sso_providers_resource_id_pattern_idx ON auth.sso_providers USING btree (resource_id text_pattern_ops)
+auth,users,confirmation_token_idx,CREATE UNIQUE INDEX confirmation_token_idx ON auth.users USING btree (confirmation_token) WHERE ((confirmation_token)::text !~ '^[0-9 ]*$'::text)
+auth,users,email_change_token_current_idx,CREATE UNIQUE INDEX email_change_token_current_idx ON auth.users USING btree (email_change_token_current) WHERE ((email_change_token_current)::text !~ '^[0-9 ]*$'::text)
+auth,users,email_change_token_new_idx,CREATE UNIQUE INDEX email_change_token_new_idx ON auth.users USING btree (email_change_token_new) WHERE ((email_change_token_new)::text !~ '^[0-9 ]*$'::text)
+auth,users,reauthentication_token_idx,CREATE UNIQUE INDEX reauthentication_token_idx ON auth.users USING btree (reauthentication_token) WHERE ((reauthentication_token)::text !~ '^[0-9 ]*$'::text)
+auth,users,recovery_token_idx,CREATE UNIQUE INDEX recovery_token_idx ON auth.users USING btree (recovery_token) WHERE ((recovery_token)::text !~ '^[0-9 ]*$'::text)
+auth,users,users_email_partial_key,CREATE UNIQUE INDEX users_email_partial_key ON auth.users USING btree (email) WHERE (is_sso_user = false)
+auth,users,users_instance_id_email_idx,"CREATE INDEX users_instance_id_email_idx ON auth.users USING btree (instance_id, lower((email)::text))"
+auth,users,users_instance_id_idx,CREATE INDEX users_instance_id_idx ON auth.users USING btree (instance_id)
+auth,users,users_is_anonymous_idx,CREATE INDEX users_is_anonymous_idx ON auth.users USING btree (is_anonymous)
+auth,users,users_phone_key,CREATE UNIQUE INDEX users_phone_key ON auth.users USING btree (phone)
+auth,users,users_pkey,CREATE UNIQUE INDEX users_pkey ON auth.users USING btree (id)
+auth,webauthn_challenges,webauthn_challenges_expires_at_idx,CREATE INDEX webauthn_challenges_expires_at_idx ON auth.webauthn_challenges USING btree (expires_at)
+auth,webauthn_challenges,webauthn_challenges_pkey,CREATE UNIQUE INDEX webauthn_challenges_pkey ON auth.webauthn_challenges USING btree (id)
+auth,webauthn_challenges,webauthn_challenges_user_id_idx,CREATE INDEX webauthn_challenges_user_id_idx ON auth.webauthn_challenges USING btree (user_id)
+auth,webauthn_credentials,webauthn_credentials_credential_id_key,CREATE UNIQUE INDEX webauthn_credentials_credential_id_key ON auth.webauthn_credentials USING btree (credential_id)
+auth,webauthn_credentials,webauthn_credentials_pkey,CREATE UNIQUE INDEX webauthn_credentials_pkey ON auth.webauthn_credentials USING btree (id)
+auth,webauthn_credentials,webauthn_credentials_user_id_idx,CREATE INDEX webauthn_credentials_user_id_idx ON auth.webauthn_credentials USING btree (user_id)
+public,admin_push_subscriptions,admin_push_subscriptions_endpoint_key,CREATE UNIQUE INDEX admin_push_subscriptions_endpoint_key ON public.admin_push_subscriptions USING btree (endpoint)
+public,admin_push_subscriptions,admin_push_subscriptions_pkey,CREATE UNIQUE INDEX admin_push_subscriptions_pkey ON public.admin_push_subscriptions USING btree (id)
+public,app_settings,app_settings_pkey,CREATE UNIQUE INDEX app_settings_pkey ON public.app_settings USING btree (id)
+public,circuit_points_rules,circuit_points_rules_circuit_id_idx,CREATE INDEX circuit_points_rules_circuit_id_idx ON public.circuit_points_rules USING btree (circuit_id)
+public,circuit_points_rules,circuit_points_rules_pkey,CREATE UNIQUE INDEX circuit_points_rules_pkey ON public.circuit_points_rules USING btree (id)
+public,circuit_points_rules,circuit_points_rules_unique_placement_idx,"CREATE UNIQUE INDEX circuit_points_rules_unique_placement_idx ON public.circuit_points_rules USING btree (circuit_id, min_admissions, max_admissions, placement) WHERE (rule_type = 'placement'::text)"
+public,circuit_points_rules,circuit_points_rules_unique_stage_idx,"CREATE UNIQUE INDEX circuit_points_rules_unique_stage_idx ON public.circuit_points_rules USING btree (circuit_id, min_admissions, max_admissions, stage) WHERE (rule_type = 'stage'::text)"
+public,circuit_ranking_groups,circuit_ranking_groups_circuit_id_category_level_key,"CREATE UNIQUE INDEX circuit_ranking_groups_circuit_id_category_level_key ON public.circuit_ranking_groups USING btree (circuit_id, category, level)"
+public,circuit_ranking_groups,circuit_ranking_groups_circuit_id_idx,CREATE INDEX circuit_ranking_groups_circuit_id_idx ON public.circuit_ranking_groups USING btree (circuit_id)
+public,circuit_ranking_groups,circuit_ranking_groups_pkey,CREATE UNIQUE INDEX circuit_ranking_groups_pkey ON public.circuit_ranking_groups USING btree (id)
+public,circuit_results,circuit_results_circuit_id_idx,CREATE INDEX circuit_results_circuit_id_idx ON public.circuit_results USING btree (circuit_id)
+public,circuit_results,circuit_results_pkey,CREATE UNIQUE INDEX circuit_results_pkey ON public.circuit_results USING btree (id)
+public,circuit_results,circuit_results_player_key_idx,CREATE INDEX circuit_results_player_key_idx ON public.circuit_results USING btree (player_key)
+public,circuit_results,circuit_results_ranking_group_id_idx,CREATE INDEX circuit_results_ranking_group_id_idx ON public.circuit_results USING btree (ranking_group_id)
+public,circuit_results,circuit_results_ranking_group_id_source_tournament_id_playe_key,"CREATE UNIQUE INDEX circuit_results_ranking_group_id_source_tournament_id_playe_key ON public.circuit_results USING btree (ranking_group_id, source_tournament_id, player_key)"
+public,circuits,circuits_pkey,CREATE UNIQUE INDEX circuits_pkey ON public.circuits USING btree (id)
+public,circuits,circuits_slug_key,CREATE UNIQUE INDEX circuits_slug_key ON public.circuits USING btree (slug)
+public,circuits,circuits_status_idx,CREATE INDEX circuits_status_idx ON public.circuits USING btree (status)
+public,communication_user_states,communication_user_states_comm_idx,CREATE INDEX communication_user_states_comm_idx ON public.communication_user_states USING btree (communication_id)
+public,communication_user_states,communication_user_states_pkey,CREATE UNIQUE INDEX communication_user_states_pkey ON public.communication_user_states USING btree (id)
+public,communication_user_states,communication_user_states_user_id_communication_id_key,"CREATE UNIQUE INDEX communication_user_states_user_id_communication_id_key ON public.communication_user_states USING btree (user_id, communication_id)"
+public,communication_user_states,communication_user_states_user_idx,CREATE INDEX communication_user_states_user_idx ON public.communication_user_states USING btree (user_id)
+public,communications,communications_active_dates_idx,"CREATE INDEX communications_active_dates_idx ON public.communications USING btree (is_active, starts_at, ends_at)"
+public,communications,communications_pkey,CREATE UNIQUE INDEX communications_pkey ON public.communications USING btree (id)
+public,communications,communications_target_idx,CREATE INDEX communications_target_idx ON public.communications USING btree (target)
+public,communications,communications_tournament_id_idx,CREATE INDEX communications_tournament_id_idx ON public.communications USING btree (tournament_id)
+public,loyalty_global_promos,loyalty_global_promos_active_idx,"CREATE INDEX loyalty_global_promos_active_idx ON public.loyalty_global_promos USING btree (is_active, starts_at, ends_at)"
+public,loyalty_global_promos,loyalty_global_promos_pkey,CREATE UNIQUE INDEX loyalty_global_promos_pkey ON public.loyalty_global_promos USING btree (id)
+public,loyalty_memberships,loyalty_memberships_membership_code_key,CREATE UNIQUE INDEX loyalty_memberships_membership_code_key ON public.loyalty_memberships USING btree (membership_code)
+public,loyalty_memberships,loyalty_memberships_pkey,CREATE UNIQUE INDEX loyalty_memberships_pkey ON public.loyalty_memberships USING btree (id)
+public,loyalty_transactions,loyalty_transactions_pkey,CREATE UNIQUE INDEX loyalty_transactions_pkey ON public.loyalty_transactions USING btree (id)
+public,loyalty_user_promos,loyalty_user_promos_active_idx,"CREATE INDEX loyalty_user_promos_active_idx ON public.loyalty_user_promos USING btree (is_active, starts_at, ends_at)"
+public,loyalty_user_promos,loyalty_user_promos_membership_id_idx,CREATE INDEX loyalty_user_promos_membership_id_idx ON public.loyalty_user_promos USING btree (membership_id)
+public,loyalty_user_promos,loyalty_user_promos_pkey,CREATE UNIQUE INDEX loyalty_user_promos_pkey ON public.loyalty_user_promos USING btree (id)
+public,medical_certificates,medical_certificates_pkey,CREATE UNIQUE INDEX medical_certificates_pkey ON public.medical_certificates USING btree (id)
+public,reward_categories,reward_categories_name_key,CREATE UNIQUE INDEX reward_categories_name_key ON public.reward_categories USING btree (name)
+public,reward_categories,reward_categories_pkey,CREATE UNIQUE INDEX reward_categories_pkey ON public.reward_categories USING btree (id)
+public,reward_point_ranges,reward_point_ranges_pkey,CREATE UNIQUE INDEX reward_point_ranges_pkey ON public.reward_point_ranges USING btree (id)
+public,reward_redemptions,reward_redemptions_pkey,CREATE UNIQUE INDEX reward_redemptions_pkey ON public.reward_redemptions USING btree (id)
+public,reward_redemptions,reward_redemptions_qr_token_unique,CREATE UNIQUE INDEX reward_redemptions_qr_token_unique ON public.reward_redemptions USING btree (qr_token) WHERE (qr_token IS NOT NULL)
+public,reward_redemptions,reward_redemptions_status_idx,CREATE INDEX reward_redemptions_status_idx ON public.reward_redemptions USING btree (status)
+public,rewards_catalog,rewards_catalog_pkey,CREATE UNIQUE INDEX rewards_catalog_pkey ON public.rewards_catalog USING btree (id)
+public,rewards_catalog,rewards_catalog_store_product_idx,CREATE INDEX rewards_catalog_store_product_idx ON public.rewards_catalog USING btree (store_product_id)
+public,staff_users,staff_users_email_key,CREATE UNIQUE INDEX staff_users_email_key ON public.staff_users USING btree (email)
+public,staff_users,staff_users_pkey,CREATE UNIQUE INDEX staff_users_pkey ON public.staff_users USING btree (id)
+public,store_categories,store_categories_name_key,CREATE UNIQUE INDEX store_categories_name_key ON public.store_categories USING btree (name)
+public,store_categories,store_categories_pkey,CREATE UNIQUE INDEX store_categories_pkey ON public.store_categories USING btree (id)
+public,store_categories,store_categories_slug_key,CREATE UNIQUE INDEX store_categories_slug_key ON public.store_categories USING btree (slug)
+public,store_lines,store_lines_name_key,CREATE UNIQUE INDEX store_lines_name_key ON public.store_lines USING btree (name)
+public,store_lines,store_lines_pkey,CREATE UNIQUE INDEX store_lines_pkey ON public.store_lines USING btree (id)
+public,store_lines,store_lines_slug_key,CREATE UNIQUE INDEX store_lines_slug_key ON public.store_lines USING btree (slug)
+public,store_order_economics,store_order_economics_order_id_key,CREATE UNIQUE INDEX store_order_economics_order_id_key ON public.store_order_economics USING btree (order_id)
+public,store_order_economics,store_order_economics_pkey,CREATE UNIQUE INDEX store_order_economics_pkey ON public.store_order_economics USING btree (id)
+public,store_order_items,store_order_items_order_idx,CREATE INDEX store_order_items_order_idx ON public.store_order_items USING btree (order_id)
+public,store_order_items,store_order_items_pkey,CREATE UNIQUE INDEX store_order_items_pkey ON public.store_order_items USING btree (id)
+public,store_orders,store_orders_created_at_idx,CREATE INDEX store_orders_created_at_idx ON public.store_orders USING btree (created_at DESC)
+public,store_orders,store_orders_order_type_idx,CREATE INDEX store_orders_order_type_idx ON public.store_orders USING btree (order_type)
+public,store_orders,store_orders_pkey,CREATE UNIQUE INDEX store_orders_pkey ON public.store_orders USING btree (id)
+public,store_orders,store_orders_related_redemption_idx,CREATE INDEX store_orders_related_redemption_idx ON public.store_orders USING btree (related_redemption_id)
+public,store_orders,store_orders_status_idx,CREATE INDEX store_orders_status_idx ON public.store_orders USING btree (status)
+public,store_orders,store_orders_supplier_paid_idx,"CREATE INDEX store_orders_supplier_paid_idx ON public.store_orders USING btree (supplier_paid, supplier_paid_at)"
+public,store_orders,store_orders_user_idx,CREATE INDEX store_orders_user_idx ON public.store_orders USING btree (user_id)
+public,store_product_colors,store_product_colors_pkey,CREATE UNIQUE INDEX store_product_colors_pkey ON public.store_product_colors USING btree (id)
+public,store_product_colors,store_product_colors_product_idx,CREATE INDEX store_product_colors_product_idx ON public.store_product_colors USING btree (product_id)
+public,store_product_costs,store_product_costs_pkey,CREATE UNIQUE INDEX store_product_costs_pkey ON public.store_product_costs USING btree (id)
+public,store_product_costs,store_product_costs_product_id_key,CREATE UNIQUE INDEX store_product_costs_product_id_key ON public.store_product_costs USING btree (product_id)
+public,store_product_sizes,store_product_sizes_pkey,CREATE UNIQUE INDEX store_product_sizes_pkey ON public.store_product_sizes USING btree (id)
+public,store_product_sizes,store_product_sizes_product_id_size_label_key,"CREATE UNIQUE INDEX store_product_sizes_product_id_size_label_key ON public.store_product_sizes USING btree (product_id, size_label)"
+public,store_product_sizes,store_product_sizes_product_idx,CREATE INDEX store_product_sizes_product_idx ON public.store_product_sizes USING btree (product_id)
+public,store_product_stock,store_product_stock_pkey,CREATE UNIQUE INDEX store_product_stock_pkey ON public.store_product_stock USING btree (id)
+public,store_product_stock,store_product_stock_product_id_color_id_size_id_key,"CREATE UNIQUE INDEX store_product_stock_product_id_color_id_size_id_key ON public.store_product_stock USING btree (product_id, color_id, size_id)"
+public,store_product_stock,store_product_stock_product_idx,CREATE INDEX store_product_stock_product_idx ON public.store_product_stock USING btree (product_id)
+public,store_products,store_products_active_idx,CREATE INDEX store_products_active_idx ON public.store_products USING btree (is_active)
+public,store_products,store_products_category_idx,CREATE INDEX store_products_category_idx ON public.store_products USING btree (category_id)
+public,store_products,store_products_category_sort_idx,"CREATE INDEX store_products_category_sort_idx ON public.store_products USING btree (category_id, sort_order, created_at)"
+public,store_products,store_products_line_idx,CREATE INDEX store_products_line_idx ON public.store_products USING btree (line_id)
+public,store_products,store_products_pkey,CREATE UNIQUE INDEX store_products_pkey ON public.store_products USING btree (id)
+public,store_promos,store_promos_active_dates_idx,"CREATE INDEX store_promos_active_dates_idx ON public.store_promos USING btree (is_active, starts_at, ends_at)"
+public,store_promos,store_promos_pkey,CREATE UNIQUE INDEX store_promos_pkey ON public.store_promos USING btree (id)
+public,store_special_orders,store_special_orders_pkey,CREATE UNIQUE INDEX store_special_orders_pkey ON public.store_special_orders USING btree (id)
+public,store_supplier_batch_orders,store_supplier_batch_orders_batch_id_order_id_key,"CREATE UNIQUE INDEX store_supplier_batch_orders_batch_id_order_id_key ON public.store_supplier_batch_orders USING btree (batch_id, order_id)"
+public,store_supplier_batch_orders,store_supplier_batch_orders_batch_idx,CREATE INDEX store_supplier_batch_orders_batch_idx ON public.store_supplier_batch_orders USING btree (batch_id)
+public,store_supplier_batch_orders,store_supplier_batch_orders_order_idx,CREATE INDEX store_supplier_batch_orders_order_idx ON public.store_supplier_batch_orders USING btree (order_id)
+public,store_supplier_batch_orders,store_supplier_batch_orders_pkey,CREATE UNIQUE INDEX store_supplier_batch_orders_pkey ON public.store_supplier_batch_orders USING btree (id)
+public,store_supplier_batches,store_supplier_batches_batch_number_key,CREATE UNIQUE INDEX store_supplier_batches_batch_number_key ON public.store_supplier_batches USING btree (batch_number)
+public,store_supplier_batches,store_supplier_batches_pkey,CREATE UNIQUE INDEX store_supplier_batches_pkey ON public.store_supplier_batches USING btree (id)
+public,tournament_registrations,tournament_registrations_pkey,CREATE UNIQUE INDEX tournament_registrations_pkey ON public.tournament_registrations USING btree (id)
+public,tournament_registrations,tr_tournament_idx,CREATE INDEX tr_tournament_idx ON public.tournament_registrations USING btree (tournament_id)
+public,tournament_registrations,tr_tournament_reserve_idx,"CREATE INDEX tr_tournament_reserve_idx ON public.tournament_registrations USING btree (tournament_id, is_reserve, ""position"")"
+public,tournament_registrations,tr_user_idx,CREATE INDEX tr_user_idx ON public.tournament_registrations USING btree (user_id)
+public,tournament_run_bracket_slots,idx_trbs_run_id,CREATE INDEX idx_trbs_run_id ON public.tournament_run_bracket_slots USING btree (run_id)
+public,tournament_run_bracket_slots,tournament_run_bracket_slots_pkey,CREATE UNIQUE INDEX tournament_run_bracket_slots_pkey ON public.tournament_run_bracket_slots USING btree (id)
+public,tournament_run_bracket_slots,tournament_run_bracket_slots_run_id_position_key,"CREATE UNIQUE INDEX tournament_run_bracket_slots_run_id_position_key ON public.tournament_run_bracket_slots USING btree (run_id, ""position"")"
+public,tournament_run_group_pairs,idx_trgp_group_id,CREATE INDEX idx_trgp_group_id ON public.tournament_run_group_pairs USING btree (group_id)
+public,tournament_run_group_pairs,idx_trgp_pair_id,CREATE INDEX idx_trgp_pair_id ON public.tournament_run_group_pairs USING btree (pair_id)
+public,tournament_run_group_pairs,tournament_run_group_pairs_group_id_pair_id_key,"CREATE UNIQUE INDEX tournament_run_group_pairs_group_id_pair_id_key ON public.tournament_run_group_pairs USING btree (group_id, pair_id)"
+public,tournament_run_group_pairs,tournament_run_group_pairs_pkey,CREATE UNIQUE INDEX tournament_run_group_pairs_pkey ON public.tournament_run_group_pairs USING btree (id)
+public,tournament_run_groups,idx_trg_run_id,CREATE INDEX idx_trg_run_id ON public.tournament_run_groups USING btree (run_id)
+public,tournament_run_groups,tournament_run_groups_pkey,CREATE UNIQUE INDEX tournament_run_groups_pkey ON public.tournament_run_groups USING btree (id)
+public,tournament_run_groups,tournament_run_groups_run_id_name_key,"CREATE UNIQUE INDEX tournament_run_groups_run_id_name_key ON public.tournament_run_groups USING btree (run_id, name)"
+public,tournament_run_groups,tournament_run_groups_run_id_position_key,"CREATE UNIQUE INDEX tournament_run_groups_run_id_position_key ON public.tournament_run_groups USING btree (run_id, ""position"")"
+public,tournament_run_matches,tournament_run_matches_pkey,CREATE UNIQUE INDEX tournament_run_matches_pkey ON public.tournament_run_matches USING btree (id)
+public,tournament_run_matches,tournament_run_matches_turn_id_idx,CREATE INDEX tournament_run_matches_turn_id_idx ON public.tournament_run_matches USING btree (turn_id)
+public,tournament_run_matches,tournament_run_matches_turn_id_match_number_key,"CREATE UNIQUE INDEX tournament_run_matches_turn_id_match_number_key ON public.tournament_run_matches USING btree (turn_id, match_number)"
+public,tournament_run_matches_fp,idx_trmfp_completed,CREATE INDEX idx_trmfp_completed ON public.tournament_run_matches_fp USING btree (completed_at)
+public,tournament_run_matches_fp,idx_trmfp_group_id,CREATE INDEX idx_trmfp_group_id ON public.tournament_run_matches_fp USING btree (group_id)
+public,tournament_run_matches_fp,idx_trmfp_run_id,CREATE INDEX idx_trmfp_run_id ON public.tournament_run_matches_fp USING btree (run_id)
+public,tournament_run_matches_fp,idx_trmfp_stage,CREATE INDEX idx_trmfp_stage ON public.tournament_run_matches_fp USING btree (stage)
+public,tournament_run_matches_fp,idx_trmfp_starts_at,CREATE INDEX idx_trmfp_starts_at ON public.tournament_run_matches_fp USING btree (starts_at)
+public,tournament_run_matches_fp,tournament_run_matches_fp_pkey,CREATE UNIQUE INDEX tournament_run_matches_fp_pkey ON public.tournament_run_matches_fp USING btree (id)
+public,tournament_run_pairs,idx_trp_run_id,CREATE INDEX idx_trp_run_id ON public.tournament_run_pairs USING btree (run_id)
+public,tournament_run_pairs,tournament_run_pairs_pkey,CREATE UNIQUE INDEX tournament_run_pairs_pkey ON public.tournament_run_pairs USING btree (id)
+public,tournament_run_participants,tournament_run_participants_pkey,CREATE UNIQUE INDEX tournament_run_participants_pkey ON public.tournament_run_participants USING btree (id)
+public,tournament_run_participants,tournament_run_participants_run_id_idx,CREATE INDEX tournament_run_participants_run_id_idx ON public.tournament_run_participants USING btree (run_id)
+public,tournament_run_turns,tournament_run_turns_pkey,CREATE UNIQUE INDEX tournament_run_turns_pkey ON public.tournament_run_turns USING btree (id)
+public,tournament_run_turns,tournament_run_turns_run_id_idx,CREATE INDEX tournament_run_turns_run_id_idx ON public.tournament_run_turns USING btree (run_id)
+public,tournament_run_turns,tournament_run_turns_run_id_turn_number_key,"CREATE UNIQUE INDEX tournament_run_turns_run_id_turn_number_key ON public.tournament_run_turns USING btree (run_id, turn_number)"
+public,tournament_runs,tournament_runs_pkey,CREATE UNIQUE INDEX tournament_runs_pkey ON public.tournament_runs USING btree (id)
+public,tournament_runs,tournament_runs_tournament_id_idx,CREATE INDEX tournament_runs_tournament_id_idx ON public.tournament_runs USING btree (tournament_id)
+public,tournaments,tournaments_circuit_id_idx,CREATE INDEX tournaments_circuit_id_idx ON public.tournaments USING btree (circuit_id)
+public,tournaments,tournaments_pkey,CREATE UNIQUE INDEX tournaments_pkey ON public.tournaments USING btree (id)
+public,tournaments,tournaments_start_at_idx,CREATE INDEX tournaments_start_at_idx ON public.tournaments USING btree (start_at)
+public,users,users_phone_idx,CREATE INDEX users_phone_idx ON public.users USING btree (phone)
+public,users,users_phone_key,CREATE UNIQUE INDEX users_phone_key ON public.users USING btree (phone)
+public,users,users_pkey,CREATE UNIQUE INDEX users_pkey ON public.users USING btree (id)
+realtime,messages,messages_inserted_at_topic_index,"CREATE INDEX messages_inserted_at_topic_index ON ONLY realtime.messages USING btree (inserted_at DESC, topic) WHERE ((extension = 'broadcast'::text) AND (private IS TRUE))"
+realtime,messages,messages_pkey,"CREATE UNIQUE INDEX messages_pkey ON ONLY realtime.messages USING btree (id, inserted_at)"
+realtime,schema_migrations,schema_migrations_pkey,CREATE UNIQUE INDEX schema_migrations_pkey ON realtime.schema_migrations USING btree (version)
+realtime,subscription,ix_realtime_subscription_entity,CREATE INDEX ix_realtime_subscription_entity ON realtime.subscription USING btree (entity)
+realtime,subscription,pk_subscription,CREATE UNIQUE INDEX pk_subscription ON realtime.subscription USING btree (id)
+realtime,subscription,subscription_subscription_id_entity_filters_action_filter_selec,"CREATE UNIQUE INDEX subscription_subscription_id_entity_filters_action_filter_selec ON realtime.subscription USING btree (subscription_id, entity, filters, action_filter, COALESCE(selected_columns, '{}'::text[]))"
+storage,buckets,bname,CREATE UNIQUE INDEX bname ON storage.buckets USING btree (name)
+storage,buckets,buckets_pkey,CREATE UNIQUE INDEX buckets_pkey ON storage.buckets USING btree (id)
+storage,buckets_analytics,buckets_analytics_pkey,CREATE UNIQUE INDEX buckets_analytics_pkey ON storage.buckets_analytics USING btree (id)
+storage,buckets_analytics,buckets_analytics_unique_name_idx,CREATE UNIQUE INDEX buckets_analytics_unique_name_idx ON storage.buckets_analytics USING btree (name) WHERE (deleted_at IS NULL)
+storage,buckets_vectors,buckets_vectors_pkey,CREATE UNIQUE INDEX buckets_vectors_pkey ON storage.buckets_vectors USING btree (id)
+storage,migrations,migrations_name_key,CREATE UNIQUE INDEX migrations_name_key ON storage.migrations USING btree (name)
+storage,migrations,migrations_pkey,CREATE UNIQUE INDEX migrations_pkey ON storage.migrations USING btree (id)
+storage,objects,bucketid_objname,"CREATE UNIQUE INDEX bucketid_objname ON storage.objects USING btree (bucket_id, name)"
+storage,objects,idx_objects_bucket_id_name,"CREATE INDEX idx_objects_bucket_id_name ON storage.objects USING btree (bucket_id, name COLLATE ""C"")"
+storage,objects,idx_objects_bucket_id_name_lower,"CREATE INDEX idx_objects_bucket_id_name_lower ON storage.objects USING btree (bucket_id, lower(name) COLLATE ""C"")"
+storage,objects,idx_objects_current_version,"CREATE UNIQUE INDEX idx_objects_current_version ON storage.objects USING btree (bucket_id, name COLLATE ""C"") WHERE (archived_at IS NULL)"
+storage,objects,idx_objects_null_version,"CREATE UNIQUE INDEX idx_objects_null_version ON storage.objects USING btree (bucket_id, name COLLATE ""C"") WHERE (NOT is_versioned)"
+storage,objects,name_prefix_search,CREATE INDEX name_prefix_search ON storage.objects USING btree (name text_pattern_ops)
+storage,objects,objects_bucket_id_name_version_key,"CREATE UNIQUE INDEX objects_bucket_id_name_version_key ON storage.objects USING btree (bucket_id, name COLLATE ""C"", version) NULLS NOT DISTINCT"
+storage,objects,objects_pkey,CREATE UNIQUE INDEX objects_pkey ON storage.objects USING btree (id)
+storage,s3_multipart_uploads,idx_multipart_uploads_list,"CREATE INDEX idx_multipart_uploads_list ON storage.s3_multipart_uploads USING btree (bucket_id, key, created_at)"
+storage,s3_multipart_uploads,s3_multipart_uploads_pkey,CREATE UNIQUE INDEX s3_multipart_uploads_pkey ON storage.s3_multipart_uploads USING btree (id)
+storage,s3_multipart_uploads_parts,s3_multipart_uploads_parts_pkey,CREATE UNIQUE INDEX s3_multipart_uploads_parts_pkey ON storage.s3_multipart_uploads_parts USING btree (id)
+storage,vector_indexes,vector_indexes_name_bucket_id_idx,"CREATE UNIQUE INDEX vector_indexes_name_bucket_id_idx ON storage.vector_indexes USING btree (name, bucket_id)"
+storage,vector_indexes,vector_indexes_pkey,CREATE UNIQUE INDEX vector_indexes_pkey ON storage.vector_indexes USING btree (id)
+vault,secrets,secrets_name_idx,CREATE UNIQUE INDEX secrets_name_idx ON vault.secrets USING btree (name) WHERE (name IS NOT NULL)
+vault,secrets,secrets_pkey,CREATE UNIQUE INDEX secrets_pkey ON vault.secrets USING btree (id)

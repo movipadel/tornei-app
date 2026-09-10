@@ -1,0 +1,152 @@
+schemaname,viewname,definition
+extensions,pg_stat_statements," SELECT userid,
+    dbid,
+    toplevel,
+    queryid,
+    query,
+    plans,
+    total_plan_time,
+    min_plan_time,
+    max_plan_time,
+    mean_plan_time,
+    stddev_plan_time,
+    calls,
+    total_exec_time,
+    min_exec_time,
+    max_exec_time,
+    mean_exec_time,
+    stddev_exec_time,
+    rows,
+    shared_blks_hit,
+    shared_blks_read,
+    shared_blks_dirtied,
+    shared_blks_written,
+    local_blks_hit,
+    local_blks_read,
+    local_blks_dirtied,
+    local_blks_written,
+    temp_blks_read,
+    temp_blks_written,
+    shared_blk_read_time,
+    shared_blk_write_time,
+    local_blk_read_time,
+    local_blk_write_time,
+    temp_blk_read_time,
+    temp_blk_write_time,
+    wal_records,
+    wal_fpi,
+    wal_bytes,
+    jit_functions,
+    jit_generation_time,
+    jit_inlining_count,
+    jit_inlining_time,
+    jit_optimization_count,
+    jit_optimization_time,
+    jit_emission_count,
+    jit_emission_time,
+    jit_deform_count,
+    jit_deform_time,
+    stats_since,
+    minmax_stats_since
+   FROM pg_stat_statements(true) pg_stat_statements(userid, dbid, toplevel, queryid, query, plans, total_plan_time, min_plan_time, max_plan_time, mean_plan_time, stddev_plan_time, calls, total_exec_time, min_exec_time, max_exec_time, mean_exec_time, stddev_exec_time, rows, shared_blks_hit, shared_blks_read, shared_blks_dirtied, shared_blks_written, local_blks_hit, local_blks_read, local_blks_dirtied, local_blks_written, temp_blks_read, temp_blks_written, shared_blk_read_time, shared_blk_write_time, local_blk_read_time, local_blk_write_time, temp_blk_read_time, temp_blk_write_time, wal_records, wal_fpi, wal_bytes, jit_functions, jit_generation_time, jit_inlining_count, jit_inlining_time, jit_optimization_count, jit_optimization_time, jit_emission_count, jit_emission_time, jit_deform_count, jit_deform_time, stats_since, minmax_stats_since);"
+extensions,pg_stat_statements_info," SELECT dealloc,
+    stats_reset
+   FROM pg_stat_statements_info() pg_stat_statements_info(dealloc, stats_reset);"
+public,tournament_run_group_standings," WITH completed AS (
+         SELECT m.run_id,
+            m.group_id,
+            m.home_pair_id,
+            m.away_pair_id,
+            m.home_games,
+            m.away_games
+           FROM tournament_run_matches_fp m
+          WHERE ((m.stage = 'group'::text) AND (m.group_id IS NOT NULL) AND (m.completed_at IS NOT NULL) AND (m.home_games IS NOT NULL) AND (m.away_games IS NOT NULL))
+        ), rows AS (
+         SELECT completed.run_id,
+            completed.group_id,
+            completed.home_pair_id AS pair_id,
+                CASE
+                    WHEN (completed.home_games > completed.away_games) THEN 1
+                    ELSE 0
+                END AS points,
+            completed.home_games AS gw,
+            completed.away_games AS gl
+           FROM completed
+        UNION ALL
+         SELECT completed.run_id,
+            completed.group_id,
+            completed.away_pair_id AS pair_id,
+                CASE
+                    WHEN (completed.away_games > completed.home_games) THEN 1
+                    ELSE 0
+                END AS points,
+            completed.away_games AS gw,
+            completed.home_games AS gl
+           FROM completed
+        )
+ SELECT run_id,
+    group_id,
+    pair_id,
+    (sum(points))::integer AS points,
+    (sum(gw))::integer AS gw,
+    (sum(gl))::integer AS gl,
+    ((sum(gw) - sum(gl)))::integer AS dg,
+    (count(*))::integer AS played
+   FROM rows
+  GROUP BY run_id, group_id, pair_id;"
+public,tournament_run_matches_fp_view," SELECT m.id,
+    m.run_id,
+    m.stage,
+    m.group_id,
+    m.round_label,
+    m.home_pair_id,
+    m.away_pair_id,
+    m.court,
+    m.starts_at,
+    m.home_games,
+    m.away_games,
+    m.completed_at,
+    m.created_at,
+    hp.name AS home_pair_name,
+    ap.name AS away_pair_name,
+    g.name AS group_name
+   FROM (((tournament_run_matches_fp m
+     JOIN tournament_run_pairs hp ON ((hp.id = m.home_pair_id)))
+     JOIN tournament_run_pairs ap ON ((ap.id = m.away_pair_id)))
+     LEFT JOIN tournament_run_groups g ON ((g.id = m.group_id)));"
+public,tournament_run_standings," SELECT p.run_id,
+    p.id AS participant_id,
+    p.name,
+    sum(
+        CASE
+            WHEN (m.team1_games IS NULL) THEN 0
+            WHEN ((p.id = m.p1_id) OR (p.id = m.p2_id)) THEN m.team1_games
+            ELSE m.team2_games
+        END) AS games_won,
+    sum(
+        CASE
+            WHEN (m.team1_games IS NULL) THEN 0
+            WHEN ((p.id = m.p1_id) OR (p.id = m.p2_id)) THEN m.team2_games
+            ELSE m.team1_games
+        END) AS games_lost,
+    sum(
+        CASE
+            WHEN (m.team1_games IS NULL) THEN (0)::numeric
+            WHEN (m.team1_games = m.team2_games) THEN 0.5
+            WHEN (((p.id = m.p1_id) OR (p.id = m.p2_id)) AND (m.team1_games > m.team2_games)) THEN (1)::numeric
+            WHEN (((p.id = m.p3_id) OR (p.id = m.p4_id)) AND (m.team2_games > m.team1_games)) THEN (1)::numeric
+            ELSE (0)::numeric
+        END) AS matches_won
+   FROM (tournament_run_participants p
+     LEFT JOIN tournament_run_matches m ON (((((p.id = m.p1_id) OR (p.id = m.p2_id)) OR (p.id = m.p3_id)) OR (p.id = m.p4_id))))
+  GROUP BY p.run_id, p.id, p.name;"
+vault,decrypted_secrets," SELECT id,
+    name,
+    description,
+    secret,
+    convert_from(vault._crypto_aead_det_decrypt(message => decode(secret, 'base64'::text), additional => convert_to((id)::text, 'utf8'::name), key_id => (0)::bigint, context => '\x7067736f6469756d'::bytea, nonce => nonce), 'utf8'::name) AS decrypted_secret,
+    key_id,
+    nonce,
+    created_at,
+    updated_at
+   FROM vault.secrets s;"
