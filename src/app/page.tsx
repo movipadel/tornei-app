@@ -115,8 +115,9 @@ export default function HomePage() {
   const listTimerRef = useRef<number | null>(null);
   const listAbortRef = useRef<AbortController | null>(null);
 
-  async function loadAll(opts?: { silent?: boolean }) {
+  async function loadAll(opts?: { silent?: boolean; includeBootstrap?: boolean }) {
     const silent = Boolean(opts?.silent);
+    const includeBootstrap = opts?.includeBootstrap !== false;
 
     // evita fetch sovrapposti
     listAbortRef.current?.abort();
@@ -128,8 +129,12 @@ export default function HomePage() {
     try {
       const [tRes, sRes, meRes, cRes, mbRes, commRes] = await Promise.all([
   fetch("/api/tournaments", { cache: "no-store", signal: ac.signal }),
-  fetch("/api/app-settings", { cache: "no-store", signal: ac.signal }),
-  fetch("/api/user/me", { cache: "no-store", signal: ac.signal }),
+  includeBootstrap
+    ? fetch("/api/app-settings", { cache: "no-store", signal: ac.signal })
+    : Promise.resolve(null),
+  includeBootstrap
+    ? fetch("/api/user/me", { cache: "no-store", signal: ac.signal })
+    : Promise.resolve(null),
   fetch("/api/circuits", { cache: "no-store", signal: ac.signal }),
   fetch("/api/moviback/me", { cache: "no-store", signal: ac.signal }),
   fetch("/api/user/communications", { cache: "no-store", signal: ac.signal }),
@@ -139,12 +144,16 @@ export default function HomePage() {
       if (!tRes.ok) throw new Error(tJson.error || "Errore caricamento tornei");
       setTournaments((tJson.data ?? []) as PublicTournament[]);
 
-      const sJson = await sRes.json().catch(() => ({}));
-      if (sRes.ok) setSettings(sJson as AppSettings);
-      else setSettings({ home_title: "Tornei", home_subtitle: "", home_logo_url: null });
+      if (sRes) {
+        const sJson = await sRes.json().catch(() => ({}));
+        if (sRes.ok) setSettings(sJson as AppSettings);
+        else setSettings({ home_title: "Tornei", home_subtitle: "", home_logo_url: null });
+      }
 
-      const meJson = await meRes.json().catch(() => ({}));
-      setUser(meJson.user ?? null);
+      if (meRes) {
+        const meJson = await meRes.json().catch(() => ({}));
+        setUser(meJson.user ?? null);
+      }
 
       const cJson = await cRes.json().catch(() => ({}));
 if (cRes.ok) setCircuits((cJson.data ?? []) as PublicCircuit[]);
@@ -531,10 +540,10 @@ const notificationSmallBtn: React.CSSProperties = {
   useEffect(() => {
     loadAll();
 
-    // ✅ timer refresh lista tornei (solo quando la pagina è visibile)
+    // Refresh periodico dei soli dati che possono cambiare durante la sessione.
     listTimerRef.current = window.setInterval(() => {
       if (document.visibilityState !== "visible") return;
-      loadAll({ silent: true });
+      loadAll({ silent: true, includeBootstrap: false });
     }, 15000);
 
     const onVis = () => {
