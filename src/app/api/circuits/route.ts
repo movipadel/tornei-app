@@ -1,34 +1,40 @@
-import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { createRuntimePerf } from "@/lib/runtimePerf";
 
 export const runtime = "nodejs";
 
 export async function GET() {
+  const perf = createRuntimePerf("/api/circuits");
+  try {
   const sb = supabaseAdmin();
 
-  const { data: circuits, error: circuitsErr } = await sb
-    .from("circuits")
-    .select("id,name,slug,tournament_type,status,rules_url,created_at,updated_at")
-    .in("status", ["active", "closed"])
-    .order("updated_at", { ascending: false });
+  const { data: circuits, error: circuitsErr } = await perf.db(() =>
+    sb
+      .from("circuits")
+      .select("id,name,slug,tournament_type,status,rules_url,created_at,updated_at")
+      .in("status", ["active", "closed"])
+      .order("updated_at", { ascending: false })
+  );
 
   if (circuitsErr) {
-    return NextResponse.json({ error: circuitsErr.message }, { status: 500 });
+    return perf.json({ error: circuitsErr.message }, { status: 500 });
   }
 
   const circuitIds = (circuits ?? []).map((c) => c.id);
 
   if (!circuitIds.length) {
-    return NextResponse.json({ data: [] });
+    return perf.json({ data: [] });
   }
 
-  const { data: groups, error: groupsErr } = await sb
-    .from("circuit_ranking_groups")
-    .select("id,circuit_id")
-    .in("circuit_id", circuitIds);
+  const { data: groups, error: groupsErr } = await perf.db(() =>
+    sb
+      .from("circuit_ranking_groups")
+      .select("id,circuit_id")
+      .in("circuit_id", circuitIds)
+  );
 
   if (groupsErr) {
-    return NextResponse.json({ error: groupsErr.message }, { status: 500 });
+    return perf.json({ error: groupsErr.message }, { status: 500 });
   }
 
   const groupIds = (groups ?? []).map((g) => g.id);
@@ -41,13 +47,15 @@ export async function GET() {
   }> = [];
 
   if (groupIds.length) {
-    const { data: resultsData, error: resultsErr } = await sb
-      .from("circuit_results")
-      .select("ranking_group_id,source_tournament_id,tournament_name,tournament_date")
-      .in("ranking_group_id", groupIds);
+    const { data: resultsData, error: resultsErr } = await perf.db(() =>
+      sb
+        .from("circuit_results")
+        .select("ranking_group_id,source_tournament_id,tournament_name,tournament_date")
+        .in("ranking_group_id", groupIds)
+    );
 
     if (resultsErr) {
-      return NextResponse.json({ error: resultsErr.message }, { status: 500 });
+      return perf.json({ error: resultsErr.message }, { status: 500 });
     }
 
     results = resultsData ?? [];
@@ -94,5 +102,8 @@ export async function GET() {
     played_stages_count: stageKeysByCircuit.get(c.id)?.size ?? 0,
   }));
 
-  return NextResponse.json({ data: payload });
+  return perf.json({ data: payload });
+  } finally {
+    perf.finish();
+  }
 }

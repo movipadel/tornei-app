@@ -1,5 +1,5 @@
-import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { createRuntimePerf } from "@/lib/runtimePerf";
 
 export const runtime = "nodejs";
 
@@ -16,13 +16,15 @@ function todayRomeISODate() {
 }
 
 export async function GET(_req: Request) {
+  const perf = createRuntimePerf("/api/tournaments");
+  try {
   const sb = supabaseAdmin();
 
   const todayRome = todayRomeISODate();
 
   // 1) Lista tornei (solo oggi+futuro)
-  const { data: tournaments, error: tErr } = await sb
-    .from("tournaments")
+  const { data: tournaments, error: tErr } = await perf.db(() =>
+    sb.from("tournaments")
     .select(
       `
       id,
@@ -45,9 +47,10 @@ export async function GET(_req: Request) {
     )
     .gte("date", todayRome)
     .order("date", { ascending: true })
-    .order("time", { ascending: true });
+      .order("time", { ascending: true })
+  );
 
-  if (tErr) return NextResponse.json({ error: tErr.message }, { status: 500 });
+  if (tErr) return perf.json({ error: tErr.message }, { status: 500 });
 
   // ... resto invariato
   const list = (tournaments ?? []) as any[];
@@ -56,13 +59,15 @@ export async function GET(_req: Request) {
   // 2) hasLive ...
   const hasLiveByTournamentId = new Map<string, boolean>();
   if (ids.length) {
-    const { data: runs, error: rErr } = await sb
-      .from("tournament_runs")
-      .select("tournament_id,status")
-      .in("tournament_id", ids)
-      .in("status", ["running", "finished"]);
+    const { data: runs, error: rErr } = await perf.db(() =>
+      sb
+        .from("tournament_runs")
+        .select("tournament_id,status")
+        .in("tournament_id", ids)
+        .in("status", ["running", "finished"])
+    );
 
-    if (rErr) return NextResponse.json({ error: rErr.message }, { status: 500 });
+    if (rErr) return perf.json({ error: rErr.message }, { status: 500 });
 
     for (const r of runs ?? []) {
       hasLiveByTournamentId.set(String((r as any).tournament_id), true);
@@ -74,12 +79,14 @@ export async function GET(_req: Request) {
   for (const tid of ids) countsByTournamentId.set(tid, { main: 0, reserve: 0, male: 0, female: 0 });
 
   if (ids.length) {
-    const { data: regs, error: regErr } = await sb
-      .from("tournament_registrations")
-      .select("tournament_id,is_reserve,p1_gender,p2_gender")
-      .in("tournament_id", ids);
+    const { data: regs, error: regErr } = await perf.db(() =>
+      sb
+        .from("tournament_registrations")
+        .select("tournament_id,is_reserve,p1_gender,p2_gender")
+        .in("tournament_id", ids)
+    );
 
-    if (regErr) return NextResponse.json({ error: regErr.message }, { status: 500 });
+    if (regErr) return perf.json({ error: regErr.message }, { status: 500 });
 
     for (const row of (regs ?? []) as RegRow[]) {
       const tid = String(row.tournament_id);
@@ -111,5 +118,8 @@ export async function GET(_req: Request) {
     };
   });
 
-  return NextResponse.json({ data: out });
+  return perf.json({ data: out });
+  } finally {
+    perf.finish();
+  }
 }

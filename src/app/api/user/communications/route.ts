@@ -1,6 +1,6 @@
-import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getUserIdFromCookie } from "@/lib/userAuth";
+import { createRuntimePerf } from "@/lib/runtimePerf";
 
 export const runtime = "nodejs";
 
@@ -29,32 +29,34 @@ type StateRow = {
 };
 
 export async function GET() {
+  const perf = createRuntimePerf("/api/user/communications");
+  try {
   const uid = await getUserIdFromCookie();
 
   if (!uid) {
-    return NextResponse.json({ data: [] });
+    return perf.json({ data: [] });
   }
 
   const sb = supabaseAdmin();
 
-  const { data: user, error: userErr } = await sb
-    .from("users")
-    .select("id,phone")
-    .eq("id", uid)
-    .single();
+  const { data: user, error: userErr } = await perf.db(() =>
+    sb.from("users").select("id,phone").eq("id", uid).single()
+  );
 
   if (userErr) {
-    return NextResponse.json({ error: userErr.message }, { status: 500 });
+    return perf.json({ error: userErr.message }, { status: 500 });
   }
 
   const phone = normalizePhone(user?.phone);
   const targets = ["all"];
 
-  const { data: membership } = await sb
-    .from("loyalty_memberships")
-    .select("status")
-    .eq("user_id", uid)
-    .maybeSingle();
+  const { data: membership } = await perf.db(() =>
+    sb
+      .from("loyalty_memberships")
+      .select("status")
+      .eq("user_id", uid)
+      .maybeSingle()
+  );
 
   if (membership?.status) {
     targets.push("moviback");
@@ -67,13 +69,15 @@ export async function GET() {
   let tournamentIds: string[] = [];
 
   if (phone.length >= 8) {
-    const { data: regs, error: regsErr } = await sb
-      .from("tournament_registrations")
-      .select("tournament_id,p1_phone,p2_phone")
-      .or(`p1_phone.eq.${phone},p2_phone.eq.${phone}`);
+    const { data: regs, error: regsErr } = await perf.db(() =>
+      sb
+        .from("tournament_registrations")
+        .select("tournament_id,p1_phone,p2_phone")
+        .or(`p1_phone.eq.${phone},p2_phone.eq.${phone}`)
+    );
 
     if (regsErr) {
-      return NextResponse.json({ error: regsErr.message }, { status: 500 });
+      return perf.json({ error: regsErr.message }, { status: 500 });
     }
 
     tournamentIds = Array.from(
@@ -87,38 +91,42 @@ export async function GET() {
 
   const now = new Date().toISOString();
 
-  const { data: baseRows, error: baseErr } = await sb
-    .from("communications")
-    .select(
-      "id,target,tournament_id,title,body,image_path,cta_label,cta_url,starts_at,ends_at,created_at"
-    )
-    .eq("is_active", true)
-    .in("target", targets)
-    .lte("starts_at", now)
-    .or(`ends_at.is.null,ends_at.gte.${now}`)
-    .order("created_at", { ascending: false });
-
-  if (baseErr) {
-    return NextResponse.json({ error: baseErr.message }, { status: 500 });
-  }
-
-  let tournamentRows: CommunicationRow[] = [];
-
-  if (tournamentIds.length > 0) {
-    const { data, error } = await sb
+  const { data: baseRows, error: baseErr } = await perf.db(() =>
+    sb
       .from("communications")
       .select(
         "id,target,tournament_id,title,body,image_path,cta_label,cta_url,starts_at,ends_at,created_at"
       )
       .eq("is_active", true)
-      .eq("target", "tournament")
-      .in("tournament_id", tournamentIds)
+      .in("target", targets)
       .lte("starts_at", now)
       .or(`ends_at.is.null,ends_at.gte.${now}`)
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+  );
+
+  if (baseErr) {
+    return perf.json({ error: baseErr.message }, { status: 500 });
+  }
+
+  let tournamentRows: CommunicationRow[] = [];
+
+  if (tournamentIds.length > 0) {
+    const { data, error } = await perf.db(() =>
+      sb
+        .from("communications")
+        .select(
+          "id,target,tournament_id,title,body,image_path,cta_label,cta_url,starts_at,ends_at,created_at"
+        )
+        .eq("is_active", true)
+        .eq("target", "tournament")
+        .in("tournament_id", tournamentIds)
+        .lte("starts_at", now)
+        .or(`ends_at.is.null,ends_at.gte.${now}`)
+        .order("created_at", { ascending: false })
+    );
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return perf.json({ error: error.message }, { status: 500 });
     }
 
     tournamentRows = (data ?? []) as CommunicationRow[];
@@ -127,19 +135,21 @@ export async function GET() {
   const merged = [...((baseRows ?? []) as CommunicationRow[]), ...tournamentRows];
 
   if (merged.length === 0) {
-    return NextResponse.json({ data: [] });
+    return perf.json({ data: [] });
   }
 
   const communicationIds = merged.map((row) => row.id);
 
-  const { data: states, error: statesErr } = await sb
-    .from("communication_user_states")
-    .select("communication_id,read_at,dismissed_at")
-    .eq("user_id", uid)
-    .in("communication_id", communicationIds);
+  const { data: states, error: statesErr } = await perf.db(() =>
+    sb
+      .from("communication_user_states")
+      .select("communication_id,read_at,dismissed_at")
+      .eq("user_id", uid)
+      .in("communication_id", communicationIds)
+  );
 
   if (statesErr) {
-    return NextResponse.json({ error: statesErr.message }, { status: 500 });
+    return perf.json({ error: statesErr.message }, { status: 500 });
   }
 
   const stateByCommunicationId = new Map<string, StateRow>();
@@ -164,5 +174,8 @@ export async function GET() {
         new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     );
 
-  return NextResponse.json({ data: out });
+  return perf.json({ data: out });
+  } finally {
+    perf.finish();
+  }
 }

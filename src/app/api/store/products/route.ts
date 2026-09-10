@@ -1,5 +1,5 @@
-import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { createRuntimePerf } from "@/lib/runtimePerf";
 
 export const runtime = "nodejs";
 
@@ -46,50 +46,58 @@ type StoreProductRow = {
 };
 
 export async function GET() {
+  const perf = createRuntimePerf("/api/store/products");
+  try {
   const sb = supabaseAdmin();
 
-  const { data: categories, error: categoriesError } = await sb
-    .from("store_categories")
-    .select("id,name,slug")
-    .eq("is_active", true)
-    .order("sort_order", { ascending: true })
-    .order("name", { ascending: true });
+  const { data: categories, error: categoriesError } = await perf.db(() =>
+    sb
+      .from("store_categories")
+      .select("id,name,slug")
+      .eq("is_active", true)
+      .order("sort_order", { ascending: true })
+      .order("name", { ascending: true })
+  );
 
   if (categoriesError) {
-    return NextResponse.json({ error: categoriesError.message }, { status: 500 });
+    return perf.json({ error: categoriesError.message }, { status: 500 });
   }
 
-  const { data: lines, error: linesError } = await sb
-    .from("store_lines")
-    .select("id,name,slug")
-    .eq("is_active", true)
-    .order("sort_order", { ascending: true })
-    .order("name", { ascending: true });
+  const { data: lines, error: linesError } = await perf.db(() =>
+    sb
+      .from("store_lines")
+      .select("id,name,slug")
+      .eq("is_active", true)
+      .order("sort_order", { ascending: true })
+      .order("name", { ascending: true })
+  );
 
   if (linesError) {
-    return NextResponse.json({ error: linesError.message }, { status: 500 });
+    return perf.json({ error: linesError.message }, { status: 500 });
   }
 
-  const { data: products, error: productsError } = await sb
-    .from("store_products")
-    .select(`
-      id,
-      category_id,
-      line_id,
-      name,
-      description,
-      base_price_euro,
-      base_price_points,
-      colors:store_product_colors(id,color_name,color_hex,image_path,is_active,sort_order),
-      sizes:store_product_sizes(id,size_label,is_active,sort_order),
-      stock:store_product_stock(color_id,size_id,stock_qty,is_active)
-    `)
-    .eq("is_active", true)
-    .order("sort_order", { ascending: true })
-    .order("created_at", { ascending: false });
+  const { data: products, error: productsError } = await perf.db(() =>
+    sb
+      .from("store_products")
+      .select(`
+        id,
+        category_id,
+        line_id,
+        name,
+        description,
+        base_price_euro,
+        base_price_points,
+        colors:store_product_colors(id,color_name,color_hex,image_path,is_active,sort_order),
+        sizes:store_product_sizes(id,size_label,is_active,sort_order),
+        stock:store_product_stock(color_id,size_id,stock_qty,is_active)
+      `)
+      .eq("is_active", true)
+      .order("sort_order", { ascending: true })
+      .order("created_at", { ascending: false })
+  );
 
   if (productsError) {
-    return NextResponse.json({ error: productsError.message }, { status: 500 });
+    return perf.json({ error: productsError.message }, { status: 500 });
   }
 
   const cleanCategories = (categories ?? []) as StoreLookupRow[];
@@ -143,11 +151,14 @@ export async function GET() {
     }))
     .filter((p) => p.colors.length > 0);
 
-  return NextResponse.json({
+  return perf.json({
     data: {
       categories: cleanCategories,
       lines: cleanLines,
       products: cleanProducts,
     },
   });
+  } finally {
+    perf.finish();
+  }
 }

@@ -1,5 +1,5 @@
-import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { createRuntimePerf } from "@/lib/runtimePerf";
 
 export const runtime = "nodejs";
 
@@ -65,71 +65,80 @@ export async function GET(
   _req: Request,
   ctx: { params: Promise<{ slug: string }> }
 ) {
+  const perf = createRuntimePerf("/api/circuits/[slug]");
   try {
     const { slug } = await ctx.params;
 
     if (!slug) {
-      return NextResponse.json({ error: "Slug mancante" }, { status: 400 });
+      return perf.json({ error: "Slug mancante" }, { status: 400 });
     }
 
     const sb = supabaseAdmin();
 
-    const { data: circuit, error: circuitErr } = await sb
-  .from("circuits")
-  .select(
-    "id,name,slug,tournament_type,status,hero_logo_url,hero_logo_2_url,hero_logo_3_url,hero_subtitle,theme_key,created_at,updated_at"
-  )
-  .eq("slug", slug)
-  .single();
+    const { data: circuit, error: circuitErr } = await perf.db(() =>
+      sb
+        .from("circuits")
+        .select(
+          "id,name,slug,tournament_type,status,hero_logo_url,hero_logo_2_url,hero_logo_3_url,hero_subtitle,theme_key,created_at,updated_at"
+        )
+        .eq("slug", slug)
+        .single()
+    );
 
     if (circuitErr) {
-      return NextResponse.json({ error: circuitErr.message }, { status: 500 });
+      return perf.json({ error: circuitErr.message }, { status: 500 });
     }
 
     if (!circuit) {
-      return NextResponse.json({ error: "Circuito non trovato" }, { status: 404 });
+      return perf.json({ error: "Circuito non trovato" }, { status: 404 });
     }
 
-    const { data: groups, error: groupsErr } = await sb
-      .from("circuit_ranking_groups")
-      .select("id,category,level")
-      .eq("circuit_id", circuit.id)
-      .order("category", { ascending: true })
-      .order("level", { ascending: true });
+    const { data: groups, error: groupsErr } = await perf.db(() =>
+      sb
+        .from("circuit_ranking_groups")
+        .select("id,category,level")
+        .eq("circuit_id", circuit.id)
+        .order("category", { ascending: true })
+        .order("level", { ascending: true })
+    );
 
     if (groupsErr) {
-      return NextResponse.json({ error: groupsErr.message }, { status: 500 });
+      return perf.json({ error: groupsErr.message }, { status: 500 });
     }
 
     const todayRome = todayRomeISODate();
 
-    const { data: futureTournaments, error: futureErr } = await sb
-      .from("tournaments")
-      .select("id,name,type,category,level,date,time,location,registrations_open,circuit_id")
-      .eq("circuit_id", circuit.id)
-      .gte("date", todayRome)
-      .order("date", { ascending: true })
-      .order("time", { ascending: true });
+    const { data: futureTournaments, error: futureErr } = await perf.db(() =>
+      sb
+        .from("tournaments")
+        .select("id,name,type,category,level,date,time,location,registrations_open,circuit_id")
+        .eq("circuit_id", circuit.id)
+        .gte("date", todayRome)
+        .order("date", { ascending: true })
+        .order("time", { ascending: true })
+    );
 
     if (futureErr) {
-      return NextResponse.json({ error: futureErr.message }, { status: 500 });
+      return perf.json({ error: futureErr.message }, { status: 500 });
     }
 
     const resultsByGroupId = new Map<string, PublicResultRow[]>();
     const groupIds = (groups ?? []).map((group) => group.id);
 
     if (groupIds.length > 0) {
-      const { data: allResults, error: resultsErr } = await sb
-        .from("circuit_results")
-        .select(
-          "ranking_group_id,source_tournament_id,tournament_name,tournament_type,tournament_date,player_name,points,placement,created_at"
-        )
-        .in("ranking_group_id", groupIds)
-        .order("tournament_date", { ascending: false, nullsFirst: false })
-        .order("created_at", { ascending: true });
+      const { data: allResults, error: resultsErr } = await perf.db(() =>
+        sb
+          .from("circuit_results")
+          .select(
+            "ranking_group_id,source_tournament_id,tournament_name,tournament_type,tournament_date,player_name,points,placement,created_at"
+          )
+          .in("ranking_group_id", groupIds)
+          .order("tournament_date", { ascending: false, nullsFirst: false })
+          .order("created_at", { ascending: true })
+      );
 
       if (resultsErr) {
-        return NextResponse.json({ error: resultsErr.message }, { status: 500 });
+        return perf.json({ error: resultsErr.message }, { status: 500 });
       }
 
       for (const row of (allResults ?? []) as PublicResultRow[]) {
@@ -250,7 +259,7 @@ export async function GET(
       });
     }
 
-    return NextResponse.json({
+    return perf.json({
   circuit: {
     id: circuit.id,
     name: circuit.name,
@@ -266,9 +275,11 @@ export async function GET(
   ranking_groups: rankingGroups,
 });
   } catch (e: any) {
-    return NextResponse.json(
+    return perf.json(
       { error: e?.message ?? "Errore interno" },
       { status: 500 }
     );
+  } finally {
+    perf.finish();
   }
 }

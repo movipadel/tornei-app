@@ -1,6 +1,6 @@
-import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { formatPlayerName } from "@/lib/formatPlayerName";
+import { createRuntimePerf } from "@/lib/runtimePerf";
 
 export const runtime = "nodejs";
 
@@ -101,22 +101,26 @@ function roundRank(label: string | null | undefined): number {
 }
 
 export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> }) {
+  const perf = createRuntimePerf("/api/tournaments/[id]/live");
+  try {
   const { id: tournamentId } = await ctx.params;
   const sb = supabaseAdmin();
 
 
   // ultima run (running/finished) con mode
-  const { data: run, error: runErr } = await sb
-    .from("tournament_runs")
-    .select("id,status,created_at,mode,rules")
-    .eq("tournament_id", tournamentId)
-    .in("status", ["running", "finished"])
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  const { data: run, error: runErr } = await perf.db(() =>
+    sb
+      .from("tournament_runs")
+      .select("id,status,created_at,mode,rules")
+      .eq("tournament_id", tournamentId)
+      .in("status", ["running", "finished"])
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle()
+  );
 
-  if (runErr) return NextResponse.json({ error: runErr.message }, { status: 500 });
-  if (!run?.id) return NextResponse.json({ status: "no-run" });
+  if (runErr) return perf.json({ error: runErr.message }, { status: 500 });
+  if (!run?.id) return perf.json({ status: "no-run" });
 
   const mode = String((run as any)?.mode ?? "");
 
@@ -127,45 +131,51 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     const runId = String(run.id);
 
     const [pairsResult, groupsResult, matchesResult] = await Promise.all([
-      sb
-        .from("tournament_run_pairs")
-        .select("id,name,created_at")
-        .eq("run_id", runId)
-        .order("created_at", { ascending: true }),
-      sb
-        .from("tournament_run_groups")
-        .select("id,name,position")
-        .eq("run_id", runId)
-        .order("position", { ascending: true }),
-      sb
-        .from("tournament_run_matches_fp")
-        .select(
+      perf.db(() =>
+        sb
+          .from("tournament_run_pairs")
+          .select("id,name,created_at")
+          .eq("run_id", runId)
+          .order("created_at", { ascending: true })
+      ),
+      perf.db(() =>
+        sb
+          .from("tournament_run_groups")
+          .select("id,name,position")
+          .eq("run_id", runId)
+          .order("position", { ascending: true })
+      ),
+      perf.db(() =>
+        sb
+          .from("tournament_run_matches_fp")
+          .select(
+            `
+            id,stage,group_id,round_label,home_pair_id,away_pair_id,
+            court,starts_at,completed_at,created_at,
+            home_games,away_games,
+            set1_home_games,set1_away_games,
+            set2_home_games,set2_away_games,
+            set3_home_games,set3_away_games,
+            home_sets,away_sets
           `
-          id,stage,group_id,round_label,home_pair_id,away_pair_id,
-          court,starts_at,completed_at,created_at,
-          home_games,away_games,
-          set1_home_games,set1_away_games,
-          set2_home_games,set2_away_games,
-          set3_home_games,set3_away_games,
-          home_sets,away_sets
-        `
-        )
-        .eq("run_id", runId)
-        .order("stage", { ascending: true })
-        .order("starts_at", { ascending: true })
-        .order("created_at", { ascending: true }),
+          )
+          .eq("run_id", runId)
+          .order("stage", { ascending: true })
+          .order("starts_at", { ascending: true })
+          .order("created_at", { ascending: true })
+      ),
     ]);
 
     const { data: pairs, error: perr } = pairsResult;
 
-    if (perr) return NextResponse.json({ error: perr.message }, { status: 500 });
+    if (perr) return perf.json({ error: perr.message }, { status: 500 });
 
     const pairsList = (pairs ?? []) as any[];
     const pairById = new Map<string, any>(pairsList.map((p) => [String(p.id), p]));
 
     const { data: groups, error: gerr } = groupsResult;
 
-    if (gerr) return NextResponse.json({ error: gerr.message }, { status: 500 });
+    if (gerr) return perf.json({ error: gerr.message }, { status: 500 });
 
     const groupsList = (groups ?? []) as any[];
     const groupById = new Map<string, any>(groupsList.map((g) => [String(g.id), g]));
@@ -174,12 +184,14 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     // group_pairs
     let groupPairs: any[] = [];
     if (groupIds.length) {
-      const { data: gp, error: gperr } = await sb
-        .from("tournament_run_group_pairs")
-        .select("group_id,pair_id")
-        .in("group_id", groupIds);
+      const { data: gp, error: gperr } = await perf.db(() =>
+        sb
+          .from("tournament_run_group_pairs")
+          .select("group_id,pair_id")
+          .in("group_id", groupIds)
+      );
 
-      if (gperr) return NextResponse.json({ error: gperr.message }, { status: 500 });
+      if (gperr) return perf.json({ error: gperr.message }, { status: 500 });
       groupPairs = (gp ?? []) as any[];
     }
 
@@ -194,7 +206,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
 
     const { data: matches, error: merr } = matchesResult;
 
-    if (merr) return NextResponse.json({ error: merr.message }, { status: 500 });
+    if (merr) return perf.json({ error: merr.message }, { status: 500 });
 
     const matchList = (matches ?? []) as any[];
 
@@ -422,7 +434,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
       matchIds: r.matches.map((m) => String(m.id)),
     }));
 
-    return NextResponse.json({
+    return perf.json({
       mode: "fixed_pairs",
       status: run.status,
       runId: run.id,
@@ -442,40 +454,46 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   const isMisto = runCategory === "misto";
 
   const registrationsRequest = isMisto
-    ? sb
-        .from("tournament_registrations")
-        .select("p1_name,p1_gender")
-        .eq("tournament_id", tournamentId)
+    ? perf.db(() =>
+        sb
+          .from("tournament_registrations")
+          .select("p1_name,p1_gender")
+          .eq("tournament_id", tournamentId)
+      )
     : Promise.resolve({ data: [], error: null });
 
   const [registrationsResult, participantsResult, turnsResult] = await Promise.all([
     registrationsRequest,
-    sb
-      .from("tournament_run_participants")
-      .select("id,name")
-      .eq("run_id", run.id),
-    sb
-      .from("tournament_run_turns")
-      .select(
-        `
-        id,
-        turn_number,
-        tournament_run_matches (
+    perf.db(() =>
+      sb
+        .from("tournament_run_participants")
+        .select("id,name")
+        .eq("run_id", run.id)
+    ),
+    perf.db(() =>
+      sb
+        .from("tournament_run_turns")
+        .select(
+          `
           id,
-          match_number,
-          team1_games,
-          team2_games,
-          completed_at,
-          p1_id,p2_id,p3_id,p4_id
+          turn_number,
+          tournament_run_matches (
+            id,
+            match_number,
+            team1_games,
+            team2_games,
+            completed_at,
+            p1_id,p2_id,p3_id,p4_id
+          )
+        `
         )
-      `
-      )
-      .eq("run_id", run.id)
-      .order("turn_number", { ascending: true }),
+        .eq("run_id", run.id)
+        .order("turn_number", { ascending: true })
+    ),
   ]);
 
   const { data: regs, error: rErr } = registrationsResult;
-  if (rErr) return NextResponse.json({ error: rErr.message }, { status: 500 });
+  if (rErr) return perf.json({ error: rErr.message }, { status: 500 });
 
   const sexByName = new Map<string, "m" | "f">();
   for (const r of regs ?? []) {
@@ -494,14 +512,14 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
 
   const { data: participants, error: pErr } = participantsResult;
 
-  if (pErr) return NextResponse.json({ error: pErr.message }, { status: 500 });
+  if (pErr) return perf.json({ error: pErr.message }, { status: 500 });
 
   const nameById = new Map((participants ?? []).map((p: any) => [p.id, p.name]));
   const allIds = (participants ?? []).map((p: any) => p.id);
 
   const { data: turns, error: tErr } = turnsResult;
 
-  if (tErr) return NextResponse.json({ error: tErr.message }, { status: 500 });
+  if (tErr) return perf.json({ error: tErr.message }, { status: 500 });
 
   const turnsOut = (turns ?? []).map((t: any) => {
     const matches = (t.tournament_run_matches ?? []).sort((a: any, b: any) => a.match_number - b.match_number);
@@ -628,7 +646,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     return a.name.localeCompare(b.name);
   });
 
-  return NextResponse.json({
+  return perf.json({
   mode: "baraonda",
   status: run.status,
   runId: run.id,
@@ -639,4 +657,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   turns: turnsOut,
 });
 
+  } finally {
+    perf.finish();
+  }
 }
