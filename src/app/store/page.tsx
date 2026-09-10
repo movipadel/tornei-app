@@ -34,12 +34,9 @@ type StoreSize = {
 };
 
 type StoreStock = {
-  id: string;
-  product_id: string;
   color_id: string;
   size_id: string | null;
   stock_qty: number | null;
-  sku: string | null;
 };
 
 type Product = {
@@ -50,9 +47,6 @@ type Product = {
   line_id: string;
   base_price_euro: number;
   base_price_points: number;
-  allow_euro: boolean;
-  allow_points: boolean;
-  allow_mixed: boolean;
   category?: Category;
   line?: Line;
   colors: StoreColor[];
