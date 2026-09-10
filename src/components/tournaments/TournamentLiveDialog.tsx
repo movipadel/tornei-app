@@ -629,12 +629,27 @@ export default function TournamentLiveDialog({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const timerRef = useRef<number | null>(null);
+  const inFlightRef = useRef(false);
+  const refreshAfterFlightRef = useRef(false);
+  const openRef = useRef(open);
+  const tournamentIdRef = useRef(tournamentId);
+  openRef.current = open;
+  tournamentIdRef.current = tournamentId;
 
   async function load() {
+    if (!openRef.current || document.visibilityState !== "visible") return;
+
+    if (inFlightRef.current) {
+      refreshAfterFlightRef.current = true;
+      return;
+    }
+
+    inFlightRef.current = true;
+    const requestedTournamentId = tournamentIdRef.current;
     setLoading(true);
     setErrorMsg(null);
     try {
-      const res = await fetch(`/api/tournaments/${tournamentId}/live`, { cache: "no-store" });
+      const res = await fetch(`/api/tournaments/${requestedTournamentId}/live`, { cache: "no-store" });
       const json = (await res.json().catch(() => null)) as any;
 
       if (!res.ok) {
@@ -642,11 +657,29 @@ export default function TournamentLiveDialog({
         throw new Error(String(msg));
       }
 
+      if (requestedTournamentId !== tournamentIdRef.current) {
+        refreshAfterFlightRef.current = true;
+        return;
+      }
+
       setData(json as LiveData);
     } catch (e: any) {
-      setErrorMsg(e?.message ?? "Errore");
+      if (requestedTournamentId === tournamentIdRef.current) {
+        setErrorMsg(e?.message ?? "Errore");
+      }
     } finally {
       setLoading(false);
+      inFlightRef.current = false;
+
+      const shouldRefreshAgain = refreshAfterFlightRef.current;
+      refreshAfterFlightRef.current = false;
+      if (
+        shouldRefreshAgain &&
+        openRef.current &&
+        document.visibilityState === "visible"
+      ) {
+        window.setTimeout(() => void load(), 0);
+      }
     }
   }
 
@@ -654,15 +687,23 @@ export default function TournamentLiveDialog({
     if (!open) {
       if (timerRef.current) window.clearInterval(timerRef.current);
       timerRef.current = null;
+      refreshAfterFlightRef.current = false;
       return;
     }
 
-    load();
-    timerRef.current = window.setInterval(() => load(), 5000);
+    const refreshWhenVisible = () => {
+      if (document.visibilityState !== "visible") return;
+      void load();
+    };
+
+    refreshWhenVisible();
+    timerRef.current = window.setInterval(refreshWhenVisible, 5000);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
 
     return () => {
       if (timerRef.current) window.clearInterval(timerRef.current);
       timerRef.current = null;
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, tournamentId]);

@@ -120,64 +120,50 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
 
   const mode = String((run as any)?.mode ?? "");
 
-  // ✅ Detect "misto" dalla run.rules (come fa la UI)
-const runCategory = String((run as any)?.rules?.category ?? "").toLowerCase().trim();
-const isMisto = runCategory === "misto";
-
-// ✅ Mappa: nome normalizzato -> sex ("m" | "f")
-// (si popola SOLO per misto; altrimenti resta vuota e non rompe nulla)
-const sexByName = new Map<string, "m" | "f">();
-
-if (isMisto) {
-  const { data: regs, error: rErr } = await sb
-    .from("tournament_registrations")
-    .select("p1_name,p1_gender")
-    .eq("tournament_id", tournamentId);
-
-  if (rErr) return NextResponse.json({ error: rErr.message }, { status: 500 });
-
-  for (const r of regs ?? []) {
-    const rawName = String((r as any).p1_name ?? "");
-    const rawGender = String((r as any).p1_gender ?? "").toLowerCase().trim();
-
-    const key = formatPlayerName(rawName);
-
-    // accettiamo varianti "M/F", "m/f", "male/female"
-    const g =
-      rawGender === "m" || rawGender === "male"
-        ? "m"
-        : rawGender === "f" || rawGender === "female"
-        ? "f"
-        : null;
-
-    if (g) sexByName.set(key, g);
-  }
-}
-
   /** ============================================================
    *  FIXED PAIRS (PUBBLICO)
    *  ============================================================ */
   if (mode === "fixed_pairs") {
     const runId = String(run.id);
 
-    // pairs
-    const { data: pairs, error: perr } = await sb
-      .from("tournament_run_pairs")
-      .select("id,name,created_at")
-      .eq("run_id", runId)
-      .order("created_at", { ascending: true });
+    const [pairsResult, groupsResult, matchesResult] = await Promise.all([
+      sb
+        .from("tournament_run_pairs")
+        .select("id,name,created_at")
+        .eq("run_id", runId)
+        .order("created_at", { ascending: true }),
+      sb
+        .from("tournament_run_groups")
+        .select("id,name,position")
+        .eq("run_id", runId)
+        .order("position", { ascending: true }),
+      sb
+        .from("tournament_run_matches_fp")
+        .select(
+          `
+          id,stage,group_id,round_label,home_pair_id,away_pair_id,
+          court,starts_at,completed_at,created_at,
+          home_games,away_games,
+          set1_home_games,set1_away_games,
+          set2_home_games,set2_away_games,
+          set3_home_games,set3_away_games,
+          home_sets,away_sets
+        `
+        )
+        .eq("run_id", runId)
+        .order("stage", { ascending: true })
+        .order("starts_at", { ascending: true })
+        .order("created_at", { ascending: true }),
+    ]);
+
+    const { data: pairs, error: perr } = pairsResult;
 
     if (perr) return NextResponse.json({ error: perr.message }, { status: 500 });
 
     const pairsList = (pairs ?? []) as any[];
     const pairById = new Map<string, any>(pairsList.map((p) => [String(p.id), p]));
 
-    // groups
-    const { data: groups, error: gerr } = await sb
-      .from("tournament_run_groups")
-      .select("id,name,position")
-      .eq("run_id", runId)
-      .order("position", { ascending: true });
+    const { data: groups, error: gerr } = groupsResult;
 
     if (gerr) return NextResponse.json({ error: gerr.message }, { status: 500 });
 
@@ -206,14 +192,7 @@ if (isMisto) {
       pairIdsByGroupId.set(gid, arr);
     }
 
-    // matches fp
-    const { data: matches, error: merr } = await sb
-      .from("tournament_run_matches_fp")
-      .select("*")
-      .eq("run_id", runId)
-      .order("stage", { ascending: true })
-      .order("starts_at", { ascending: true })
-      .order("created_at", { ascending: true });
+    const { data: matches, error: merr } = matchesResult;
 
     if (merr) return NextResponse.json({ error: merr.message }, { status: 500 });
 
@@ -459,36 +438,68 @@ if (isMisto) {
    *  BARAONDA (come prima)
    *  ============================================================ */
 
-  // participants (per nomi + resting)
-  const { data: participants, error: pErr } = await sb
-    .from("tournament_run_participants")
-    .select("id,name")
-    .eq("run_id", run.id);
+  const runCategory = String((run as any)?.rules?.category ?? "").toLowerCase().trim();
+  const isMisto = runCategory === "misto";
+
+  const registrationsRequest = isMisto
+    ? sb
+        .from("tournament_registrations")
+        .select("p1_name,p1_gender")
+        .eq("tournament_id", tournamentId)
+    : Promise.resolve({ data: [], error: null });
+
+  const [registrationsResult, participantsResult, turnsResult] = await Promise.all([
+    registrationsRequest,
+    sb
+      .from("tournament_run_participants")
+      .select("id,name")
+      .eq("run_id", run.id),
+    sb
+      .from("tournament_run_turns")
+      .select(
+        `
+        id,
+        turn_number,
+        tournament_run_matches (
+          id,
+          match_number,
+          team1_games,
+          team2_games,
+          completed_at,
+          p1_id,p2_id,p3_id,p4_id
+        )
+      `
+      )
+      .eq("run_id", run.id)
+      .order("turn_number", { ascending: true }),
+  ]);
+
+  const { data: regs, error: rErr } = registrationsResult;
+  if (rErr) return NextResponse.json({ error: rErr.message }, { status: 500 });
+
+  const sexByName = new Map<string, "m" | "f">();
+  for (const r of regs ?? []) {
+    const rawName = String((r as any).p1_name ?? "");
+    const rawGender = String((r as any).p1_gender ?? "").toLowerCase().trim();
+    const key = formatPlayerName(rawName);
+    const gender =
+      rawGender === "m" || rawGender === "male"
+        ? "m"
+        : rawGender === "f" || rawGender === "female"
+        ? "f"
+        : null;
+
+    if (gender) sexByName.set(key, gender);
+  }
+
+  const { data: participants, error: pErr } = participantsResult;
 
   if (pErr) return NextResponse.json({ error: pErr.message }, { status: 500 });
 
   const nameById = new Map((participants ?? []).map((p: any) => [p.id, p.name]));
   const allIds = (participants ?? []).map((p: any) => p.id);
 
-  // turns + matches
-  const { data: turns, error: tErr } = await sb
-    .from("tournament_run_turns")
-    .select(
-      `
-      id,
-      turn_number,
-      tournament_run_matches (
-        id,
-        match_number,
-        team1_games,
-        team2_games,
-        completed_at,
-        p1_id,p2_id,p3_id,p4_id
-      )
-    `
-    )
-    .eq("run_id", run.id)
-    .order("turn_number", { ascending: true });
+  const { data: turns, error: tErr } = turnsResult;
 
   if (tErr) return NextResponse.json({ error: tErr.message }, { status: 500 });
 
