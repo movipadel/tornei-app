@@ -43,20 +43,32 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Membership non trovata" }, { status: 404 });
   }
 
-  const { data: user, error: userErr } = await sb
-    .from("users")
-    .select("id,full_name,phone,email")
-    .eq("id", membership.user_id)
-    .single();
+  const [userResult, transactionsResult, certificateResult] = await Promise.all([
+    sb
+      .from("users")
+      .select("id,full_name,phone,email")
+      .eq("id", membership.user_id)
+      .single(),
+    sb
+      .from("loyalty_transactions")
+      .select("points_delta")
+      .eq("membership_id", membership.id),
+    sb
+      .from("medical_certificates")
+      .select("status,expiry_date,uploaded_at")
+      .eq("user_id", membership.user_id)
+      .order("uploaded_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ]);
+
+  const { data: user, error: userErr } = userResult;
 
   if (userErr) {
     return NextResponse.json({ error: userErr.message }, { status: 500 });
   }
 
-  const { data: transactions, error: txErr } = await sb
-    .from("loyalty_transactions")
-    .select("points_delta")
-    .eq("membership_id", membership.id);
+  const { data: transactions, error: txErr } = transactionsResult;
 
   if (txErr) {
     return NextResponse.json({ error: txErr.message }, { status: 500 });
@@ -67,13 +79,7 @@ export async function POST(req: Request) {
     0
   );
 
-  const { data: cert, error: certErr } = await sb
-    .from("medical_certificates")
-    .select("status,expiry_date,uploaded_at")
-    .eq("user_id", membership.user_id)
-    .order("uploaded_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  const { data: cert, error: certErr } = certificateResult;
 
   if (certErr) {
     return NextResponse.json({ error: certErr.message }, { status: 500 });

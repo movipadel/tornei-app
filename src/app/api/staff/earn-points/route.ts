@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { guardStaff, getStaffSessionOrNull } from "@/lib/staffGuard";
+import { getStaffSessionOrNull } from "@/lib/staffGuard";
 
 export const runtime = "nodejs";
 
@@ -202,16 +202,13 @@ function promoTargetMatches(promo: any, membership: any, nowParts: ReturnType<ty
 }
 
 export async function POST(req: Request) {
-  const denied = await guardStaff();
-  if (denied) return denied;
-
   const session = await getStaffSessionOrNull();
 
-  if (!session?.sid) {
-    return NextResponse.json(
-      { error: "Sessione staff non valida" },
-      { status: 401 }
-    );
+  if (
+    !session?.sid ||
+    (session.role !== "admin" && session.role !== "staff")
+  ) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   const body = await req.json().catch(() => ({}));
