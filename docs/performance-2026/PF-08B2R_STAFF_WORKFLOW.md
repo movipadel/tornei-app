@@ -6,6 +6,8 @@ The primary staff experience is one queue named **Richieste premio**. Staff work
 
 The queue is rooted in all redemptions and left-joins optional fulfillment. It must therefore include services, partner rewards, new physical requests, legacy physical requests without orders, and terminal history.
 
+Every newly committed redemption also sends a post-commit Telegram alert to draw staff attention to this queue. The alert is not a task system: staff must open **Richieste premio** to inspect the authoritative request and perform its next action. A Telegram failure never removes, delays, or changes the queue item.
+
 ## Queue information
 
 Each row/card shows only operationally useful information:
@@ -125,6 +127,7 @@ Filters: actionable, requested, processing, ready, completed, cancelled/rejected
 - enforce idempotency and exactly-once effects;
 - determine QR deliverability;
 - create notifications only after successful commits;
+- create one PF-07 Telegram alert for every newly committed redemption, with no alert on idempotent replay, rollback, or validation failure;
 - surface invariant failures for intervention instead of silently succeeding.
 
 Authentication itself is unchanged. The target minimizes privilege fragmentation by permitting ordinary staff to complete the normal lifecycle while reserving classification and exception decisions for admins.
@@ -150,5 +153,5 @@ Before `ready`, the UI may show a request reference but not an actionable QR. A 
 - No independent Store delivery after redemption delivery or vice versa.
 - No generic manual points adjustment as the normal refund path.
 - No category-name inference in the queue or mutation commands.
+- No staff action performed from Telegram; it is an alert that links attention back to the application queue.
 - Every failure is either a full rollback or an explicit blocked/exception state.
-

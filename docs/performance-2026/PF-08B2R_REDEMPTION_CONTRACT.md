@@ -68,8 +68,22 @@ For a new redemption request, the backend performs one atomic, idempotent transa
 12. For `STORE_PRODUCT` and `CUSTOM_PHYSICAL`, create the internal Store order and item atomically. Failure rolls back the complete request.
 13. Generate and persist the QR token, but return an explicit `qr_deliverable` flag based on state.
 14. Commit the stable result into the idempotency registry.
+15. After the database transaction has committed, the server's PF-07 post-commit notification flow sends one Telegram alert for this **new** redemption.
 
 There is no warning-only success for a new physical request. A new request either has all required internal fulfillment data or does not commit.
+
+### Telegram alert contract
+
+Every successfully committed **new** redemption sends one Telegram notification to staff, regardless of whether its fulfillment type is `service`, `store_product`, `custom_physical`, or `partner`.
+
+- Telegram is an alert channel only. It never approves, prepares, delivers, cancels, or otherwise changes a redemption.
+- The database transaction, durable idempotency result, points debit, inventory reservation, and internal fulfillment all succeed or roll back independently of Telegram delivery.
+- The PF-07 post-commit architecture receives an ephemeral, server-derived alert payload only from the new-commit path. It must send only after the RPC/database call has committed.
+- An idempotent replay returns the stored business result without an alert payload and must not create a second Telegram notification.
+- A validation failure, rollback, or failed/unfinished request emits no Telegram notification.
+- Telegram delivery failure is logged/retried by the notification mechanism where available, but it does not turn the committed request into a failure and must not cause another redemption mutation.
+
+The message uses business language and directs staff to **Richieste premio**. It includes customer, reward, points, fulfillment type, initial operational status, and the next staff action. For `store_product`, it also includes product and selected color/size; for `custom_physical`, the relevant preparation/fulfillment instruction; for `partner`, the partner handoff/reference context when available; and for `service`, an explicit statement that no Store-order handling is required. It must not expose redemption IDs, order IDs, raw statuses, database table names, secrets, or other technical implementation details.
 
 ## 4. Point debit contract
 
@@ -169,4 +183,4 @@ Compatibility reads may use a versioned, explicit mapping table/view or reviewed
 11. Pre-delivery cancellation terminates the request, refunds points, releases actual reservations once, cancels linked fulfillment, and disables QR.
 12. Refund is a positive linked ledger entry; it never deletes or changes the debit.
 13. Historical records coexist through nullable snapshots, compatibility mapping, explicit repair states, and no forced history rewrite.
-
+14. Every new committed request creates one post-commit Telegram alert; the application queue remains the authoritative place to process it.

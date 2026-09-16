@@ -23,7 +23,7 @@ The rewrite should preserve these proven patterns unless implementation review f
 - stable error codes mapped by the server route;
 - server-only function execution with `PUBLIC`, `anon`, and `authenticated` denied;
 - no PII in stored idempotency results;
-- post-commit notifications only for newly created results;
+- PF-07 post-commit Telegram notifications for every newly committed redemption, never for replayed, failed, or rolled-back requests;
 - transactional and concurrency test structure, forced-failure tests, ACL tests, and rollback assertions.
 
 ## Change in the request RPC
@@ -79,6 +79,14 @@ The stable stored result should minimally include:
 
 On replay, return the stored business result with `created=false`, `replayed=true`, and no duplicate notification request. Consider omitting `qr_token` from pre-ready HTTP responses while keeping it in the server-side stored result; route/API compatibility must choose one representation consistently.
 
+### Telegram notification contract
+
+Change the current B2 notification behavior from "only when a fulfillment order exists" to **one staff alert for every newly committed redemption**. The request RPC returns an ephemeral PF-07 notification payload only to the caller that created the committed result; it is not stored in the idempotency result and contains no technical database identifiers.
+
+The post-commit route/service uses that payload to send Telegram after the database call succeeds. Its message includes the customer, reward, points, human fulfillment type, initial operational status, and next action in **Richieste premio**. It adds product/color/size for `store_product`, preparation information for `custom_physical`, partner handoff context when present, and a clear "no Store order handling required" instruction for `service`.
+
+Telegram must not participate in transaction success, state transitions, or queue processing. Sending failure is a notification concern, not a redemption failure. A replay, validation failure, database rollback, or incomplete idempotency claim sends no alert.
+
 ## Add lifecycle commands
 
 PF-08B2 cannot be considered complete with only the request RPC. Future implementation needs separate idempotent transactional commands for:
@@ -96,7 +104,7 @@ Each command has its own idempotency key. A key is not shared across the whole l
 
 | Boundary | Protection required |
 |---|---|
-| Redemption request | No duplicate redemption, debit, stock decrement, order/item, or notification |
+| Redemption request | No duplicate redemption, debit, stock decrement, order/item, or Telegram alert |
 | Staff processing/readiness | No repeated transition, timestamp, supplier event, or side effect |
 | Cancellation/rejection | No duplicate refund, reward restoration, Store restoration, or order cancellation |
 | Final delivery | No duplicate delivery event or linked-order transition; identical retry returns prior outcome |
@@ -169,6 +177,8 @@ Retain current rollback/concurrency/ACL coverage and change or add cases for:
 - custom physical order/item without Store stock mutation;
 - partner flow without Store order;
 - atomic order/item failure rollback;
+- exactly one PF-07 Telegram alert payload for each newly committed redemption across all four fulfillment types;
+- no Telegram alert payload for idempotent replay, validation failure, or rollback; Telegram transport failure cannot roll back a committed redemption;
 - requested → processing → ready → delivered synchronization;
 - forbidden requested → delivered and terminal rewinds;
 - cancellation/rejection full refund and both inventory releases exactly once;
@@ -201,4 +211,3 @@ Do not replace the current B2 or integrate routes until:
 - unified staff roles and supplier-cancellation policy are confirmed;
 - request plus lifecycle command tests pass in isolated staging;
 - rollback and deployment ordering are documented.
-
