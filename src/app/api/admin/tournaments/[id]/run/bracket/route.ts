@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { guardAdmin } from "@/lib/adminGuard";
+import { buildFixedPairsSixBracketPlan } from "@/lib/fixedPairsSixBracket";
 
 export const runtime = "nodejs";
 
@@ -293,7 +294,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   const makeMatchRow = (
     roundLabel: string,
     home: string | null,
-    away: string | null
+    away: string | null,
+    createdAt?: string
   ) => ({
     run_id: runId,
     stage: "bracket",
@@ -312,6 +314,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     set3_away_games: null,
     home_sets: null,
     away_sets: null,
+    ...(createdAt ? { created_at: createdAt } : {}),
   });
 
   function entryPairId(entry: BracketEntry) {
@@ -472,6 +475,52 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
 
   const rows: any[] = [];
 
+  const specialSixPlan = buildFixedPairsSixBracketPlan(
+    groupsRanked,
+    qualifiersCount,
+    qualified
+  );
+
+  if (specialSixPlan) {
+    const orderBase = Date.now();
+    let orderIndex = 0;
+    const orderedMatchRow = (
+      roundLabel: string,
+      home: string | null,
+      away: string | null
+    ) => {
+      orderIndex += 1;
+      return makeMatchRow(
+        roundLabel,
+        home,
+        away,
+        new Date(orderBase + orderIndex * 1000).toISOString()
+      );
+    };
+
+    for (const quarterfinal of specialSixPlan.quarterfinals) {
+      rows.push(
+        orderedMatchRow(
+          roundLabelForSize(8),
+          quarterfinal.home.pairId,
+          quarterfinal.away.pairId
+        )
+      );
+    }
+
+    for (const semifinalBye of specialSixPlan.semifinalByes) {
+      rows.push(
+        orderedMatchRow(
+          roundLabelForSize(4),
+          semifinalBye.pairId,
+          null
+        )
+      );
+    }
+
+    rows.push(orderedMatchRow(roundLabelForSize(2), null, null));
+  } else {
+
   // ============================================================
   // PLAY-IN
   // Le peggiori qualificate giocano il play-in.
@@ -545,6 +594,7 @@ for (let i = 0; i < playInMatches; i++) {
 
     curSize = nextSize;
   }
+  }
 
   // 11) INSERT + SALVO DRAW IN RULES
   const { error: insErr } = await sb.from("tournament_run_matches_fp").insert(rows);
@@ -570,7 +620,9 @@ for (let i = 0; i < playInMatches; i++) {
     qualifiersCount,
     seeds,
     structure: {
-      type: "group_rank_band_seeded",
+      type: specialSixPlan
+        ? "two_groups_of_three_position_protected"
+        : "group_rank_band_seeded",
       size,
       mainSize,
       playInMatches,
@@ -578,8 +630,15 @@ for (let i = 0; i < playInMatches; i++) {
       rules: [
         "Qualificazione per fasce: prime, seconde, terze, quarte...",
         "Ultima fascia parziale ordinata per Pt, DG, GW, sorteggio",
-        "Play-in tra le peggiori qualificate quando il numero non è potenza di 2",
-        "Primo turno evita stesso girone ove possibile",
+        ...(specialSixPlan
+          ? [
+              "Due gironi da tre: seconda X contro terza Y e seconda Y contro terza X",
+              "Le vincitrici dei gironi ricevono il bye nel lato della seconda dell'altro girone",
+            ]
+          : [
+              "Play-in tra le peggiori qualificate quando il numero non è potenza di 2",
+              "Primo turno evita stesso girone ove possibile",
+            ]),
       ],
     },
   };
@@ -600,7 +659,9 @@ for (let i = 0; i < playInMatches; i++) {
       generated: true,
       qualifiersCount,
       structure: {
-        type: "group_rank_band_seeded",
+        type: specialSixPlan
+          ? "two_groups_of_three_position_protected"
+          : "group_rank_band_seeded",
         size,
         mainSize,
         playInMatches,
