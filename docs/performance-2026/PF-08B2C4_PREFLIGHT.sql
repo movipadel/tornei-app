@@ -22,7 +22,7 @@ WITH target(reward_id,expected_name,target_type,current_product_id,target_produc
 ('bc0249ca-ea94-448f-afc4-27614468c9c6','T-shirt Tecnica UOMO','store_product','721949fd-bb78-46e5-a723-75e8c97cd240','721949fd-bb78-46e5-a723-75e8c97cd240','T-Shirt Tecnica Uomo',true,true),
 ('1b1718ab-aba8-44bb-a2de-d90992e596a7','Tubo Palline','store_product',NULL,'f442259b-1e5b-437a-b0ba-3d056d9d617d','Palline Nucleon',false,false)
 ), audit AS (
- SELECT t.*,r.name actual_name,r.is_active,r.fulfillment_type,r.store_product_id,r.requires_store_variant,p.name actual_product_name,p.is_active product_active,
+ SELECT t.*,r.name actual_name,r.is_active,NULLIF(to_jsonb(r)->>'fulfillment_type','') AS fulfillment_type,r.store_product_id,r.requires_store_variant,p.name actual_product_name,p.is_active product_active,
  (SELECT count(*) FROM public.store_product_stock s WHERE s.product_id=t.target_product_id AND s.is_active) active_stock_count
  FROM target t LEFT JOIN public.rewards_catalog r ON r.id=t.reward_id LEFT JOIN public.store_products p ON p.id=t.target_product_id
 )
@@ -41,7 +41,7 @@ SELECT section,payload FROM (
   'asciugamano_topology_ok',(SELECT active_stock_count=2 AND EXISTS(SELECT 1 FROM public.store_product_colors c WHERE c.product_id=target_product_id AND c.is_active AND c.color_name='Grigio') AND EXISTS(SELECT 1 FROM public.store_product_colors c WHERE c.product_id=target_product_id AND c.is_active AND c.color_name='Lime') AND EXISTS(SELECT 1 FROM public.store_product_sizes z WHERE z.product_id=target_product_id AND z.is_active AND z.size_label='UNICA') FROM audit WHERE reward_id='46709f62-3f5a-4025-965a-c5fcedcec826'),
   'tubo_zero_stock_ok',(SELECT active_stock_count=0 AND EXISTS(SELECT 1 FROM public.store_product_colors c WHERE c.product_id=target_product_id AND c.is_active) AND EXISTS(SELECT 1 FROM public.store_product_sizes z WHERE z.product_id=target_product_id AND z.is_active AND z.size_label='UNICA') FROM audit WHERE reward_id='1b1718ab-aba8-44bb-a2de-d90992e596a7')) payload
  UNION ALL SELECT 2,'TARGET_REWARDS',coalesce(jsonb_agg(to_jsonb(a) ORDER BY expected_name),'[]') FROM audit a
- UNION ALL SELECT 3,'UNKNOWN_ACTIVE_REWARDS',coalesce(jsonb_agg(jsonb_build_object('id',r.id,'name',r.name,'fulfillment_type',r.fulfillment_type) ORDER BY r.name),'[]') FROM public.rewards_catalog r WHERE r.is_active AND NOT EXISTS(SELECT 1 FROM target t WHERE t.reward_id=r.id)
+ UNION ALL SELECT 3,'UNKNOWN_ACTIVE_REWARDS',coalesce(jsonb_agg(jsonb_build_object('id',r.id,'name',r.name,'fulfillment_type',NULLIF(to_jsonb(r)->>'fulfillment_type','')) ORDER BY r.name),'[]') FROM public.rewards_catalog r WHERE r.is_active AND NOT EXISTS(SELECT 1 FROM target t WHERE t.reward_id=r.id)
  UNION ALL SELECT 4,'PREFLIGHT_FINGERPRINTS',jsonb_build_object(
   'redemptions',md5(coalesce((SELECT string_agg(to_jsonb(x)::text,'|' ORDER BY x.id) FROM public.reward_redemptions x),'')),
   'unrelated_rewards',md5(coalesce((SELECT string_agg(to_jsonb(x)::text,'|' ORDER BY x.id) FROM public.rewards_catalog x WHERE NOT EXISTS(SELECT 1 FROM target t WHERE t.reward_id=x.id)),'')))
