@@ -14,6 +14,8 @@ export type MovibackRpcResult = {
     status: string;
     qr_token?: string | null;
     qr_deliverable: boolean;
+    manual_code?: string | null;
+    manual_code_deliverable?: boolean;
     reward_id?: string;
     points_cost?: number;
     fulfillment_type?: MovibackFulfillmentType | null;
@@ -43,9 +45,23 @@ export type MovibackApiError = {
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const MANUAL_REWARD_CODE_PATTERN = /^[2-9A-HJKMNP-Z]{8}$/;
 
 export function isUuid(value: unknown): value is string {
   return typeof value === "string" && UUID_PATTERN.test(value.trim());
+}
+
+export function normalizeManualRewardCode(value: unknown) {
+  if (typeof value !== "string") return null;
+  const normalized = value.toUpperCase().replace(/[\s-]+/g, "");
+  return MANUAL_REWARD_CODE_PATTERN.test(normalized) ? normalized : null;
+}
+
+export function formatManualRewardCode(value: unknown) {
+  const normalized = normalizeManualRewardCode(value);
+  return normalized
+    ? `${normalized.slice(0, 4)}-${normalized.slice(4)}`
+    : null;
 }
 
 export function resolveSmartRedemptionMode(
@@ -106,6 +122,10 @@ const ERROR_MAP: Record<string, Omit<MovibackApiError, "code">> = {
   PF08_IDEMPOTENCY_INCOMPLETE: {
     status: 409,
     message: "Operazione in verifica: riprova tra poco",
+  },
+  PF08_MANUAL_CODE_GENERATION_FAILED: {
+    status: 500,
+    message: "Codice premio non disponibile",
   },
   PF08_INVALID_REDEMPTION: { status: 404, message: "Richiesta premio non trovata" },
   PF08_INVALID_REDEMPTION_TRANSITION: {
@@ -170,6 +190,13 @@ export function publicQrToken(
   token: string | null | undefined
 ) {
   return isQrDeliverable(status) ? token ?? null : null;
+}
+
+export function publicManualRewardCode(
+  status: string | null | undefined,
+  code: string | null | undefined
+) {
+  return isQrDeliverable(status) ? code ?? null : null;
 }
 
 export function shouldScheduleStaffNotification(result: MovibackRpcResult) {

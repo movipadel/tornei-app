@@ -1,14 +1,22 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Scanner } from "@yudiel/react-qr-scanner";
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { ArrowLeft, Camera, AlertTriangle } from "lucide-react";
 
-export default function StaffScannerPage() {
+type ScanResult = {
+  rawValue?: string;
+  text?: string;
+  format?: { rawValue?: string };
+};
+
+function StaffScannerContent() {
   const router = useRouter();
+  const params = useSearchParams();
   const [error, setError] = useState<string | null>(null);
   const [scanned, setScanned] = useState(false);
+  const mode = params.get("mode") === "reward" ? "reward" : "points";
 
   function getPrizeTokenFromUrl(raw: string) {
     try {
@@ -35,10 +43,12 @@ export default function StaffScannerPage() {
     return raw.trim();
   }
 
-  function handleScan(result: any) {
+  function handleScan(result: unknown) {
   if (!result || scanned) return;
 
-  const first = Array.isArray(result) ? result[0] : result;
+  const first = (Array.isArray(result) ? result[0] : result) as
+    | ScanResult
+    | undefined;
 
   const raw = String(
     first?.rawValue ||
@@ -57,8 +67,15 @@ export default function StaffScannerPage() {
 
   const prizeToken = getPrizeTokenFromUrl(raw);
 
+  if (mode === "reward") {
+    const rewardCode = prizeToken || raw;
+    window.location.href = `/staff?reward=${encodeURIComponent(rewardCode)}`;
+    return;
+  }
+
   if (prizeToken) {
-    window.location.href = `/riscatto-premio/${encodeURIComponent(prizeToken)}`;
+    setScanned(false);
+    setError("Questo è un QR premio: usa la sezione Consegna Premio");
     return;
   }
 
@@ -110,7 +127,7 @@ export default function StaffScannerPage() {
         </button>
 
         <div style={{ fontWeight: 800, fontSize: 18 }}>
-          Scanner QR
+          {mode === "reward" ? "Scanner QR premio" : "Scanner QR punti"}
         </div>
       </div>
 
@@ -162,7 +179,9 @@ export default function StaffScannerPage() {
           }}
         >
           <Camera size={16} />
-          Inquadra il QR cliente o il QR premio
+          {mode === "reward"
+            ? "Inquadra esclusivamente il QR del premio"
+            : "Inquadra esclusivamente il QR cliente per l’accredito punti"}
         </div>
 
         {error && (
@@ -182,5 +201,13 @@ export default function StaffScannerPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function StaffScannerPage() {
+  return (
+    <Suspense fallback={null}>
+      <StaffScannerContent />
+    </Suspense>
   );
 }

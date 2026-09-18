@@ -5,6 +5,8 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Loader2, ScanLine, Wallet } from "lucide-react";
 import { Suspense } from "react";
+import { RewardDeliveryPanel } from "@/components/moviback/RewardDeliveryPanel";
+import { normalizeManualRewardCode } from "@/lib/movibackContracts";
 
 type LookupData = {
   full_name: string;
@@ -19,6 +21,7 @@ function StaffPageContent() {
   const router = useRouter();
   const params = useSearchParams();
   const initialCode = params.get("code") || "";
+  const initialRewardCode = params.get("reward") || "";
 
   const [code, setCode] = useState(initialCode);
   const [loading, setLoading] = useState(false);
@@ -42,6 +45,10 @@ function StaffPageContent() {
   async function lookup(c?: string) {
     const membership_code = (c ?? code).trim();
     if (!membership_code) return;
+    if (normalizeManualRewardCode(membership_code)) {
+      toast.error("Usa la sezione Consegna Premio per questo codice");
+      return;
+    }
 
     try {
       setLoading(true);
@@ -161,7 +168,7 @@ function StaffPageContent() {
       </div>
 
       <button
-        onClick={() => router.push("/staff/scanner")}
+        onClick={() => router.push("/staff/scanner?mode=points")}
         style={{
           width: "100%",
           height: 48,
@@ -295,6 +302,8 @@ function StaffPageContent() {
           </button>
         </div>
       )}
+
+      <RewardDeliveryPanel initialCode={initialRewardCode} />
     </div>
   );
 }

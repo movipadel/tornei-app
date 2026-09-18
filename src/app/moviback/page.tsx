@@ -21,6 +21,7 @@ import {
 import PublicNav from "@/components/PublicNav";
 import UserLoginDialog from "@/components/UserLoginDialog";
 import { QRCodeCanvas } from "qrcode.react";
+import { formatManualRewardCode } from "@/lib/movibackContracts";
 
 type User = {
   id: string;
@@ -1871,6 +1872,37 @@ return (
       >
         {rewardQrOpen.points_cost} punti
       </div>
+
+      {formatManualRewardCode(rewardQrOpen.manual_code) ? (
+        <div
+          style={{
+            marginTop: 18,
+            padding: "14px 18px",
+            borderRadius: 18,
+            border: "1px solid rgba(251,191,36,0.34)",
+            background: "rgba(251,191,36,0.10)",
+            color: "white",
+          }}
+        >
+          <div style={{ fontSize: 12, fontWeight: 800, opacity: 0.68 }}>
+            Codice premio
+          </div>
+          <div
+            style={{
+              marginTop: 5,
+              color: "#fbbf24",
+              fontSize: 24,
+              fontWeight: 950,
+              letterSpacing: "0.12em",
+            }}
+          >
+            {formatManualRewardCode(rewardQrOpen.manual_code)}
+          </div>
+          <div style={{ marginTop: 7, fontSize: 12, opacity: 0.68 }}>
+            Se il QR non viene letto, comunica questo codice allo staff.
+          </div>
+        </div>
+      ) : null}
 
       <div
         style={{

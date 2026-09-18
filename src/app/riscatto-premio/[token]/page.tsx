@@ -14,6 +14,7 @@ import {
 type RedemptionData = {
   id: string;
   status: string;
+  fulfillment_type: string | null;
   points_cost: number;
   requested_at: string | null;
   delivered_at: string | null;
@@ -106,7 +107,11 @@ export default function RewardRedemptionPage() {
         throw new Error(json.error || "Errore validazione");
       }
 
-      toast.success("Premio consegnato");
+      toast.success(
+        data?.fulfillment_type === "service"
+          ? "Servizio erogato"
+          : "Premio consegnato"
+      );
       await load();
     } catch (e: any) {
       toast.error(e?.message || "Errore");
@@ -221,7 +226,9 @@ export default function RewardRedemptionPage() {
                 ) : (
                   <ShieldCheck size={18} />
                 )}
-                Conferma consegna premio
+                {data.fulfillment_type === "service"
+                  ? "Conferma servizio erogato"
+                  : "Conferma consegna premio"}
               </button>
             ) : (
               <div

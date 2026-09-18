@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getUserIdFromCookie } from "@/lib/userAuth";
-import { isQrDeliverable, publicQrToken } from "@/lib/movibackContracts";
+import {
+  isQrDeliverable,
+  publicManualRewardCode,
+  publicQrToken,
+} from "@/lib/movibackContracts";
 
 export const runtime = "nodejs";
 
@@ -36,6 +40,7 @@ export async function GET() {
       fulfillment_type,
       points_cost,
       qr_token,
+      manual_code,
       requested_at,
       processing_at,
       ready_at,
@@ -64,6 +69,11 @@ export async function GET() {
     ...redemption,
     qr_deliverable: isQrDeliverable(redemption.status),
     qr_token: publicQrToken(redemption.status, redemption.qr_token),
+    manual_code: publicManualRewardCode(
+      redemption.status,
+      redemption.manual_code
+    ),
+    manual_code_deliverable: isQrDeliverable(redemption.status),
   }));
 
   return NextResponse.json({ data: redemptions });

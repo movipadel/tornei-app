@@ -12,6 +12,8 @@ import {
   buildMovibackStaffTelegramMessage,
   isUuid,
   mapMovibackRpcError,
+  publicManualRewardCode,
+  publicQrToken,
   resolveSmartRedemptionMode,
   shouldScheduleStaffNotification,
   type MovibackRpcResult,
@@ -120,7 +122,16 @@ async function handleSmartPost(req: Request) {
 
   return NextResponse.json({
     ok: true,
-    data: result.data,
+    data: {
+      ...result.data,
+      qr_token: publicQrToken(result.data.status, result.data.qr_token),
+      qr_deliverable: result.data.status === "ready",
+      manual_code: publicManualRewardCode(
+        result.data.status,
+        result.data.manual_code
+      ),
+      manual_code_deliverable: result.data.status === "ready",
+    },
     created: result.created,
     replayed: result.replayed,
   });
@@ -343,7 +354,7 @@ async function handleLegacyPost(req: Request) {
       status: "requested",
       qr_token: qrToken,
     })
-    .select("id,qr_token")
+    .select("id,qr_token,manual_code,status")
     .single();
 
   if (redemptionErr) {
@@ -492,6 +503,15 @@ async function handleLegacyPost(req: Request) {
 
   return NextResponse.json({
     ok: true,
-    data: redemption,
+    data: {
+      ...redemption,
+      qr_token: publicQrToken(redemption.status, redemption.qr_token),
+      qr_deliverable: redemption.status === "ready",
+      manual_code: publicManualRewardCode(
+        redemption.status,
+        redemption.manual_code
+      ),
+      manual_code_deliverable: redemption.status === "ready",
+    },
   });
 }
