@@ -2,8 +2,23 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { guardAdmin } from "@/lib/adminGuard";
 import { guardStaff, getStaffSessionOrNull } from "@/lib/staffGuard";
+import crypto from "crypto";
+import { isUuid, mapMovibackRpcError } from "@/lib/movibackContracts";
 
 export const runtime = "nodejs";
+
+function stableDeliveryKey(actorId: string, redemptionId: string) {
+  const hash = crypto
+    .createHash("sha256")
+    .update(`pf08b2c5:deliver:${actorId}:${redemptionId}`)
+    .digest("hex")
+    .slice(0, 32)
+    .split("");
+  hash[12] = "4";
+  hash[16] = "8";
+  const value = hash.join("");
+  return `${value.slice(0, 8)}-${value.slice(8, 12)}-${value.slice(12, 16)}-${value.slice(16, 20)}-${value.slice(20)}`;
+}
 
 type Params = {
   params: Promise<{
@@ -15,9 +30,10 @@ async function getOperator() {
   const adminDenied = await guardAdmin();
 
   if (!adminDenied) {
+    const admin = await getStaffSessionOrNull();
     return {
       ok: true,
-      handledBy: null,
+      handledBy: admin?.sid ?? null,
       role: "admin",
       denied: null,
     };
@@ -44,7 +60,7 @@ async function getOperator() {
   };
 }
 
-export async function POST(_req: Request, { params }: Params) {
+export async function POST(req: Request, { params }: Params) {
   const operator = await getOperator();
 
   if (!operator.ok) {
@@ -61,10 +77,11 @@ export async function POST(_req: Request, { params }: Params) {
   }
 
   const sb = supabaseAdmin();
+  const body = await req.json().catch(() => ({}));
 
   const { data: redemption, error: readErr } = await sb
     .from("reward_redemptions")
-    .select("id,status")
+    .select("id,status,fulfillment_type")
     .eq("qr_token", token)
     .maybeSingle();
 
@@ -76,31 +93,32 @@ export async function POST(_req: Request, { params }: Params) {
     return NextResponse.json({ error: "QR non valido" }, { status: 404 });
   }
 
-  if (redemption.status !== "requested") {
+  if (!operator.handledBy || !isUuid(operator.handledBy)) {
+    return NextResponse.json({ error: "Operatore non valido" }, { status: 403 });
+  }
+
+  const suppliedKey =
+    typeof body.idempotency_key === "string" ? body.idempotency_key.trim() : "";
+  if (suppliedKey && !isUuid(suppliedKey)) {
     return NextResponse.json(
-      { error: "QR già usato o non più valido" },
+      { error: "Chiave operazione non valida", code: "INVALID_IDEMPOTENCY_KEY" },
       { status: 400 }
     );
   }
 
-  const { data, error } = await sb
-    .from("reward_redemptions")
-    .update({
-      status: "delivered",
-      delivered_at: new Date().toISOString(),
-      handled_by: operator.handledBy,
-      notes:
-        operator.role === "staff"
-          ? "Premio consegnato da staff"
-          : "Premio consegnato da admin",
-    })
-    .eq("id", redemption.id)
-    .eq("status", "requested")
-    .select()
-    .single();
+  const { data, error } = await sb.rpc("deliver_moviback_redemption", {
+    p_actor_id: operator.handledBy,
+    p_idempotency_key:
+      suppliedKey || stableDeliveryKey(operator.handledBy, redemption.id),
+    p_redemption_id: redemption.id,
+  });
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const mapped = mapMovibackRpcError(error);
+    return NextResponse.json(
+      { error: mapped.message, code: mapped.code },
+      { status: mapped.status }
+    );
   }
 
   return NextResponse.json({

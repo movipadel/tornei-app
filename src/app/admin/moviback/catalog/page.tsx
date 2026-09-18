@@ -24,6 +24,7 @@ type Reward = {
   is_active: boolean;
   stock_qty: number | null;
   reward_type: "club" | "partner";
+  fulfillment_type?: "service" | "store_product" | "custom_physical" | "partner" | null;
   created_at: string | null;
   updated_at: string | null;
 
@@ -55,6 +56,7 @@ const emptyForm = {
   image_path: "",
   stock_qty: "",
   is_active: true,
+  fulfillment_type: "service",
 
   store_product_id: "",
   requires_store_variant: false,
@@ -190,6 +192,7 @@ export default function AdminMoviBackCatalogPage() {
       image_path: reward.image_path ?? "",
       stock_qty: reward.stock_qty === null ? "" : String(reward.stock_qty),
       is_active: Boolean(reward.is_active),
+      fulfillment_type: reward.fulfillment_type ?? "",
       store_product_id: reward.store_product_id ?? "",
       requires_store_variant: Boolean(
       reward.requires_store_variant
@@ -234,6 +237,7 @@ export default function AdminMoviBackCatalogPage() {
   image_path: imageUrl,
   stock_qty: form.stock_qty === "" ? null : Number(form.stock_qty),
   is_active: form.is_active,
+  fulfillment_type: form.fulfillment_type || null,
   store_product_id: form.store_product_id || null,
   requires_store_variant: form.requires_store_variant,
 };
@@ -276,6 +280,7 @@ export default function AdminMoviBackCatalogPage() {
   image_path: reward.image_path ?? "",
   stock_qty: reward.stock_qty,
   is_active: !reward.is_active,
+  fulfillment_type: reward.fulfillment_type ?? null,
   store_product_id: reward.store_product_id ?? null,
   requires_store_variant: Boolean(reward.requires_store_variant),
 }),
@@ -512,6 +517,32 @@ export default function AdminMoviBackCatalogPage() {
             </div>
 
             <select
+              value={form.fulfillment_type}
+              onChange={(e) =>
+                setForm((previous) => ({
+                  ...previous,
+                  fulfillment_type: e.target.value,
+                  store_product_id:
+                    e.target.value === "store_product"
+                      ? previous.store_product_id
+                      : "",
+                  requires_store_variant:
+                    e.target.value === "store_product"
+                      ? previous.requires_store_variant
+                      : false,
+                }))
+              }
+              style={selectStyle}
+              required={form.is_active}
+            >
+              <option value="" style={optionStyle}>Seleziona tipo gestione</option>
+              <option value="service" style={optionStyle}>Servizio</option>
+              <option value="store_product" style={optionStyle}>Prodotto Store</option>
+              <option value="custom_physical" style={optionStyle}>Fisico personalizzato</option>
+              <option value="partner" style={optionStyle}>Partner</option>
+            </select>
+
+            {form.fulfillment_type === "store_product" ? <select
   value={form.store_product_id}
   onChange={(e) =>
     setForm((p) => ({
@@ -533,9 +564,9 @@ export default function AdminMoviBackCatalogPage() {
       {p.name}
     </option>
   ))}
-</select>
+</select> : null}
 
-{form.store_product_id ? (
+{form.fulfillment_type === "store_product" && form.store_product_id ? (
   <label style={checkboxLabel}>
     <input
       type="checkbox"

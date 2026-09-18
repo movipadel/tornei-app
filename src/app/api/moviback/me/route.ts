@@ -1,5 +1,6 @@
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getUserIdFromCookie } from "@/lib/userAuth";
+import { isQrDeliverable, publicQrToken } from "@/lib/movibackContracts";
 import { createRuntimePerf } from "@/lib/runtimePerf";
 
 export const runtime = "nodejs";
@@ -85,8 +86,11 @@ export async function GET() {
             id,
             points_cost,
             status,
+            fulfillment_type,
             qr_token,
             requested_at,
+            processing_at,
+            ready_at,
             approved_at,
             delivered_at,
             cancelled_at,
@@ -127,7 +131,11 @@ export async function GET() {
       return perf.json({ error: redemptionErr.message }, { status: 500 });
     }
 
-    redemptions = redemptionRows ?? [];
+    redemptions = (redemptionRows ?? []).map((redemption) => ({
+      ...redemption,
+      qr_deliverable: isQrDeliverable(redemption.status),
+      qr_token: publicQrToken(redemption.status, redemption.qr_token),
+    }));
   }
 
   if (certErr) {

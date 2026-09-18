@@ -24,9 +24,11 @@ type Reward = {
   image_path: string | null;
   stock_qty: number | null;
   reward_type: "club" | "partner";
+  fulfillment_type: "service" | "store_product" | "custom_physical" | "partner";
 
   store_product_id?: string | null;
   requires_store_variant?: boolean;
+  customer_input_required?: boolean;
 
   store_product?: {
     id: string;
@@ -45,10 +47,9 @@ type Reward = {
       size_label: string;
     }[];
 
-    stock: {
+    variant_options: {
       color_id: string;
-      size_id?: string | null;
-      stock_qty?: number | null;
+      size_id: string | null;
     }[];
   } | null;
 };
@@ -127,6 +128,15 @@ const [selectedSizeId, setSelectedSizeId] =
   }, [rewards]);
 
   const visibleCategories = categories.length > 0 ? categories : fallbackCategories;
+
+  function getIntentKey(signature: string) {
+    const storageKey = `moviback:redemption-intent:v1:${signature}`;
+    const existing = window.sessionStorage.getItem(storageKey);
+    if (existing) return { key: existing, storageKey };
+    const key = window.crypto.randomUUID();
+    window.sessionStorage.setItem(storageKey, key);
+    return { key, storageKey };
+  }
 
   const filteredRewards = useMemo(() => {
     const selectedRange =
@@ -210,7 +220,7 @@ const [selectedSizeId, setSelectedSizeId] =
   }
 
   if (
-    reward.requires_store_variant &&
+    reward.customer_input_required &&
     reward.store_product
   ) {
     setVariantReward(reward);
@@ -231,23 +241,32 @@ async function redeemNormalReward(reward: Reward) {
 
   try {
     setRedeemingId(reward.id);
+    const intent = getIntentKey(`${reward.id}::`);
 
     const res = await fetch("/api/moviback/rewards/redeem", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         reward_id: reward.id,
+        idempotency_key: intent.key,
       }),
     });
 
     const json = await res.json().catch(() => ({}));
 
     if (!res.ok) {
+      if (json.code === "PF08_IDEMPOTENCY_CONFLICT") {
+        window.sessionStorage.removeItem(intent.storageKey);
+      }
       throw new Error(json.error || "Errore riscatto premio");
     }
 
+    window.sessionStorage.removeItem(intent.storageKey);
+
     toast.success(
-      "Premio riscattato. Trovi il QR nella tua pagina MoviBack."
+      json.data?.qr_deliverable
+        ? "Premio riscattato. Il QR è disponibile nella tua pagina MoviBack."
+        : "Richiesta inviata. Il QR sarà disponibile quando il premio sarà pronto."
     );
 
     window.location.href = "/moviback";
@@ -274,8 +293,21 @@ async function redeemNormalReward(reward: Reward) {
     return;
   }
 
+  const validOption = (variantReward.store_product?.variant_options ?? []).some(
+    (option) =>
+      option.color_id === selectedColorId &&
+      option.size_id === (selectedSizeId || null)
+  );
+
+  if (!validOption) {
+    toast.error("Combinazione colore/taglia non disponibile");
+    return;
+  }
+
   try {
     setRedeemingId(variantReward.id);
+    const signature = `${variantReward.id}:${selectedColorId}:${selectedSizeId || ""}`;
+    const intent = getIntentKey(signature);
 
     const res = await fetch(
       "/api/moviback/rewards/redeem",
@@ -286,8 +318,9 @@ async function redeemNormalReward(reward: Reward) {
         },
         body: JSON.stringify({
           reward_id: variantReward.id,
-          store_color_id: selectedColorId,
-          store_size_id: selectedSizeId || null,
+          idempotency_key: intent.key,
+          color_id: selectedColorId,
+          size_id: selectedSizeId || null,
         }),
       }
     );
@@ -295,13 +328,20 @@ async function redeemNormalReward(reward: Reward) {
     const json = await res.json().catch(() => ({}));
 
     if (!res.ok) {
+      if (json.code === "PF08_IDEMPOTENCY_CONFLICT") {
+        window.sessionStorage.removeItem(intent.storageKey);
+      }
       throw new Error(
         json.error || "Errore riscatto premio"
       );
     }
 
+    window.sessionStorage.removeItem(intent.storageKey);
+
     toast.success(
-      "Premio riscattato con successo"
+      json.data?.qr_deliverable
+        ? "Premio riscattato. Il QR è disponibile."
+        : "Richiesta inviata. Riceverai il QR quando il premio sarà pronto."
     );
 
     window.location.href = "/moviback";

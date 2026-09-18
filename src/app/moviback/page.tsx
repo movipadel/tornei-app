@@ -372,7 +372,10 @@ form.set(
 
             const certStatus = getCertificateStatus(certificate);
 const activeRewardRedemptions = (data.redemptions || []).filter(
-  (r) => r.status === "requested" && r.qr_token
+  (r) => r.status === "ready" && r.qr_deliverable && r.qr_token
+);
+const pendingRewardRedemptions = (data.redemptions || []).filter((r) =>
+  ["requested", "processing"].includes(r.status)
 );
 
 if (!loading && !user) {
@@ -1088,6 +1091,36 @@ return (
           Vai al catalogo premi
         </a>
       </div>
+    </div>
+  </section>
+) : null}
+
+{membership?.status === "approved" && pendingRewardRedemptions.length > 0 ? (
+  <section style={{ ...glassCard, padding: 18, color: "white", marginTop: 14 }}>
+    <div style={{ fontSize: 18, fontWeight: 900 }}>Richieste premio</div>
+    <div style={{ marginTop: 3, color: "rgba(255,255,255,0.58)", fontSize: 13 }}>
+      Il QR comparirà qui solo quando il premio sarà pronto per la consegna.
+    </div>
+    <div style={{ display: "grid", gap: 9, marginTop: 13 }}>
+      {pendingRewardRedemptions.map((redemption) => (
+        <div
+          key={redemption.id}
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            gap: 12,
+            padding: 12,
+            borderRadius: 16,
+            background: "rgba(255,255,255,0.055)",
+            border: "1px solid rgba(255,255,255,0.08)",
+          }}
+        >
+          <span>{redemption.reward?.name || "Premio"}</span>
+          <strong style={{ color: "#fbbf24" }}>
+            {redemption.status === "processing" ? "In lavorazione" : "Richiesto"}
+          </strong>
+        </div>
+      ))}
     </div>
   </section>
 ) : null}

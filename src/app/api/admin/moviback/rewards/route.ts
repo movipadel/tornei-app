@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { guardAdmin } from "@/lib/adminGuard";
+import { isUuid, type MovibackFulfillmentType } from "@/lib/movibackContracts";
+import { validateRewardFulfillment } from "@/lib/movibackRewardAdmin";
 
 export const runtime = "nodejs";
 
@@ -50,6 +52,9 @@ export async function POST(req: Request) {
   : null;
 
 const requires_store_variant = Boolean(body.requires_store_variant);
+  const fulfillment_type = body.fulfillment_type
+    ? String(body.fulfillment_type).trim() as MovibackFulfillmentType
+    : null;
 
   if (!name) {
     return NextResponse.json(
@@ -66,6 +71,19 @@ const requires_store_variant = Boolean(body.requires_store_variant);
   }
 
   const sb = supabaseAdmin();
+  const allowedTypes = new Set(["service", "store_product", "custom_physical", "partner"]);
+  if ((fulfillment_type && !allowedTypes.has(fulfillment_type)) || (store_product_id && !isUuid(store_product_id))) {
+    return NextResponse.json({ error: "Configurazione premio non valida" }, { status: 400 });
+  }
+  const fulfillmentError = await validateRewardFulfillment(sb, {
+    isActive: is_active,
+    fulfillmentType: fulfillment_type,
+    storeProductId: store_product_id,
+    requiresStoreVariant: requires_store_variant,
+  });
+  if (fulfillmentError) {
+    return NextResponse.json({ error: fulfillmentError }, { status: 400 });
+  }
 
   const { data, error } = await sb
     .from("rewards_catalog")
@@ -78,6 +96,7 @@ const requires_store_variant = Boolean(body.requires_store_variant);
   stock_qty,
   is_active,
   reward_type: "club",
+  fulfillment_type,
   store_product_id,
   requires_store_variant: store_product_id ? requires_store_variant : false,
 })

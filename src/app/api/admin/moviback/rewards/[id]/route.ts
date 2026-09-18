@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { guardAdmin } from "@/lib/adminGuard";
+import { isUuid, type MovibackFulfillmentType } from "@/lib/movibackContracts";
+import { validateRewardFulfillment } from "@/lib/movibackRewardAdmin";
 
 export const runtime = "nodejs";
 
@@ -16,6 +18,13 @@ export async function PATCH(req: Request, { params }: Params) {
 
   const { id } = await params;
   const body = await req.json().catch(() => ({}));
+
+  if (!Object.prototype.hasOwnProperty.call(body, "fulfillment_type")) {
+    return NextResponse.json(
+      { error: "Tipo gestione premio richiesto" },
+      { status: 400 }
+    );
+  }
 
   const name = String(body.name ?? "").trim();
   const description = String(body.description ?? "").trim();
@@ -33,6 +42,9 @@ export async function PATCH(req: Request, { params }: Params) {
   : null;
 
   const requires_store_variant = Boolean(body.requires_store_variant);
+  const fulfillment_type = body.fulfillment_type
+    ? String(body.fulfillment_type).trim() as MovibackFulfillmentType
+    : null;
 
   if (!id) {
     return NextResponse.json({ error: "ID premio mancante" }, { status: 400 });
@@ -51,6 +63,19 @@ export async function PATCH(req: Request, { params }: Params) {
   }
 
   const sb = supabaseAdmin();
+  const allowedTypes = new Set(["service", "store_product", "custom_physical", "partner"]);
+  if ((fulfillment_type && !allowedTypes.has(fulfillment_type)) || (store_product_id && !isUuid(store_product_id))) {
+    return NextResponse.json({ error: "Configurazione premio non valida" }, { status: 400 });
+  }
+  const fulfillmentError = await validateRewardFulfillment(sb, {
+    isActive: is_active,
+    fulfillmentType: fulfillment_type,
+    storeProductId: store_product_id,
+    requiresStoreVariant: requires_store_variant,
+  });
+  if (fulfillmentError) {
+    return NextResponse.json({ error: fulfillmentError }, { status: 400 });
+  }
 
   const { data, error } = await sb
     .from("rewards_catalog")
@@ -62,6 +87,7 @@ export async function PATCH(req: Request, { params }: Params) {
   image_path: image_path || null,
   stock_qty,
   is_active,
+  fulfillment_type,
   store_product_id,
   requires_store_variant: store_product_id ? requires_store_variant : false,
   updated_at: new Date().toISOString(),

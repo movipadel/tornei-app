@@ -65,7 +65,15 @@ export default function RewardRedemptionPage() {
 
       setData(json.data);
       setValid(Boolean(json.valid));
-      setError(json.valid ? null : "QR già usato o non più valido");
+      setError(
+        json.valid
+          ? null
+          : ["requested", "processing"].includes(json.data?.status)
+            ? "Premio non ancora pronto per la consegna"
+            : json.requires_manual_review
+              ? "Richiesta storica da verificare manualmente"
+              : "QR già usato o non più valido"
+      );
     } catch (e: any) {
       setError(e?.message || "Errore");
       setData(null);
@@ -164,7 +172,7 @@ export default function RewardRedemptionPage() {
               }}
             >
               {valid ? <CheckCircle2 size={15} /> : <XCircle size={15} />}
-              {valid ? "QR valido" : "QR non più valido"}
+              {valid ? "QR pronto per la consegna" : error || "QR non utilizzabile"}
             </div>
 
             <h2 style={{ fontSize: 25, fontWeight: 950, lineHeight: 1.1 }}>
@@ -228,7 +236,7 @@ export default function RewardRedemptionPage() {
                   textAlign: "center",
                 }}
               >
-                Questo QR è già stato usato o annullato.
+                {error || "Questo QR non è utilizzabile."}
               </div>
             )}
           </div>

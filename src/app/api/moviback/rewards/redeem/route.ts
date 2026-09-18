@@ -8,6 +8,13 @@ import {
   measureNotificationRequest,
   schedulePostCommitNotifications,
 } from "@/lib/postCommitNotifications";
+import {
+  buildMovibackStaffTelegramMessage,
+  isUuid,
+  mapMovibackRpcError,
+  shouldScheduleStaffNotification,
+  type MovibackRpcResult,
+} from "@/lib/movibackContracts";
 
 export const runtime = "nodejs";
 
@@ -17,11 +24,108 @@ function makeToken() {
 
 export async function POST(req: Request) {
   return measureNotificationRequest("/api/moviback/rewards/redeem", () =>
-    handlePost(req)
+    smartRedemptionEnabled() ? handleSmartPost(req) : handleLegacyPost(req)
   );
 }
 
-async function handlePost(req: Request) {
+function smartRedemptionEnabled() {
+  const configured = process.env.MOVIBACK_SMART_REDEMPTION_ENABLED?.trim();
+  if (configured === "true") return true;
+  if (configured === "false") return false;
+  return process.env.NODE_ENV !== "production";
+}
+
+async function handleSmartPost(req: Request) {
+  const uid = await getUserIdFromCookie();
+
+  if (!uid) {
+    return NextResponse.json({ error: "Non autenticato" }, { status: 401 });
+  }
+
+  const body = await req.json().catch(() => null);
+  const rewardId = typeof body?.reward_id === "string" ? body.reward_id.trim() : "";
+  const idempotencyKey =
+    typeof body?.idempotency_key === "string" ? body.idempotency_key.trim() : "";
+  const colorIdRaw = body?.color_id ?? body?.store_color_id ?? null;
+  const sizeIdRaw = body?.size_id ?? body?.store_size_id ?? null;
+  const colorId = typeof colorIdRaw === "string" && colorIdRaw.trim() ? colorIdRaw.trim() : null;
+  const sizeId = typeof sizeIdRaw === "string" && sizeIdRaw.trim() ? sizeIdRaw.trim() : null;
+
+  if (!isUuid(uid) || !isUuid(rewardId) || !isUuid(idempotencyKey)) {
+    return NextResponse.json(
+      { error: "Richiesta non valida", code: "INVALID_REQUEST" },
+      { status: 400 }
+    );
+  }
+
+  if ((colorId && !isUuid(colorId)) || (sizeId && !isUuid(sizeId))) {
+    return NextResponse.json(
+      { error: "Variante non valida", code: "INVALID_VARIANT_INPUT" },
+      { status: 400 }
+    );
+  }
+
+  const sb = supabaseAdmin();
+  const { data, error } = await sb.rpc("redeem_moviback_reward", {
+    p_user_id: uid,
+    p_idempotency_key: idempotencyKey,
+    p_reward_id: rewardId,
+    p_store_color_id: colorId,
+    p_store_size_id: sizeId,
+  });
+
+  if (error || !data) {
+    const mapped = mapMovibackRpcError(error);
+    return NextResponse.json(
+      { error: mapped.message, code: mapped.code },
+      { status: mapped.status }
+    );
+  }
+
+  const result = data as MovibackRpcResult;
+
+  if (shouldScheduleStaffNotification(result) && result.notification) {
+    const { data: customer } = await sb
+      .from("users")
+      .select("full_name,phone")
+      .eq("id", uid)
+      .maybeSingle();
+    const message = buildMovibackStaffTelegramMessage({
+      notification: result.notification,
+      customerName: customer?.full_name ?? null,
+      customerPhone: customer?.phone ?? null,
+    });
+
+    schedulePostCommitNotifications("/api/moviback/rewards/redeem", [
+      {
+        provider: "telegram",
+        run: () => sendTelegramMessage(message),
+        failureLog: "Reward redemption Telegram notify error (ignored):",
+      },
+      {
+        provider: "push",
+        run: () =>
+          sendAdminPushNotification({
+            title: "🎁 Nuova richiesta premio MoviBack",
+            body: `${customer?.full_name || "Cliente MoviBack"} · ${
+              result.notification?.reward_name || "Premio"
+            }`,
+            url: "/admin/moviback",
+          }),
+        failureLog: "Reward redemption admin push notify error (ignored):",
+      },
+    ]);
+  }
+
+  return NextResponse.json({
+    ok: true,
+    data: result.data,
+    created: result.created,
+    replayed: result.replayed,
+  });
+}
+
+async function handleLegacyPost(req: Request) {
   const uid = await getUserIdFromCookie();
 
   if (!uid) {
@@ -30,11 +134,11 @@ async function handlePost(req: Request) {
 
   const body = await req.json().catch(() => ({}));
   const rewardId = String(body.reward_id ?? "").trim();
-  const storeColorId = body.store_color_id
-    ? String(body.store_color_id).trim()
+  const storeColorId = body.store_color_id ?? body.color_id
+    ? String(body.store_color_id ?? body.color_id).trim()
     : null;
-  const storeSizeId = body.store_size_id
-    ? String(body.store_size_id).trim()
+  const storeSizeId = body.store_size_id ?? body.size_id
+    ? String(body.store_size_id ?? body.size_id).trim()
     : null;
 
   if (!rewardId) {

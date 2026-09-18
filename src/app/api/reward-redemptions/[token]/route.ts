@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { isQrDeliverable } from "@/lib/movibackContracts";
 
 export const runtime = "nodejs";
 
@@ -23,8 +24,11 @@ export async function GET(_req: Request, { params }: Params) {
     .select(`
       id,
       status,
+      fulfillment_type,
       points_cost,
       requested_at,
+      processing_at,
+      ready_at,
       approved_at,
       delivered_at,
       cancelled_at,
@@ -62,6 +66,9 @@ export async function GET(_req: Request, { params }: Params) {
 
   return NextResponse.json({
     data,
-    valid: data.status === "requested",
+    valid: isQrDeliverable(data.status),
+    qr_deliverable: isQrDeliverable(data.status),
+    requires_manual_review:
+      data.fulfillment_type === null && data.status !== "delivered",
   });
 }

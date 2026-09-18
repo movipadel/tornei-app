@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getUserIdFromCookie } from "@/lib/userAuth";
+import { isQrDeliverable, publicQrToken } from "@/lib/movibackContracts";
 
 export const runtime = "nodejs";
 
@@ -32,9 +33,12 @@ export async function GET() {
     .select(`
       id,
       status,
+      fulfillment_type,
       points_cost,
       qr_token,
       requested_at,
+      processing_at,
+      ready_at,
       approved_at,
       delivered_at,
       cancelled_at,
@@ -56,5 +60,11 @@ export async function GET() {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ data: data || [] });
+  const redemptions = (data ?? []).map((redemption) => ({
+    ...redemption,
+    qr_deliverable: isQrDeliverable(redemption.status),
+    qr_token: publicQrToken(redemption.status, redemption.qr_token),
+  }));
+
+  return NextResponse.json({ data: redemptions });
 }
