@@ -4,6 +4,16 @@ import { guardStaff } from "@/lib/staffGuard";
 
 export const runtime = "nodejs";
 
+const STATUS_BY_SCOPE: Record<string, string[] | null> = {
+  active: ["requested", "processing", "ready"],
+  requested: ["requested"],
+  processing: ["processing"],
+  ready: ["ready"],
+  delivered: ["delivered"],
+  terminal: ["cancelled", "rejected"],
+  all: null,
+};
+
 function availableActions(redemption: {
   status: string;
   fulfillment_type: string | null;
@@ -15,12 +25,31 @@ function availableActions(redemption: {
   return [];
 }
 
-export async function GET() {
+export async function GET(req: Request) {
   const denied = await guardStaff();
   if (denied) return denied;
 
+  const url = new URL(req.url);
+  const scope = url.searchParams.get("scope") ?? "active";
+  const statuses = STATUS_BY_SCOPE[scope];
+  if (statuses === undefined) {
+    return NextResponse.json(
+      { error: "Filtro non valido", code: "INVALID_SCOPE" },
+      { status: 400 }
+    );
+  }
+
+  const requestedLimit = Number(url.searchParams.get("limit") ?? 100);
+  const requestedOffset = Number(url.searchParams.get("offset") ?? 0);
+  const limit = Number.isInteger(requestedLimit)
+    ? Math.min(Math.max(requestedLimit, 1), 200)
+    : 100;
+  const offset = Number.isInteger(requestedOffset)
+    ? Math.max(requestedOffset, 0)
+    : 0;
+
   const sb = supabaseAdmin();
-  const { data: redemptions, error } = await sb
+  let query = sb
     .from("reward_redemptions")
     .select(`
       id,
@@ -52,13 +81,19 @@ export async function GET() {
       )
     `)
     .order("requested_at", { ascending: false })
-    .limit(200);
+    .range(offset, offset + limit);
+
+  if (statuses) query = query.in("status", statuses);
+
+  const { data: fetchedRedemptions, error } = await query;
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  const ids = (redemptions ?? []).map((redemption) => redemption.id);
+  const hasMore = (fetchedRedemptions?.length ?? 0) > limit;
+  const redemptions = (fetchedRedemptions ?? []).slice(0, limit);
+  const ids = redemptions.map((redemption) => redemption.id);
   const orderByRedemption = new Map<string, object>();
 
   if (ids.length > 0) {
@@ -99,12 +134,18 @@ export async function GET() {
   }
 
   return NextResponse.json({
-    data: (redemptions ?? []).map((redemption) => ({
+    data: redemptions.map((redemption) => ({
       ...redemption,
       qr_deliverable: redemption.status === "ready",
       available_actions: availableActions(redemption),
       store_fulfillment: orderByRedemption.get(redemption.id) ?? null,
       historical: redemption.fulfillment_type === null,
     })),
+    page: {
+      limit,
+      offset,
+      has_more: hasMore,
+      next_offset: hasMore ? offset + limit : null,
+    },
   });
 }

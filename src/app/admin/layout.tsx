@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { LogOut } from "lucide-react";
+import { PackageCheck } from "lucide-react";
 import { AdminLogoutButton } from "@/components/AdminLogoutButton";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -62,7 +62,29 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </span>
           </Link>
 
-          <AdminLogoutButton />
+          <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+            <Link
+              href="/admin/moviback/redemptions"
+              style={{
+                minHeight: 38,
+                padding: "0 12px",
+                borderRadius: 999,
+                border: "1px solid rgba(245,158,11,0.24)",
+                background: "rgba(245,158,11,0.10)",
+                color: "#fde68a",
+                textDecoration: "none",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 7,
+                fontSize: 13,
+                fontWeight: 850,
+              }}
+            >
+              <PackageCheck size={16} />
+              <span>Richieste premio</span>
+            </Link>
+            <AdminLogoutButton />
+          </div>
         </div>
       </div>
 

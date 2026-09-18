@@ -137,6 +137,12 @@ export default function AdminMoviBackPage() {
                     text={`${data.kpi.active_rewards} attivi · ${data.kpi.hidden_rewards} nascosti`}
                   />
                   <QuickLink
+                    href="/admin/moviback/redemptions"
+                    icon={<Gift />}
+                    title="Richieste premio"
+                    text="Gestisci preparazione, consegna ed erogazione"
+                  />
+                  <QuickLink
   href="/admin/moviback/promos"
   icon={<Sparkles />}
   title="Promozioni collettive"

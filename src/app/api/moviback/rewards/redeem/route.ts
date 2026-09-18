@@ -12,6 +12,7 @@ import {
   buildMovibackStaffTelegramMessage,
   isUuid,
   mapMovibackRpcError,
+  resolveSmartRedemptionMode,
   shouldScheduleStaffNotification,
   type MovibackRpcResult,
 } from "@/lib/movibackContracts";
@@ -29,10 +30,10 @@ export async function POST(req: Request) {
 }
 
 function smartRedemptionEnabled() {
-  const configured = process.env.MOVIBACK_SMART_REDEMPTION_ENABLED?.trim();
-  if (configured === "true") return true;
-  if (configured === "false") return false;
-  return process.env.NODE_ENV !== "production";
+  return resolveSmartRedemptionMode(
+    process.env.MOVIBACK_SMART_REDEMPTION_ENABLED,
+    process.env.NODE_ENV
+  );
 }
 
 async function handleSmartPost(req: Request) {

@@ -48,6 +48,16 @@ export function isUuid(value: unknown): value is string {
   return typeof value === "string" && UUID_PATTERN.test(value.trim());
 }
 
+export function resolveSmartRedemptionMode(
+  configured: string | undefined,
+  environment: string | undefined
+) {
+  const normalized = configured?.trim();
+  if (normalized === "true") return true;
+  if (normalized === "false") return false;
+  return environment !== "production";
+}
+
 const ERROR_MAP: Record<string, Omit<MovibackApiError, "code">> = {
   PF08_MALFORMED_REQUEST: { status: 400, message: "Richiesta non valida" },
   PF08_INVALID_MEMBERSHIP: { status: 403, message: "MoviBack non disponibile" },
