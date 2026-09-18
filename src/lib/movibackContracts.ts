@@ -199,6 +199,14 @@ export function publicManualRewardCode(
   return isQrDeliverable(status) ? code ?? null : null;
 }
 
+export function shouldSchedulePhysicalRewardNotification(result: MovibackRpcResult) {
+  return Boolean(
+    result.created &&
+      !result.replayed &&
+      result.notification?.fulfillment_type === "store_product"
+  );
+}
+
 export function shouldScheduleStaffNotification(result: MovibackRpcResult) {
   return Boolean(
     result.created &&
@@ -208,31 +216,13 @@ export function shouldScheduleStaffNotification(result: MovibackRpcResult) {
   );
 }
 
-function fulfillmentLabel(value?: MovibackFulfillmentType | null) {
-  switch (value) {
-    case "service":
-      return "Servizio";
-    case "store_product":
-      return "Prodotto Store";
-    case "custom_physical":
-      return "Premio fisico personalizzato";
-    case "partner":
-      return "Partner";
-    default:
-      return "Da verificare";
-  }
-}
-
-export function buildMovibackStaffTelegramMessage(input: {
+export function buildPhysicalRewardTelegramMessage(input: {
   notification: MovibackNotificationContext;
   customerName?: string | null;
   customerPhone?: string | null;
+  redemptionId?: string | null;
 }) {
-  const { notification, customerName, customerPhone } = input;
-  const serviceNote =
-    notification.fulfillment_type === "service"
-      ? "\nℹ️ Nessuna gestione ordine Store richiesta"
-      : "";
+  const { notification, customerName, customerPhone, redemptionId } = input;
   const product = notification.product_name
     ? `\n📦 Prodotto: ${notification.product_name}`
     : "";
@@ -242,20 +232,20 @@ export function buildMovibackStaffTelegramMessage(input: {
   const notes = notification.fulfillment_notes
     ? `\n📝 Note: ${notification.fulfillment_notes}`
     : "";
+  const reference = redemptionId ? `\n🔖 Riferimento: ${redemptionId}` : "";
 
   return (
-    `🎁 NUOVA RICHIESTA PREMIO MOVIBACK\n\n` +
+    `🎁 NUOVA RICHIESTA PREMIO\n\n` +
     `👤 Cliente: ${customerName || "Cliente MoviBack"}\n` +
     `📞 Telefono: ${customerPhone || "—"}\n` +
     `🏆 Premio: ${notification.reward_name || "Premio"}\n` +
     `⭐ Punti: ${notification.points_cost ?? "—"}\n` +
-    `🧭 Tipo: ${fulfillmentLabel(notification.fulfillment_type)}\n` +
-    `📍 Stato iniziale: ${notification.initial_status || "richiesto"}` +
+    `📍 Stato: Da preparare` +
     product +
     variant +
     notes +
-    serviceNote +
-    `\n\n➡️ ${notification.action_required || "Gestire la richiesta nell'applicazione"}` +
+    reference +
+    `\n\n➡️ Preparare il premio e gestire la richiesta nell'applicazione.` +
     `\n📋 Coda autorevole: Richieste premio. Telegram è solo un avviso.`
   );
 }

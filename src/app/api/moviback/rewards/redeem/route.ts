@@ -9,12 +9,13 @@ import {
   schedulePostCommitNotifications,
 } from "@/lib/postCommitNotifications";
 import {
-  buildMovibackStaffTelegramMessage,
+  buildPhysicalRewardTelegramMessage,
   isUuid,
   mapMovibackRpcError,
   publicManualRewardCode,
   publicQrToken,
   resolveSmartRedemptionMode,
+  shouldSchedulePhysicalRewardNotification,
   shouldScheduleStaffNotification,
   type MovibackRpcResult,
 } from "@/lib/movibackContracts";
@@ -87,37 +88,49 @@ async function handleSmartPost(req: Request) {
 
   const result = data as MovibackRpcResult;
 
-  if (shouldScheduleStaffNotification(result) && result.notification) {
+  const schedulePhysicalTelegram = shouldSchedulePhysicalRewardNotification(result);
+  const scheduleStaffPush = shouldScheduleStaffNotification(result);
+
+  if ((schedulePhysicalTelegram || scheduleStaffPush) && result.notification) {
     const { data: customer } = await sb
       .from("users")
       .select("full_name,phone")
       .eq("id", uid)
       .maybeSingle();
-    const message = buildMovibackStaffTelegramMessage({
-      notification: result.notification,
-      customerName: customer?.full_name ?? null,
-      customerPhone: customer?.phone ?? null,
-    });
 
-    schedulePostCommitNotifications("/api/moviback/rewards/redeem", [
-      {
-        provider: "telegram",
-        run: () => sendTelegramMessage(message),
-        failureLog: "Reward redemption Telegram notify error (ignored):",
-      },
-      {
-        provider: "push",
-        run: () =>
-          sendAdminPushNotification({
-            title: "🎁 Nuova richiesta premio MoviBack",
-            body: `${customer?.full_name || "Cliente MoviBack"} · ${
-              result.notification?.reward_name || "Premio"
-            }`,
-            url: "/admin/moviback",
-          }),
-        failureLog: "Reward redemption admin push notify error (ignored):",
-      },
-    ]);
+    if (schedulePhysicalTelegram) {
+      const message = buildPhysicalRewardTelegramMessage({
+        notification: result.notification,
+        customerName: customer?.full_name ?? null,
+        customerPhone: customer?.phone ?? null,
+        redemptionId: result.data.id,
+      });
+
+      schedulePostCommitNotifications("/api/moviback/rewards/redeem", [
+        {
+          provider: "telegram",
+          run: () => sendTelegramMessage(message),
+          failureLog: "Reward redemption Telegram notify error (ignored):",
+        },
+      ]);
+    }
+
+    if (scheduleStaffPush) {
+      schedulePostCommitNotifications("/api/moviback/rewards/redeem", [
+        {
+          provider: "push",
+          run: () =>
+            sendAdminPushNotification({
+              title: "🎁 Nuova richiesta premio MoviBack",
+              body: `${customer?.full_name || "Cliente MoviBack"} · ${
+                result.notification?.reward_name || "Premio"
+              }`,
+              url: "/admin/moviback",
+            }),
+          failureLog: "Reward redemption admin push notify error (ignored):",
+        },
+      ]);
+    }
   }
 
   return NextResponse.json({
