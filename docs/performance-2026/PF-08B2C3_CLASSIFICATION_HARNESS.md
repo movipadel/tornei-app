@@ -1,84 +1,50 @@
-# PF-08B2C3 — Reward classification local validation harness
+# PF-08B2C3 — Reward classification local harness
 
-## Purpose
+## Purpose and boundaries
 
-PF-08B2C3 separates normal local reset data, production-like classification fixtures, and the future strict production data migration. Nothing in this harness is under `supabase/migrations`, and nothing connects to production.
+The harness proves the future production classification against a sanitized production-shaped catalog without putting production data in the automatic migration chain. Its authoritative source is `PF-08B2C3_PRODUCTION_METADATA_EVIDENCE.txt`.
 
-## Artifact boundaries
+| Artifact | Automatic during `db reset` | Purpose |
+|---|---:|---|
+| Normal `supabase/seed.sql` | Yes | Existing synthetic development baseline; unchanged |
+| `supabase/tests/fixtures/pf08_reward_classification_fixture.sql` | No | Local-only catalog/configuration fixture |
+| `supabase/tests/candidates/pf08_reward_classification_candidate.sql` | No | Strict candidate for later production review |
+| B2C3 harness and validation | No | Negative guards, postconditions, and smart-RPC tests |
 
-| Layer | Artifact | Automatic during `db reset` | Production eligible |
-|---|---|---:|---:|
-| Normal local seed | Existing `supabase/seed.sql` | Yes | No; unchanged synthetic PF-08 data |
-| Classification fixture | `supabase/tests/fixtures/pf08_reward_classification_fixture.sql` | No | Never |
-| Candidate data migration | `supabase/tests/candidates/pf08_reward_classification_candidate.sql` | No | Only after complete review and later promotion |
-| Runner | `supabase/tests/pf08b2c3_classification_harness.ps1` | No | Never |
-| Smart validation | `supabase/tests/pf08b2c3_classification_validation.sql` | No | Never |
-
-The normal seed was not modified or populated with a production catalog snapshot.
-
-## Evidence gate
-
-The fixture currently raises `PF08B2C3_PRODUCTION_METADATA_REQUIRED` before writing anything. This is intentional. The repository knows the 26 owner-approved reward UUID/name/type mappings and two corrected Store links, but it does not contain:
-
-- linked product UUID/name for the other 11 Store rewards;
-- `requires_store_variant` values for the 13 Store rewards;
-- active color/size/stock identities for the linked products;
-- active-product and variant evidence for Asciugamano Sport and Palline Nucleon.
-
-Inventing those rows would make a passing harness misleading. The owner must manually run `PF-08B2C3_PRODUCTION_METADATA_QUERY.sql` and review the non-personal catalog result before the fixture is completed.
+The fixture contains the exact 26 reward UUID/name pairs, 13 evidenced product links and flags, exact evidence-backed representative metadata, both Asciugamano identities, and Tubo metadata with zero stock rows. It contains no personal or transactional production data. For products with many valid identities, only an exact evidence-backed representative subset is needed; no identity is invented.
 
 ## Candidate behavior
 
-The candidate is outside automatic migration execution and is transactional. It:
+The candidate:
 
-1. declares all 26 exact UUID/name/type mappings;
-2. verifies 26 unique mappings and 13/13 target counts;
-3. requires every reward to exist, match its exact name, and be active;
-4. allows only `NULL` or an already-correct `fulfillment_type`; a conflicting value aborts;
-5. requires service rewards to have no Store link or legacy variant flag;
-6. requires the two corrected Store products to exist with exact UUID/name and be active;
-7. preserves the existing Store link for the other 11 rewards and requires it to resolve to an active product;
-8. changes only the two approved Store links and the exact 26 classifications;
-9. asserts exactly 26 active rewards, split 13 service and 13 Store product;
-10. requires every Store reward to have at least one active, available, smart-RPC-compatible stock identity and rejects duplicate active identities.
+1. maps 13 exact rewards to `service` and 13 to `store_product`;
+2. verifies UUIDs, names, active status, current links, current variant flags, product UUID/name/activity, and non-conflicting existing classifications;
+3. assigns the missing Asciugamano and Tubo links;
+4. changes only Asciugamano from the evidenced current false flag to the owner-approved true flag;
+5. preserves every other production-backed flag;
+6. permits zero stock identities only as PF-08B2R3 untracked inventory;
+7. permits exactly one identity for false-flag auto-resolution and rejects false-flag ambiguity;
+8. requires at least one coherent identity for true-flag products;
+9. asserts global active totals of 26, split exactly 13/13 with no other/null type.
 
-Existing matching classifications are accepted for idempotent reruns. Conflicting classifications fail; they are never overwritten silently. `requires_store_variant` is never modified.
+No category or product-name keyword controls classification.
 
-## Local execution flow
+## Strict tests
 
-Run only against the unlinked local project:
+The PowerShell runner verifies the local/unlinked target, resets normally, manually loads the fixture, and runs eight expected-abort cases: missing reward, wrong reward name, wrong product UUID, wrong product name, conflicting type, unexpected service link, variant-policy mismatch, and final active-count mismatch. A before/after catalog digest proves each failure fully rolls back.
+
+It then applies the candidate, checks inactive rewards and redemption history remain byte-stable, runs the rollback-only smart validation, and always performs a final normal reset.
+
+## Isolation and execution
+
+Run only against the verified unlinked local project:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File supabase/tests/pf08b2c3_classification_harness.ps1
 ```
 
-The runner:
-
-1. reads `npx supabase status` without printing local keys;
-2. requires `linked_project = null` and the exact local DB URL;
-3. verifies the PostgreSQL identity directly;
-4. performs a normal local reset;
-5. applies the test fixture manually;
-6. runs four expected-abort tests;
-7. applies the candidate manually;
-8. verifies inactive rows and redemption history are byte-stable at JSON-row level;
-9. runs postconditions and representative smart-redemption calls in rollback-only savepoints;
-10. always performs a final normal reset in `finally`.
-
-Until the fixture evidence gate is replaced with reviewed sanitized inserts, steps 6–9 are correctly blocked and the final reset still restores the normal environment.
-
-## Fixture completion rules
-
-After owner evidence is available, the fixture may contain only:
-
-- the 26 exact reward UUIDs/names with synthetic, non-sensitive descriptions/points/stock sufficient for tests;
-- the 13 evidenced Store product UUIDs/names and active state;
-- structural test category/line rows required by FKs;
-- evidenced color, size, stock identity UUIDs and active/null-size semantics;
-- no users beyond the existing synthetic seed users and no production customers, memberships, redemptions, orders, or transactions.
-
-The fixture must deactivate the two existing synthetic active rewards only for the harness session so the strict 26-row production total can be tested. The runner’s final reset restores them.
+The fixture and candidate remain outside `supabase/migrations`; a normal reset neither loads nor applies them.
 
 ## Promotion gate
 
-Do not move the candidate into `supabase/migrations` until the completed fixture makes every expected-abort, happy-path, postcondition, smart-redemption, and final-reset check pass. Promotion also requires a fresh owner review of exact production IDs/names/linkages and a separately approved production rollout plan.
+Status: **READY FOR PRODUCTION REVIEW**, not deployment. Before packaging or executing a production migration: rerun the final production SELECT, prepare backup/rollback, review the packaged SQL in isolation, keep route integration disabled, implement admin validation, define monitoring, and obtain explicit approval.

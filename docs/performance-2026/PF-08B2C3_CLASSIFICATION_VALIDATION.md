@@ -1,84 +1,49 @@
-# PF-08B2C3 — Classification harness validation
+# PF-08B2C3 — Classification validation result
 
-## Current result
+## Result
 
-Status: **PARTIAL / EVIDENCE BLOCKED**.
+Status: **COMPLETE LOCALLY / READY FOR PRODUCTION REVIEW**.
 
-The safe harness structure and strict candidate exist, but the successful classification path has not been executed because required production catalog metadata is not available in the repository. Production was not contacted.
+The evidence file was parsed into 13 exact Store mappings. The fixture, candidate, guard tests, classification postconditions, and PF-08B2R3 compatibility tests passed against the unlinked local database.
 
-## Local safety and reset
+## Classification and structural results
 
-- `npx supabase status`: passed when run with telemetry disabled and Docker access; `linked_project` was null and the DB URL matched `127.0.0.1:54322/postgres`.
-- Direct database identity: `postgres` database, `postgres` user, local container endpoint through host port 54322, PostgreSQL 17.6.
-- Initial normal `npx supabase db reset`: passed.
-- Applied migrations: baseline, PF-08B0, PF-08B1, PF-08B2, and PF-08B2L.
-- Existing `supabase/seed.sql`: applied unchanged after migrations.
-- Normal post-reset catalog: two active synthetic PF-08 rewards, both intentionally unclassified.
-- One harness attempt encountered a transient local container initialization failure; its `finally` reset recovered successfully. The retry completed both its initial and final resets.
+- 26 active rewards classified.
+- 13 `service`; 13 `store_product`.
+- Zero active `custom_physical`, `partner`, or null classifications.
+- Every Store reward has its exact evidence-backed link and flag, resolving to an active product.
+- Every service reward has no Store link and no variant flag.
+- Asciugamano is corrected to the owner-approved true flag.
+- Tubo remains false and has zero stock identities.
 
-No local development keys printed by the status command are reproduced in this documentation.
+## Negative guards
 
-## Static candidate coverage
+All expected failures returned their deterministic token and preserved identical catalog digests:
 
-| Requirement | Candidate coverage | Runtime result |
-|---|---|---|
-| Exact 26 UUID mappings | Explicit temp mapping with primary key | Static review complete |
-| Expected names | Exact equality guard | Awaiting fixture |
-| Active rewards | Fail-fast active guard | Awaiting fixture |
-| Duplicate mapping | PK plus explicit 26/distinct count | Static review complete |
-| Allowed types | Mapping check and explicit counts | Static review complete |
-| Missing reward | `PF08B2C3_REWARD_MISSING` | Awaiting fixture |
-| Wrong name | `PF08B2C3_REWARD_NAME_MISMATCH` | Awaiting fixture |
-| Conflicting existing type | `PF08B2C3_FULFILLMENT_CONFLICT` | Awaiting fixture |
-| Wrong approved product | `PF08B2C3_STORE_PRODUCT_MISMATCH` | Awaiting fixture |
-| Service Store contamination | Pre/postcondition abort | Awaiting fixture |
-| Store linkage/activity | Pre/postcondition abort | Awaiting fixture |
-| Usable variants | Active color/size/stock compatibility guard | Awaiting metadata and fixture |
-| Totals 13/13 | Strict active-catalog postcondition | Awaiting fixture |
-| Inactive/history untouched | Exact-ID updates plus runner hash comparison | Awaiting fixture |
+| Scenario | Result |
+|---|---|
+| Missing reward | `PF08B2C3_REWARD_MISSING` |
+| Wrong reward name | `PF08B2C3_REWARD_NAME_MISMATCH` |
+| Wrong Store product UUID | `PF08B2C3_STORE_LINK_MISMATCH` |
+| Wrong Store product name | `PF08B2C3_STORE_PRODUCT_MISMATCH` |
+| Conflicting fulfillment type | `PF08B2C3_FULFILLMENT_CONFLICT` |
+| Unexpected service Store link | `PF08B2C3_STORE_LINK_MISMATCH` |
+| Variant flag mismatch | `PF08B2C3_VARIANT_POLICY_MISMATCH` |
+| Final active-count mismatch | `PF08B2C3_ACTIVE_TOTALS_MISMATCH` |
 
-## Variant findings
+## Smart-redemption results
 
-The smart RPC ignores `requires_store_variant` and always validates explicit color plus size when active sizes exist for `store_product`. The current customer UI still uses the legacy flag to decide whether to open its picker, so the production values remain necessary cutover evidence even though the candidate must preserve them.
+- Service redemption became ready with no Store order.
+- Asciugamano rejected missing/invalid selection and accepted both Grigio and Lime with coherent order-item snapshots.
+- Borsone represented false-flag single-identity behavior: automatic resolution, finite test decrement, cancellation restoration, and replay-safe cancellation passed.
+- Tubo succeeded without variant or stock row, created exactly one Store order/item and one debit, replayed without duplicate notification/work, cancelled/refunded correctly, restored reward stock, and never created or restored Store stock.
 
-The repository has no approved evidence identifying which of the 13 mappings currently have the flag true/false. It also lacks the exact active variants for Asciugamano Sport and Palline Nucleon. They remain `OWNER/PRODUCTION-EVIDENCE REQUIRED`; no flag or variant was guessed.
+All smart tests used transaction savepoints and rolled back.
 
-The validation SQL is prepared to require and exercise:
+## Reset isolation
 
-- one service redemption with no Store order;
-- one Store reward with `requires_store_variant = true`;
-- one Store reward with `requires_store_variant = false`;
-- Asciugamano Sport against an evidenced usable variant;
-- Tubo Palline/Palline Nucleon against an evidenced usable variant.
+The final normal reset reapplied the deterministic migration chain through PF-08B2R3 and restored the ordinary synthetic seed. The production-shaped fixture was absent and the candidate was not automatically applied.
 
-Each call runs inside a rollback-only savepoint so inventory, points, orders, redemptions, and idempotency rows are restored after the assertion.
+## Production boundary
 
-## Execution completed in this phase
-
-1. Confirmed the official local/unlinked status.
-2. Confirmed the direct local database identity.
-3. Ran a clean normal reset successfully.
-4. Confirmed fixtures are seeded after migrations and that test/candidate paths are not automatic migrations.
-5. Statically reviewed the candidate and runner safety boundaries.
-6. Kept the fixture fail-closed because the source-evidence limit prohibits invented Store metadata.
-7. Ran the harness retry: local gate passed, initial reset passed, the fixture returned the expected `PF08B2C3_PRODUCTION_METADATA_REQUIRED`, and final normal reset passed.
-8. Applied the candidate against the normal synthetic catalog only to validate its first fail-fast boundary; it returned `PF08B2C3_REWARD_MISSING` listing all 26 exact rows and rolled back.
-9. Verified the final database still contains only the two active/unclassified synthetic rewards and exactly the five committed migration versions through PF-08B2L.
-10. Executed the metadata SELECT against local solely as a syntax check; it returned zero rows, as expected, and made no changes.
-
-The candidate was not applied, and smart-redemption compatibility was not executed against fabricated data.
-
-## Evidence required to finish
-
-The owner should manually execute `PF-08B2C3_PRODUCTION_METADATA_QUERY.sql` in the production SQL editor and provide the reviewed result. It contains catalog configuration only and excludes personal or transactional data.
-
-After incorporating that evidence into the sanitized local-only fixture, rerun the harness. Completion requires:
-
-- all four negative precondition cases produce their exact expected failures;
-- the candidate succeeds on the intact fixture;
-- all 26 exact mappings and 13/13 totals pass;
-- both corrected links pass;
-- Store variants are usable and unambiguous;
-- inactive/history hashes remain unchanged;
-- all representative smart-redemption cases pass;
-- final normal reset succeeds without the production-like fixture.
+Production was never contacted or modified. No deployment, route integration, environment change, migration-chain change, seed change, or commit occurred.

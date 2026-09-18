@@ -58,17 +58,17 @@ function Assert-LocalTarget {
 
   $previousPreference = $ErrorActionPreference
   $ErrorActionPreference = 'Continue'
-  $statusLines = & npx --no-install supabase status 2>&1
+  $statusLines = & npx --no-install supabase status -o json 2>&1
   $exitCode = $LASTEXITCODE
   $ErrorActionPreference = $previousPreference
   if ($exitCode -ne 0) {
     throw 'npx supabase status failed'
   }
-  $statusLine = $statusLines | Where-Object { "$_" -match '^\{' } | Select-Object -Last 1
-  if (-not $statusLine) {
-    throw 'Supabase status did not return JSON'
-  }
-  $status = $statusLine | ConvertFrom-Json
+  $statusText = $statusLines | Out-String
+  $jsonStart = $statusText.IndexOf('{')
+  $jsonEnd = $statusText.LastIndexOf('}')
+  if ($jsonStart -lt 0 -or $jsonEnd -le $jsonStart) { throw 'Supabase status did not return JSON' }
+  $status = $statusText.Substring($jsonStart, $jsonEnd - $jsonStart + 1) | ConvertFrom-Json
   if ($null -ne $status.linked_project) {
     throw 'Safety stop: Supabase project is linked'
   }
@@ -88,6 +88,7 @@ function Assert-CandidateFailure {
     [string]$MutationSql,
     [string]$ExpectedToken
   )
+  $before = Invoke-LocalScalar "SELECT md5(coalesce((SELECT string_agg(to_jsonb(r)::text,'|' ORDER BY r.id) FROM public.rewards_catalog r),'') || coalesce((SELECT string_agg(to_jsonb(p)::text,'|' ORDER BY p.id) FROM public.store_products p),''));"
   $candidate = Get-Content -LiteralPath $candidatePath -Raw
   $testPath = Join-Path $tempRoot ($Name + '.sql')
   [IO.File]::WriteAllText(
@@ -106,6 +107,8 @@ function Assert-CandidateFailure {
   if ($combined -notmatch [regex]::Escape($ExpectedToken)) {
     throw "Strict-precondition test returned the wrong failure: $Name`n$combined"
   }
+  $after = Invoke-LocalScalar "SELECT md5(coalesce((SELECT string_agg(to_jsonb(r)::text,'|' ORDER BY r.id) FROM public.rewards_catalog r),'') || coalesce((SELECT string_agg(to_jsonb(p)::text,'|' ORDER BY p.id) FROM public.store_products p),''));"
+  if ($before -ne $after) { throw "Expected abort did not roll back completely: $Name" }
   Write-Output "PASS expected abort: $Name ($ExpectedToken)"
 }
 
@@ -135,12 +138,24 @@ FROM public.reward_redemptions AS rr;
   Assert-CandidateFailure 'wrong-reward-name' `
     "UPDATE public.rewards_catalog SET name='PF08 WRONG NAME' WHERE id='157d2e20-293e-4770-9e8d-e04b03aed110';" `
     'PF08B2C3_REWARD_NAME_MISMATCH'
+  Assert-CandidateFailure 'wrong-store-product-uuid' `
+    "UPDATE public.rewards_catalog SET store_product_id='00000000-0000-4000-8000-000000005001' WHERE id='c0aaddaa-6980-4db5-97ac-4e41e2bb4203';" `
+    'PF08B2C3_STORE_LINK_MISMATCH'
   Assert-CandidateFailure 'wrong-store-product-name' `
     "UPDATE public.store_products SET name='PF08 WRONG PRODUCT' WHERE id='671549a7-ed15-4eab-886d-4dff3f331d4d';" `
     'PF08B2C3_STORE_PRODUCT_MISMATCH'
   Assert-CandidateFailure 'conflicting-classification' `
     "UPDATE public.rewards_catalog SET fulfillment_type='partner' WHERE id='157d2e20-293e-4770-9e8d-e04b03aed110';" `
     'PF08B2C3_FULFILLMENT_CONFLICT'
+  Assert-CandidateFailure 'unexpected-service-store-link' `
+    "UPDATE public.rewards_catalog SET store_product_id='00000000-0000-4000-8000-000000005001' WHERE id='157d2e20-293e-4770-9e8d-e04b03aed110';" `
+    'PF08B2C3_STORE_LINK_MISMATCH'
+  Assert-CandidateFailure 'variant-policy-mismatch' `
+    "UPDATE public.rewards_catalog SET requires_store_variant=true WHERE id='c0aaddaa-6980-4db5-97ac-4e41e2bb4203';" `
+    'PF08B2C3_VARIANT_POLICY_MISMATCH'
+  Assert-CandidateFailure 'active-total-mismatch' `
+    "INSERT INTO public.rewards_catalog(id,name,points_cost,is_active,reward_type,requires_store_variant,fulfillment_type) VALUES('51000000-0000-4000-8000-000000000001','PF08 EXTRA ACTIVE',100,true,'club',false,'service');" `
+    'PF08B2C3_ACTIVE_TOTALS_MISMATCH'
 
   Invoke-LocalFile $candidatePath | Out-Null
 
