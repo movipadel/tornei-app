@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import {
   AlertTriangle,
@@ -111,9 +111,10 @@ export default function AdminStoreOrdersPage() {
   const [club, setClub] = useState("all");
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<StoreOrder | null>(null);
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [supplierEligibleUnits, setSupplierEligibleUnits] = useState(0);
   const [exporting, setExporting] = useState(false);
   const [canAccessEconomics, setCanAccessEconomics] = useState(false);
+  const supplierExportKey = useRef<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -125,6 +126,7 @@ export default function AdminStoreOrdersPage() {
       if (!res.ok) throw new Error(json.error || "Errore caricamento ordini");
       const rows = (json.data ?? []) as StoreOrder[];
       setOrders(rows);
+      setSupplierEligibleUnits(Number(json.supplier_eligible_units || 0));
       setSelected((current) =>
         current ? rows.find((order) => order.id === current.id) ?? null : null
       );
@@ -182,13 +184,6 @@ export default function AdminStoreOrdersPage() {
       });
   }, [orders, origin, search, view]);
 
-  const supplierOrders = orders.filter(
-    (order) => resolveOrderSource(order) === "STORE" && order.status === "pending"
-  );
-  const supplierSelectedIds = selectedIds.filter((id) =>
-    supplierOrders.some((order) => order.id === id)
-  );
-
   const counts = {
     preparing: orders.filter((order) => resolveOperationalView(order) === "preparing").length,
     ready: orders.filter((order) => resolveOperationalView(order) === "ready").length,
@@ -236,7 +231,6 @@ export default function AdminStoreOrdersPage() {
         toast.success("Richiesta annullata");
       }
 
-      setSelectedIds((current) => current.filter((id) => id !== order.id));
       await load();
     } catch (error: unknown) {
       toast.error(error instanceof Error ? error.message : "Operazione non riuscita");
@@ -265,31 +259,30 @@ export default function AdminStoreOrdersPage() {
   }
 
   async function exportPendingSummary() {
-    if (supplierSelectedIds.length === 0) {
-      toast.error("Seleziona almeno un ordine Store da preparare");
-      return;
-    }
     try {
       setExporting(true);
+      supplierExportKey.current ||= crypto.randomUUID();
       const res = await fetch("/api/admin/store-orders/export-summary", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ order_ids: supplierSelectedIds }),
+        body: JSON.stringify({ idempotency_key: supplierExportKey.current }),
       });
       if (!res.ok) {
         const json = await res.json().catch(() => ({}));
+        if (json.code === "SUPPLIER_EXPORT_EMPTY") supplierExportKey.current = null;
         throw new Error(json.error || "Errore export");
       }
       const url = window.URL.createObjectURL(await res.blob());
       const anchor = document.createElement("a");
       anchor.href = url;
-      anchor.download = `riepilogo-store-movi-${new Date().toISOString().slice(0, 10)}.csv`;
+      const disposition = res.headers.get("Content-Disposition") || "";
+      anchor.download = disposition.match(/filename="([^"]+)"/)?.[1] || "riepilogo-fornitore.xls";
       document.body.appendChild(anchor);
       anchor.click();
       anchor.remove();
       window.URL.revokeObjectURL(url);
-      toast.success("Riepilogo creato per gli ordini Store selezionati");
-      setSelectedIds([]);
+      supplierExportKey.current = null;
+      toast.success("Excel fornitore generato");
       await load();
     } catch (error: unknown) {
       toast.error(error instanceof Error ? error.message : "Errore export");
@@ -373,22 +366,22 @@ export default function AdminStoreOrdersPage() {
           <details style={supplierDetails}>
             <summary style={supplierSummary}>
               <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-                <FileSpreadsheet className="w-4 h-4" /> Riepilogo fornitore Store
+                <FileSpreadsheet className="w-4 h-4" /> Riepilogo fornitore
               </span>
               <span style={muted}>Strumento secondario</span>
             </summary>
             <div className="admin-orders-supplier-content" style={supplierContent}>
               <div style={muted}>
-                Include esclusivamente ordini STORE ancora pending. I premi MoviBack sono esclusi.
+                {supplierEligibleUnits} articoli da ordinare. Include automaticamente Store e premi fisici MoviBack non ancora esportati.
               </div>
               <button
                 type="button"
                 onClick={exportPendingSummary}
-                disabled={exporting || supplierSelectedIds.length === 0}
-                style={secondaryButton(supplierSelectedIds.length > 0)}
+                disabled={exporting || supplierEligibleUnits === 0}
+                style={secondaryButton(supplierEligibleUnits > 0)}
               >
                 {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-                Genera CSV ({supplierSelectedIds.length})
+                Genera Excel
               </button>
             </div>
           </details>
@@ -408,14 +401,6 @@ export default function AdminStoreOrdersPage() {
                 order={order}
                 view={view}
                 saving={savingId === order.id}
-                supplierSelected={selectedIds.includes(order.id)}
-                onToggleSupplier={() =>
-                  setSelectedIds((current) =>
-                    current.includes(order.id)
-                      ? current.filter((id) => id !== order.id)
-                      : [...current, order.id]
-                  )
-                }
                 onOpen={() => setSelected(order)}
                 onCommand={(action) => void runCommand(order, action)}
               />
@@ -461,16 +446,12 @@ function OrderCard({
   order,
   view,
   saving,
-  supplierSelected,
-  onToggleSupplier,
   onOpen,
   onCommand,
 }: {
   order: StoreOrder;
   view: OperationalView;
   saving: boolean;
-  supplierSelected: boolean;
-  onToggleSupplier: () => void;
   onOpen: () => void;
   onCommand: (action: FulfillmentAction) => void;
 }) {
@@ -481,7 +462,6 @@ function OrderCard({
   const firstItem = order.store_order_items[0];
   const productName = firstItem?.custom_product_name || firstItem?.product_name || order.special_title || "Prodotto";
   const variant = firstItem ? visibleVariant(firstItem) : "";
-  const supplierEligible = source === "STORE" && order.status === "pending" && view === "preparing";
 
   return (
     <article style={orderCard}>
@@ -527,12 +507,6 @@ function OrderCard({
           </div>
         ) : null}
 
-        {supplierEligible ? (
-          <label style={supplierCheck}>
-            <input type="checkbox" checked={supplierSelected} onChange={onToggleSupplier} />
-            Includi nel riepilogo fornitore
-          </label>
-        ) : null}
       </div>
 
       {view !== "history" && (primaryAction || canCancel) ? (

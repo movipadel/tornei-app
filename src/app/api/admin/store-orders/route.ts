@@ -29,6 +29,13 @@ export async function GET(req: Request) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
+  const { data: supplierEligibleUnits, error: supplierError } = await sb.rpc(
+    "supplier_export_eligible_unit_count"
+  );
+  if (supplierError) {
+    return NextResponse.json({ error: supplierError.message }, { status: 500 });
+  }
+
   const redemptionIds = Array.from(
     new Set(
       (data ?? [])
@@ -64,5 +71,6 @@ export async function GET(req: Request) {
         ? redemptionById.get(order.related_redemption_id) ?? null
         : null,
     })),
+    supplier_eligible_units: Number(supplierEligibleUnits || 0),
   });
 }

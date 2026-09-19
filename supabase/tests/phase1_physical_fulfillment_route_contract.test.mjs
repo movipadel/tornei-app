@@ -19,9 +19,11 @@ test("operator routes expose commands rather than a raw status mutation", async 
   assert.doesNotMatch(legacy, /\.from\("store_orders"\)\.update/);
 });
 
-test("supplier export cannot mutate MoviBack fulfillment orders", async () => {
+test("supplier export claims immutable item batches without lifecycle mutation", async () => {
   const route = await read("src/app/api/admin/store-orders/export-summary/route.ts");
-  assert.match(route, /\.eq\("order_type", "catalog"\)/);
+  assert.match(route, /claim_supplier_export_batch/);
+  assert.doesNotMatch(route, /\.from\("store_orders"\)\s*\.update/);
+  assert.doesNotMatch(route, /sendTelegram|sendAdminPush|web-push/);
 });
 
 test("command adapter is admin-only and has no notification transport", async () => {

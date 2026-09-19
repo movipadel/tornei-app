@@ -106,14 +106,17 @@ test("Ordini Store UI uses command routes and no legacy raw endpoint", async () 
   assert.match(page, /canSafelyCancel/);
 });
 
-test("list API supplies the linked redemption projection and supplier export stays Store-only", async () => {
+test("list API supplies linked redemption and automatic supplier eligibility", async () => {
   const [listRoute, exportRoute] = await Promise.all([
     read("src/app/api/admin/store-orders/route.ts"),
     read("src/app/api/admin/store-orders/export-summary/route.ts"),
   ]);
   assert.match(listRoute, /\.from\("reward_redemptions"\)/);
   assert.match(listRoute, /reward_redemption:/);
-  assert.match(exportRoute, /\.eq\("order_type", "catalog"\)/);
+  assert.match(listRoute, /supplier_export_eligible_unit_count/);
+  assert.match(exportRoute, /claim_supplier_export_batch/);
+  assert.doesNotMatch(exportRoute, /order_ids/);
+  assert.doesNotMatch(exportRoute, /status:\s*["']confirmed["']/);
 });
 
 test("SERVICE has no physical queue creator in the UI and invalid linked service is blocked", async () => {
