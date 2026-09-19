@@ -19,6 +19,11 @@ function availableActions(redemption: {
   fulfillment_type: string | null;
 }) {
   if (!redemption.fulfillment_type) return ["manual_review"];
+  const isPhysical = ["store_product", "custom_physical"].includes(
+    redemption.fulfillment_type
+  );
+  if (isPhysical && redemption.status === "requested") return ["process"];
+  if (isPhysical && redemption.status === "processing") return ["ready"];
   if (redemption.status === "requested") return ["process", "cancel", "reject"];
   if (redemption.status === "processing") return ["ready", "cancel", "reject"];
   if (redemption.status === "ready") return ["deliver"];

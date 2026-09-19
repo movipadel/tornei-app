@@ -47,6 +47,31 @@ export async function POST(req: Request, { params }: Params) {
     );
   }
 
+  if (action === "cancel" || action === "reject") {
+    const { data: redemption, error: lookupError } = await supabaseAdmin()
+      .from("reward_redemptions")
+      .select("fulfillment_type")
+      .eq("id", id)
+      .maybeSingle();
+    if (lookupError) {
+      return NextResponse.json({ error: lookupError.message }, { status: 500 });
+    }
+    if (
+      redemption &&
+      ["store_product", "custom_physical"].includes(
+        String(redemption.fulfillment_type)
+      )
+    ) {
+      return NextResponse.json(
+        {
+          error: "Annulla la consegna fisica da Ordini Store scegliendo la gestione dello stock",
+          code: "PHYSICAL_CANCELLATION_USE_STORE_ORDERS",
+        },
+        { status: 409 }
+      );
+    }
+  }
+
   const args: Record<string, string> = {
     p_actor_id: session.sid,
     p_idempotency_key: idempotencyKey,

@@ -195,7 +195,7 @@ BEGIN
     );
     err := 'NO_ERROR';
   EXCEPTION WHEN SQLSTATE 'P0001' THEN err := SQLERRM; END;
-  IF err <> 'PF08_STORE_CANCELLATION_DEFERRED'
+  IF err <> 'PF08_STOCK_DECISION_REQUIRED'
      OR (SELECT status FROM public.store_orders WHERE id='42000000-0000-4000-8000-000000000004') <> 'pending' THEN
     RAISE EXCEPTION 'PHASE1_ASSERT_STORE_CANCEL_DEFERRED';
   END IF;
@@ -213,10 +213,10 @@ BEGIN
   );
   rid := (redeemed#>>'{data,id}')::uuid; oid := (redeemed#>>'{data,store_order_id}')::uuid;
   cancelled := public.cancel_physical_store_order(
-    'aaaaaaaa-0000-4000-8000-000000000001','43000000-0000-4000-8000-000000000002',oid,'Cliente rinuncia'
+    'aaaaaaaa-0000-4000-8000-000000000001','43000000-0000-4000-8000-000000000002',oid,'Cliente rinuncia',true
   );
   replayed := public.cancel_physical_store_order(
-    'aaaaaaaa-0000-4000-8000-000000000001','43000000-0000-4000-8000-000000000002',oid,'Cliente rinuncia'
+    'aaaaaaaa-0000-4000-8000-000000000001','43000000-0000-4000-8000-000000000002',oid,'Cliente rinuncia',true
   );
   IF cancelled#>>'{data,source}' <> 'MOVIBACK'
      OR (replayed->>'replayed')::boolean IS NOT TRUE

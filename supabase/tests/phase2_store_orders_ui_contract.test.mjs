@@ -69,11 +69,13 @@ test("one primary action follows the operational state", () => {
   assert.equal(resolvePrimaryAction(storeOrder("cancelled")), null);
 });
 
-test("MoviBack cancellation is visible only before supplier commitment", () => {
+test("physical cancellation is visible for coherent Store and MoviBack before delivery", () => {
   assert.equal(canSafelyCancel(movibackOrder("pending", "requested")), true);
-  assert.equal(canSafelyCancel(movibackOrder("confirmed", "processing")), false);
-  assert.equal(canSafelyCancel(movibackOrder("ready", "ready")), false);
-  assert.equal(canSafelyCancel(storeOrder("pending")), false);
+  assert.equal(canSafelyCancel(movibackOrder("confirmed", "processing")), true);
+  assert.equal(canSafelyCancel(movibackOrder("ready", "ready")), true);
+  assert.equal(canSafelyCancel(storeOrder("pending")), true);
+  assert.equal(canSafelyCancel(storeOrder("ready")), true);
+  assert.equal(canSafelyCancel(storeOrder("delivered")), false);
 });
 
 test("Osimani-type delivered/ready mismatch is a conflict with no action", () => {

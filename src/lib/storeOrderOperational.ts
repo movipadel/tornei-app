@@ -110,11 +110,9 @@ export function resolvePrimaryAction(
 }
 
 export function canSafelyCancel(order: OperationalOrderShape) {
-  return (
-    resolveOrderSource(order) === "MOVIBACK" &&
-    resolveOperationalStatus(order) === "preparing" &&
-    order.status === "pending"
-  );
+  const source = resolveOrderSource(order);
+  const status = resolveOperationalStatus(order);
+  return source !== "CONFLICT" && (status === "preparing" || status === "ready");
 }
 
 export function operationalStatusLabel(status: OperationalStatus) {

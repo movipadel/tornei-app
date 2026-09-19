@@ -25,10 +25,37 @@ const STORE_ERROR_MAP: Record<string, { status: number; message: string }> = {
     status: 409,
     message: "Collegamento premio-ordine da verificare manualmente",
   },
-  PF08_STORE_CANCELLATION_DEFERRED: {
+  PF08_DELIVERED_CANCELLATION_FORBIDDEN: {
     status: 409,
-    message:
-      "Annullamento Store non disponibile: stock e pagamento richiedono verifica manuale",
+    message: "Un ordine già consegnato non può essere annullato",
+  },
+  PF08_STOCK_DECISION_REQUIRED: {
+    status: 400,
+    message: "Scelta reintegro stock richiesta",
+  },
+  PF08_PHYSICAL_FULFILLMENT_REQUIRED: {
+    status: 409,
+    message: "Questa richiesta non è una consegna fisica Store",
+  },
+  PF08_FULFILLMENT_ITEM_REQUIRED: {
+    status: 409,
+    message: "Ordine privo di articoli: verifica manuale richiesta",
+  },
+  PF08_INVENTORY_IDENTITY_CONFLICT: {
+    status: 409,
+    message: "Variante o disponibilità da verificare manualmente",
+  },
+  PF08_LEGACY_REVERSAL_REQUIRES_ADMIN: {
+    status: 409,
+    message: "Annullamento storico da verificare manualmente",
+  },
+  PF08_RESERVATION_STATE_CONFLICT: {
+    status: 409,
+    message: "Prenotazione stock da verificare manualmente",
+  },
+  PF08_LEDGER_INVARIANT: {
+    status: 409,
+    message: "Movimento punti da verificare manualmente",
   },
 };
 
@@ -58,6 +85,7 @@ export async function runStoreFulfillmentCommand(
   const body = await req.json().catch(() => null);
   const idempotencyKey = String(body?.idempotency_key ?? "").trim();
   const reason = typeof body?.reason === "string" ? body.reason.trim() : "";
+  const reintegrateStock = body?.reintegrate_stock;
 
   if (!isUuid(session.sid) || !isUuid(orderId) || !isUuid(idempotencyKey)) {
     return NextResponse.json(
@@ -71,13 +99,22 @@ export async function runStoreFulfillmentCommand(
       { status: 400 }
     );
   }
+  if (action === "cancel" && typeof reintegrateStock !== "boolean") {
+    return NextResponse.json(
+      { error: "Scelta reintegro stock richiesta", code: "STOCK_DECISION_REQUIRED" },
+      { status: 400 }
+    );
+  }
 
-  const args: Record<string, string> = {
+  const args: Record<string, string | boolean> = {
     p_actor_id: session.sid,
     p_idempotency_key: idempotencyKey,
     p_order_id: orderId,
   };
-  if (action === "cancel") args.p_reason = reason;
+  if (action === "cancel") {
+    args.p_reason = reason;
+    args.p_reintegrate_stock = reintegrateStock;
+  }
 
   const { data, error } = await supabaseAdmin().rpc(RPC_BY_ACTION[action], args);
   if (error || !data) {

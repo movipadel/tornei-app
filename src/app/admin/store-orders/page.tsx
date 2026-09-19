@@ -111,6 +111,7 @@ export default function AdminStoreOrdersPage() {
   const [club, setClub] = useState("all");
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<StoreOrder | null>(null);
+  const [cancelTarget, setCancelTarget] = useState<StoreOrder | null>(null);
   const [supplierEligibleUnits, setSupplierEligibleUnits] = useState(0);
   const [exporting, setExporting] = useState(false);
   const [canAccessEconomics, setCanAccessEconomics] = useState(false);
@@ -191,12 +192,11 @@ export default function AdminStoreOrdersPage() {
     conflict: orders.filter((order) => resolveOperationalStatus(order) === "conflict").length,
   };
 
-  async function runCommand(order: StoreOrder, action: FulfillmentAction) {
-    if (action === "cancel") {
-      const confirmed = window.confirm("Annullare questa richiesta premio?");
-      if (!confirmed) return;
-    }
-
+  async function runCommand(
+    order: StoreOrder,
+    action: FulfillmentAction,
+    reintegrateStock?: boolean
+  ) {
     try {
       setSavingId(order.id);
       const res = await fetch(`/api/admin/store-orders/${order.id}/${action}`, {
@@ -204,7 +204,12 @@ export default function AdminStoreOrdersPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           idempotency_key: crypto.randomUUID(),
-          ...(action === "cancel" ? { reason: "Annullamento operatore" } : {}),
+          ...(action === "cancel"
+            ? {
+                reason: "Annullamento operatore",
+                reintegrate_stock: reintegrateStock,
+              }
+            : {}),
         }),
       });
       const json = (await res.json().catch(() => ({}))) as CommandResponse;
@@ -232,8 +237,10 @@ export default function AdminStoreOrdersPage() {
       }
 
       await load();
+      return true;
     } catch (error: unknown) {
       toast.error(error instanceof Error ? error.message : "Operazione non riuscita");
+      return false;
     } finally {
       setSavingId(null);
     }
@@ -403,6 +410,7 @@ export default function AdminStoreOrdersPage() {
                 saving={savingId === order.id}
                 onOpen={() => setSelected(order)}
                 onCommand={(action) => void runCommand(order, action)}
+                onCancel={() => setCancelTarget(order)}
               />
             ))
           )}
@@ -414,6 +422,22 @@ export default function AdminStoreOrdersPage() {
             saving={savingId === selected.id}
             onClose={() => setSelected(null)}
             onTogglePaid={(isPaid) => void togglePaid(selected.id, isPaid)}
+          />
+        ) : null}
+
+        {cancelTarget ? (
+          <CancellationModal
+            order={cancelTarget}
+            saving={savingId === cancelTarget.id}
+            onClose={() => setCancelTarget(null)}
+            onConfirm={async (reintegrateStock) => {
+              const succeeded = await runCommand(
+                cancelTarget,
+                "cancel",
+                reintegrateStock
+              );
+              if (succeeded) setCancelTarget(null);
+            }}
           />
         ) : null}
 
@@ -448,12 +472,14 @@ function OrderCard({
   saving,
   onOpen,
   onCommand,
+  onCancel,
 }: {
   order: StoreOrder;
   view: OperationalView;
   saving: boolean;
   onOpen: () => void;
   onCommand: (action: FulfillmentAction) => void;
+  onCancel: () => void;
 }) {
   const source = resolveOrderSource(order);
   const status = resolveOperationalStatus(order);
@@ -523,13 +549,87 @@ function OrderCard({
             </button>
           ) : null}
           {canCancel ? (
-            <button type="button" disabled={saving} onClick={() => onCommand("cancel")} style={dangerLinkButton}>
+            <button type="button" disabled={saving} onClick={onCancel} style={dangerLinkButton}>
               Annulla
             </button>
           ) : null}
         </div>
       ) : null}
     </article>
+  );
+}
+
+function CancellationModal({
+  order,
+  saving,
+  onClose,
+  onConfirm,
+}: {
+  order: StoreOrder;
+  saving: boolean;
+  onClose: () => void;
+  onConfirm: (reintegrateStock: boolean) => Promise<void>;
+}) {
+  const source = resolveOrderSource(order);
+  const firstItem = order.store_order_items[0];
+  const product =
+    firstItem?.custom_product_name ||
+    firstItem?.product_name ||
+    order.special_title ||
+    "Prodotto";
+  const variant = firstItem ? visibleVariant(firstItem) : "";
+
+  return (
+    <div className="admin-orders-modal-overlay" style={modalOverlay} role="presentation">
+      <section
+        className="admin-orders-modal-card"
+        style={{ ...modalCard, maxWidth: 540 }}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="cancel-order-title"
+      >
+        <button type="button" onClick={onClose} disabled={saving} style={closeButton} aria-label="Chiudi">
+          <X className="w-5 h-5" />
+        </button>
+        <div style={{ paddingRight: 48 }}>
+          <OriginBadge source={source} />
+          <h2 id="cancel-order-title" style={{ fontSize: 23, fontWeight: 950, margin: "14px 0 5px" }}>
+            Annulla ordine
+          </h2>
+          <p style={{ ...muted, lineHeight: 1.5, margin: 0 }}>
+            Scegli esplicitamente se reintegrare nello stock tutti gli articoli dell&apos;ordine.
+          </p>
+        </div>
+
+        <DetailBox title="Riepilogo">
+          <DetailLine label="Cliente" value={order.customer_name || "Cliente"} />
+          <DetailLine label="Prodotto" value={product} />
+          {variant ? <DetailLine label="Variante" value={variant} /> : null}
+          {order.store_order_items.length > 1 ? (
+            <DetailLine label="Articoli" value={`${order.store_order_items.length} righe ordine`} />
+          ) : null}
+        </DetailBox>
+
+        {source === "MOVIBACK" ? (
+          <div style={{ ...conflictBox, color: "#fde68a", background: "rgba(251,191,36,.10)", borderColor: "rgba(251,191,36,.24)" }}>
+            I punti MoviBack verranno reintegrati automaticamente.
+          </div>
+        ) : null}
+
+        <div style={{ display: "grid", gap: 9, marginTop: 16 }}>
+          <button type="button" disabled={saving} onClick={() => void onConfirm(true)} style={primaryButton}>
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+            Sì, aggiungi allo stock
+          </button>
+          <button type="button" disabled={saving} onClick={() => void onConfirm(false)} style={dangerLinkButton}>
+            No, non modificare lo stock
+          </button>
+          <button type="button" disabled={saving} onClick={onClose} style={detailsButton}>
+            Indietro
+          </button>
+        </div>
+      </section>
+    </div>
   );
 }
 
