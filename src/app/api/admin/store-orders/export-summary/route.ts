@@ -34,6 +34,7 @@ export async function POST(req: Request) {
       "id,status,customer_name,pickup_club,payment_mode,total_euro,total_points,created_at,store_order_items(*)"
     )
     .in("id", orderIds)
+    .eq("order_type", "catalog")
     .eq("status", "pending")
     .order("created_at", { ascending: true });
 

@@ -108,6 +108,24 @@ export async function GET() {
     return perf.json({ error: baseErr.message }, { status: 500 });
   }
 
+  const { data: personalRows, error: personalErr } = await perf.db(() =>
+    sb
+      .from("communications")
+      .select(
+        "id,target,tournament_id,title,body,image_path,cta_label,cta_url,starts_at,ends_at,created_at"
+      )
+      .eq("is_active", true)
+      .eq("target", "user")
+      .eq("recipient_user_id", uid)
+      .lte("starts_at", now)
+      .or(`ends_at.is.null,ends_at.gte.${now}`)
+      .order("created_at", { ascending: false })
+  );
+
+  if (personalErr) {
+    return perf.json({ error: personalErr.message }, { status: 500 });
+  }
+
   let tournamentRows: CommunicationRow[] = [];
 
   if (tournamentIds.length > 0) {
@@ -132,7 +150,11 @@ export async function GET() {
     tournamentRows = (data ?? []) as CommunicationRow[];
   }
 
-  const merged = [...((baseRows ?? []) as CommunicationRow[]), ...tournamentRows];
+  const merged = [
+    ...((baseRows ?? []) as CommunicationRow[]),
+    ...((personalRows ?? []) as CommunicationRow[]),
+    ...tournamentRows,
+  ];
 
   if (merged.length === 0) {
     return perf.json({ data: [] });
