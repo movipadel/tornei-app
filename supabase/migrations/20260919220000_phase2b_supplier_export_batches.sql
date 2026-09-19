@@ -229,8 +229,9 @@ EXCEPTION
 END;
 $function$;
 
--- The old export mutated catalog orders to confirmed. Preserve those rows as a
--- single legacy batch so a rollout cannot silently export them a second time.
+-- Cutover boundary: every coherent physical item that already exists when this
+-- migration runs is historical supplier demand. Freeze all such rows in one
+-- legacy batch without changing order/redemption lifecycle or business data.
 DO $legacy$
 DECLARE
     v_legacy_batch_id uuid;
@@ -241,7 +242,10 @@ BEGIN
         JOIN public.store_orders AS o ON o.id = i.order_id
         LEFT JOIN public.reward_redemptions AS r ON r.id = o.related_redemption_id
         WHERE i.supplier_export_batch_id IS NULL
-          AND o.status IN ('confirmed', 'ordered_to_supplier')
+          AND (
+              i.product_id IS NOT NULL
+              OR nullif(btrim(i.custom_product_name), '') IS NOT NULL
+          )
           AND (
               (o.order_type = 'catalog' AND o.related_redemption_id IS NULL)
               OR
@@ -259,8 +263,8 @@ BEGIN
             is_legacy
         ) VALUES (
             '00000000-0000-4000-8000-202609192200',
-            'legacy-pre-phase2b',
-            'phase2b-migration',
+            'LEGACY PRE-CUTOVER 2026-09-19',
+            'phase2b-cutover-migration',
             true
         )
         RETURNING id INTO v_legacy_batch_id;
@@ -271,7 +275,10 @@ BEGIN
         LEFT JOIN public.reward_redemptions AS r ON r.id = o.related_redemption_id
         WHERE o.id = i.order_id
           AND i.supplier_export_batch_id IS NULL
-          AND o.status IN ('confirmed', 'ordered_to_supplier')
+          AND (
+              i.product_id IS NOT NULL
+              OR nullif(btrim(i.custom_product_name), '') IS NOT NULL
+          )
           AND (
               (o.order_type = 'catalog' AND o.related_redemption_id IS NULL)
               OR

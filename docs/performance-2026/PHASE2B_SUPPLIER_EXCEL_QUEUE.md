@@ -120,11 +120,20 @@ Supplier export does not update:
 
 The route contains no status update and no notification transport. Its only write is the transactional batch claim performed by the RPC.
 
-## 13. Legacy checkbox and historical data
+## 13. Cutover boundary and historical data
 
 The removed checkbox never persisted a flag; it only supplied order IDs to the old route. Therefore it contains no historical data to preserve.
 
-The old route used `confirmed` as an implicit side effect after export. Because that state can carry historical supplier meaning, rollout creates one internal legacy batch for currently coherent `confirmed` or `ordered_to_supplier` physical lines and marks them as already exported. This prevents accidental re-export without deleting or rewriting the legacy status columns.
+At rollout, every coherent physical Store item already present is treated as historical supplier demand, regardless of whether its order is `pending`, `confirmed`, `ordered_to_supplier`, `ready`, `delivered`, or `cancelled`. Phase 2B assigns all such items to the same internal legacy batch, identified as **LEGACY PRE-CUTOVER 2026-09-19**. This is procurement metadata only: order status, linked redemption status, stock, points, QR/manual credentials, delivery state and communications remain unchanged.
+
+The physical-item definition is deliberately strict:
+
+- the line has a product ID or a non-empty custom physical product name; and
+- its parent is either a coherent Store `catalog` order with no redemption link, or a coherent `reward_redemption` order linked to an existing redemption classified as `store_product` or `custom_physical`.
+
+SERVICE rewards and malformed links are excluded. The migration does not create missing Store orders or item rows.
+
+This creates a clean cutover boundary: only coherent physical items created after Phase 2B, still operationally **Da preparare**, and having `supplier_export_batch_id IS NULL` can enter a newly generated supplier Excel. An active legacy order remains in its current operational state and can still progress through **Segna pronto** and **Consegna**, but it can never be exported again.
 
 The old `confirmed` and `ordered_to_supplier` columns/states remain supported by fulfillment logic and are not removed. Future cleanup requires production-data review.
 
@@ -132,8 +141,10 @@ The old `confirmed` and `ordered_to_supplier` columns/states remain supported by
 
 Local SQL acceptance covers:
 
-- eligible pending Store and physical MoviBack lines in one batch;
-- SERVICE, ready, delivered, cancelled and malformed exclusions;
+- all pre-cutover coherent physical lines sharing one legacy batch across pending, confirmed, ready, delivered and cancelled states;
+- preservation of Store/redemption states, stock, points, credentials and communications during legacy assignment;
+- eligible post-cutover pending Store and physical MoviBack lines in one new batch;
+- SERVICE and malformed cutover exclusions, plus ready/delivered/cancelled exclusion for post-cutover exports;
 - multi-line Store order and item-level membership;
 - Asciugamano Sport, Lime / UNICA aggregation;
 - variantless Tubo Palline without fabricated variant data;
@@ -152,7 +163,7 @@ The separate local concurrency harness runs two simultaneous claims and verifies
 No production action was performed. Production rollout requires:
 
 1. backup and migration preflight;
-2. review counts of coherent `confirmed`/`ordered_to_supplier` lines that will enter the legacy batch;
+2. review counts of all coherent physical lines that will enter the single legacy cutover batch, grouped by origin and lifecycle state;
 3. apply the additive migration before deploying the route/UI;
 4. verify RPC/table grants for the production service role;
 5. deploy application code;
