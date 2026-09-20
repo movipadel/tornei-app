@@ -22,12 +22,14 @@ export async function GET() {
     .eq("season_id", season.id).eq("code", "phase1").maybeSingle();
   if (phaseError) return NextResponse.json({ error: phaseError.message }, { status: 500 });
   if (!phase) return NextResponse.json({ data: { season, phase: null, teams: 0, rounds: 0, matches: 0, scheduled_rounds: 0, unscheduled_matches: 0, missing_results: 0, provisional_results: 0, confirmed_results: 0 } });
-  const [{ count: teams }, { data: rounds }, { data: matches }] = await Promise.all([
+  const [{ count: teams }, { data: rounds }, { data: matches }, { data: notificationEvents }] = await Promise.all([
     sb.from("league_teams").select("id", { count: "exact", head: true }).eq("season_id", season.id).eq("is_active", true),
     sb.from("league_rounds").select("id,status").eq("phase_id", phase.id),
     sb.from("league_matches").select("id,match_status,current_result_id,current_special_outcome_id").eq("phase_id", phase.id),
+    sb.from("league_notification_events").select("status,event_type").eq("season_id", season.id),
   ]);
   const allMatches = matches ?? [];
+  const allNotificationEvents = notificationEvents ?? [];
   return NextResponse.json({ data: {
     season, phase, teams: teams ?? 0, rounds: rounds?.length ?? 0, matches: allMatches.length,
     scheduled_rounds: (rounds ?? []).filter((round) => round.status === "scheduled" || round.status === "completed").length,
@@ -35,5 +37,11 @@ export async function GET() {
     missing_results: allMatches.filter((match) => ["scheduled", "postponed"].includes(match.match_status) && !match.current_result_id && !match.current_special_outcome_id).length,
     provisional_results: allMatches.filter((match) => ["submitted", "contested"].includes(match.match_status)).length,
     confirmed_results: allMatches.filter((match) => match.match_status === "confirmed").length,
+    notification_events: {
+      pending: allNotificationEvents.filter((event) => event.status === "pending" || event.status === "processing").length,
+      delivered: allNotificationEvents.filter((event) => event.status === "delivered").length,
+      skipped: allNotificationEvents.filter((event) => event.status === "skipped").length,
+      failed: allNotificationEvents.filter((event) => event.status === "failed").length,
+    },
   } });
 }
