@@ -10,8 +10,9 @@ export async function GET() {
   if (!season) return NextResponse.json({ data: null });
   const { data: phase } = await sb.from("league_phases").select("id").eq("season_id", season.id).eq("code", "phase1").maybeSingle();
   if (!phase) return NextResponse.json({ data: null });
-  const [{ data: teams }, { data: rounds }, { data: matches }] = await Promise.all([
+  const [{ data: teams }, { data: players }, { data: rounds }, { data: matches }] = await Promise.all([
     sb.from("league_teams").select("id,name").eq("season_id", season.id),
+    sb.from("league_team_players").select("id,team_id,display_name,is_active").eq("is_active", true),
     sb.from("league_rounds").select("id,round_number,play_date").eq("phase_id", phase.id).order("round_number"),
     sb.from("league_matches").select("id,round_id,home_team_id,away_team_id,scheduled_at,schedule_version,match_status,current_result_id,current_special_outcome_id").eq("phase_id", phase.id).order("scheduled_at"),
   ]);
@@ -22,7 +23,8 @@ export async function GET() {
     resultIds.length ? sb.from("league_match_sets").select("*").in("result_submission_id", resultIds).order("set_number") : Promise.resolve({ data: [] }),
     specialIds.length ? sb.from("league_match_special_outcomes").select("*").in("id", specialIds) : Promise.resolve({ data: [] }),
   ]);
-  return NextResponse.json({ data: { phase, teams: teams ?? [], rounds: rounds ?? [], matches: matches ?? [], results: results ?? [], sets: sets ?? [], specials: specials ?? [] } });
+  const teamIds = new Set((teams ?? []).map((team) => team.id));
+  return NextResponse.json({ data: { phase, teams: teams ?? [], players: (players ?? []).filter((player) => teamIds.has(player.team_id)), rounds: rounds ?? [], matches: matches ?? [], results: results ?? [], sets: sets ?? [], specials: specials ?? [] } });
 }
 
 export async function POST(req: Request) {

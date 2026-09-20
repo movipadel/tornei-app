@@ -16,7 +16,7 @@ export async function GET(req: Request) {
   }
   if (!seasonId) return NextResponse.json({ data: [] });
   const { data: teams, error } = await sb.from("league_teams")
-    .select("id,season_id,name,slug,captain_player_id,is_active,created_at")
+    .select("id,season_id,name,slug,captain_player_id,slogan,logo_path,image_path,is_active,created_at")
     .eq("season_id", seasonId).order("created_at");
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   const ids = (teams ?? []).map((team) => team.id);

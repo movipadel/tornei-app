@@ -77,6 +77,7 @@ type PublicCircuit = {
   hero_subtitle?: string | null;
   theme_key?: string | null;
 };
+type MondayLeagueHero = { visible: true; eyebrow: string; title: string; seasonName: string } | { visible: false };
 
 const normalizePhone = (s: string) => String(s ?? "").replace(/\s+/g, "").trim();
 const isValidPhone = (p: string) => normalizePhone(p).length >= 8;
@@ -88,6 +89,7 @@ export default function HomePage() {
   const [tournaments, setTournaments] = useState<PublicTournament[]>([]);
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [circuits, setCircuits] = useState<PublicCircuit[]>([]);
+  const [mondayLeagueHero, setMondayLeagueHero] = useState<MondayLeagueHero>({ visible: false });
 
   // user session (opzionale)
   const [user, setUser] = useState<User | null>(null);
@@ -127,7 +129,7 @@ export default function HomePage() {
     if (!silent) setLoading(true);
 
     try {
-      const [tRes, sRes, meRes, cRes, mbRes, commRes] = await Promise.all([
+      const [tRes, sRes, meRes, cRes, mbRes, commRes, mlRes] = await Promise.all([
   fetch("/api/tournaments", { cache: "no-store", signal: ac.signal }),
   includeBootstrap
     ? fetch("/api/app-settings", { cache: "no-store", signal: ac.signal })
@@ -138,6 +140,7 @@ export default function HomePage() {
   fetch("/api/circuits", { cache: "no-store", signal: ac.signal }),
   fetch("/api/moviback/me", { cache: "no-store", signal: ac.signal }),
   fetch("/api/user/communications", { cache: "no-store", signal: ac.signal }),
+  fetch("/api/monday-league/hero", { cache: "no-store", signal: ac.signal }),
 ]);
 
       const tJson = await tRes.json().catch(() => ({}));
@@ -170,6 +173,8 @@ if (commRes.ok) {
 } else {
   setCommunications([]);
 }
+const mlJson = await mlRes.json().catch(() => ({ visible: false }));
+setMondayLeagueHero(mlRes.ok && mlJson.visible ? mlJson as MondayLeagueHero : { visible: false });
     } catch (e: any) {
       // Abort = normale durante refresh/cleanup
       if (e?.name === "AbortError") return;
@@ -908,6 +913,8 @@ const notificationSmallBtn: React.CSSProperties = {
     </div>
   </div>
 </section>
+
+{mondayLeagueHero.visible ? <Link href="/monday-league" style={{ display: "block", margin: "8px 0 22px", padding: "clamp(22px,5vw,38px)", borderRadius: 28, color: "white", textDecoration: "none", overflow: "hidden", position: "relative", background: "radial-gradient(circle at 85% 10%,rgba(94,234,212,.36),transparent 34%),linear-gradient(135deg,#042f2e,#0f172a 70%)", border: "1px solid rgba(94,234,212,.28)", boxShadow: "0 22px 52px rgba(0,0,0,.26)" }}><div style={{ position: "relative", zIndex: 1 }}><div style={{ color: "#5eead4", textTransform: "uppercase", letterSpacing: 1.4, fontWeight: 900, fontSize: 12 }}>{mondayLeagueHero.eyebrow}</div><div style={{ fontSize: "clamp(24px,5vw,42px)", fontWeight: 950, letterSpacing: -1.1, marginTop: 7 }}>{mondayLeagueHero.title}</div><div style={{ color: "rgba(255,255,255,.68)", marginTop: 6 }}>{mondayLeagueHero.seasonName}</div><div style={{ marginTop: 18, fontWeight: 850 }}>Apri la competizione →</div></div></Link> : null}
 
                {circuits.length > 0 ? (
   <section style={{ marginTop: 8, marginBottom: 22 }}>

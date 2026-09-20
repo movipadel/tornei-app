@@ -7,7 +7,7 @@ export type PublicLeaguePhase = {
   code: "phase1" | "serie_a" | "serie_b";
   name: string;
   sequence: number;
-  status: "generated" | "in_progress" | "finalized";
+  status: "draft" | "generated" | "in_progress" | "finalized";
 };
 
 export type PublicStanding = {
@@ -35,6 +35,10 @@ export type PublicMatch = {
   venue: { id: string; name: string } | null;
   workflowStatus: string;
   workflowLabel: string;
+  lineups: null | {
+    home: { state: "submitted"; players: string[] } | { state: "missing"; label: string };
+    away: { state: "submitted"; players: string[] } | { state: "missing"; label: string };
+  };
   result: null | {
     kind: "played" | "special";
     summary: string;
@@ -94,9 +98,14 @@ type RawStanding = {
 };
 
 type RawStandingsResponse = { rows?: RawStanding[]; has_provisional_results?: boolean };
+type RawPublicLineupRow = {
+  match_id: string;
+  home_lineup: NonNullable<PublicMatch["lineups"]>["home"] | null;
+  away_lineup: NonNullable<PublicMatch["lineups"]>["away"] | null;
+};
 
-const VISIBLE_SEASON_STATES = ["phase1", "phase2", "completed"];
-const VISIBLE_PHASE_STATES = ["generated", "in_progress", "finalized"];
+const VISIBLE_SEASON_STATES = ["draft", "phase1", "phase2", "completed", "archived"];
+const VISIBLE_PHASE_STATES = ["draft", "generated", "in_progress", "finalized"];
 
 function assertQuery(error: { message: string } | null, context: string) {
   if (error) throw new Error(`${context}: ${error.message}`);
@@ -106,6 +115,10 @@ function safeMediaUrl(value: unknown): string | null {
   const path = String(value ?? "").trim();
   if (!path) return null;
   if (path.startsWith("/") || /^https:\/\//i.test(path)) return path;
+  if (/^monday-league\/[0-9a-f-]+\/[0-9a-f-]+\/(logo|hero)\/[0-9a-f-]+\.(png|jpe?g|webp)$/i.test(path)) {
+    const base = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, "");
+    if (base) return `${base}/storage/v1/object/public/monday-league-media/${path.split("/").map(encodeURIComponent).join("/")}`;
+  }
   return null;
 }
 
@@ -145,8 +158,9 @@ export async function getPublicLeagueSnapshot(phaseId?: string | null): Promise<
   const now = new Date().toISOString();
   const { data: season, error: seasonError } = await sb
     .from("league_seasons")
-    .select("id,name,slug,status,timezone,published_at")
+    .select("id,name,slug,status,timezone,published_at,public_visibility")
     .in("status", VISIBLE_SEASON_STATES)
+    .eq("public_visibility", "public")
     .not("published_at", "is", null)
     .lte("published_at", now)
     .order("published_at", { ascending: false })
@@ -170,7 +184,9 @@ export async function getPublicLeagueSnapshot(phaseId?: string | null): Promise<
   if (!selectedPhase) return { available: false };
 
   const [{ data: membershipRows, error: membershipError }, { data: roundRows, error: roundError }, standingsResponse] = await Promise.all([
-    sb.from("league_phase_teams").select("team_id").eq("phase_id", selectedPhase.id),
+    selectedPhase.status === "draft"
+      ? sb.from("league_teams").select("id").eq("season_id", season.id).eq("is_active", true)
+      : sb.from("league_phase_teams").select("team_id").eq("phase_id", selectedPhase.id),
     sb.from("league_rounds").select("id,round_number,play_date").eq("phase_id", selectedPhase.id).order("round_number"),
     sb.rpc("league_get_standings", { p_phase_id: selectedPhase.id }),
   ]);
@@ -178,20 +194,27 @@ export async function getPublicLeagueSnapshot(phaseId?: string | null): Promise<
   assertQuery(roundError, "public rounds");
   assertQuery(standingsResponse.error, "public standings");
 
-  const teamIds = (membershipRows ?? []).map((row) => row.team_id);
+  const teamIds = (membershipRows ?? []).map((row) => "team_id" in row ? row.team_id : row.id);
   const roundIds = (roundRows ?? []).map((row) => row.id);
   const [{ data: teamRows, error: teamError }, { data: matchRows, error: matchError }, { data: venueRows, error: venueError }] = await Promise.all([
     teamIds.length
       ? sb.from("league_teams").select("id,name,slug,slogan,logo_path").eq("season_id", season.id).in("id", teamIds)
       : Promise.resolve({ data: [], error: null }),
     roundIds.length
-      ? sb.from("league_matches").select("id,round_id,home_team_id,away_team_id,venue_id,scheduled_at,match_status,current_result_id,current_special_outcome_id,created_at").in("round_id", roundIds).order("created_at")
+      ? sb.from("league_matches").select("id,round_id,home_team_id,away_team_id,venue_id,scheduled_at,lineups_locked_at,match_status,current_result_id,current_special_outcome_id,created_at").in("round_id", roundIds).order("created_at")
       : Promise.resolve({ data: [], error: null }),
     sb.from("league_venues").select("id,name"),
   ]);
   assertQuery(teamError, "public teams");
   assertQuery(matchError, "public matches");
   assertQuery(venueError, "public venues");
+
+  const lineupResponse = (matchRows ?? []).length
+    ? await sb.rpc("league_get_public_lineups", { p_match_ids: (matchRows ?? []).map((match) => match.id) })
+    : { data: [], error: null };
+  assertQuery(lineupResponse.error, "public lineups");
+  const publicLineupRows = (lineupResponse.data ?? []) as RawPublicLineupRow[];
+  const lineupsByMatch = new Map<string, RawPublicLineupRow>(publicLineupRows.map((row) => [row.match_id, row]));
 
   const currentResultIds = (matchRows ?? []).flatMap((match) => match.current_result_id ? [match.current_result_id] : []);
   const currentSpecialIds = (matchRows ?? []).flatMap((match) => match.current_special_outcome_id ? [match.current_special_outcome_id] : []);
@@ -267,6 +290,10 @@ export async function getPublicLeagueSnapshot(phaseId?: string | null): Promise<
       venue: match.venue_id && venuesById.get(match.venue_id) ? { id: match.venue_id, name: venuesById.get(match.venue_id)!.name } : null,
       workflowStatus: match.match_status,
       workflowLabel: workflowLabel(match.match_status),
+      lineups: lineupsByMatch.get(match.id)?.home_lineup && lineupsByMatch.get(match.id)?.away_lineup ? {
+        home: lineupsByMatch.get(match.id)!.home_lineup as NonNullable<PublicMatch["lineups"]>["home"],
+        away: lineupsByMatch.get(match.id)!.away_lineup as NonNullable<PublicMatch["lineups"]>["away"],
+      } : null,
       result,
     }];
   });
@@ -298,7 +325,7 @@ export async function getPublicLeagueSnapshot(phaseId?: string | null): Promise<
   };
 }
 
-export async function getPublicLeagueTeam(slug: string, phaseId?: string | null) {
+export async function getPublicLeagueTeam(slug: string, phaseId?: string | null, viewerUserId?: string | null) {
   const snapshot = await getPublicLeagueSnapshot(phaseId);
   if (!snapshot.available) return snapshot;
   const summary = snapshot.teams.find((team) => team.slug === slug);
@@ -326,6 +353,14 @@ export async function getPublicLeagueTeam(slug: string, phaseId?: string | null)
     .filter((match) => match.homeTeam.id === team.id || match.awayTeam.id === team.id)
     .map((match) => ({ ...match, roundNumber: round.number, playDate: round.playDate, side: match.homeTeam.id === team.id ? "home" as const : "away" as const })));
   const nextMatch = schedule.find((match) => !match.result && !["cancelled", "suspended"].includes(match.workflowStatus)) ?? null;
+  const captainResponse = viewerUserId
+    ? await sb.rpc("league_get_captain_context", { p_user_id: viewerUserId, p_team_id: team.id })
+    : { data: null, error: null };
+  assertQuery(captainResponse.error, "captain context");
+  const captainContext = captainResponse.data ? {
+    ...captainResponse.data,
+    roster: (players ?? []).map((player) => ({ id: player.id, displayName: player.display_name, isCaptain: player.id === team.captain_player_id })),
+  } : null;
 
   return {
     available: true as const,
@@ -338,10 +373,11 @@ export async function getPublicLeagueTeam(slug: string, phaseId?: string | null)
       slogan: team.slogan,
       logoUrl: safeMediaUrl(team.logo_path),
       imageUrl: safeMediaUrl(team.image_path),
-      roster: (players ?? []).map((player) => ({ id: player.id, displayName: player.display_name, isCaptain: player.id === team.captain_player_id })),
+      roster: (players ?? []).map((player) => ({ displayName: player.display_name, isCaptain: player.id === team.captain_player_id })),
       standing,
       nextMatch,
       schedule,
     },
+    captain: captainContext,
   };
 }

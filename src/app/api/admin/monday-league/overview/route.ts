@@ -10,8 +10,7 @@ export async function GET() {
   const sb = supabaseAdmin();
   const { data: season, error } = await sb
     .from("league_seasons")
-    .select("id,name,slug,status,max_teams,published_at,created_at")
-    .neq("status", "archived")
+    .select("id,name,slug,status,max_teams,published_at,public_visibility,created_at")
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -20,8 +19,9 @@ export async function GET() {
 
   const { data: phase, error: phaseError } = await sb.from("league_phases")
     .select("id,code,name,status,algorithm_version,generation_fingerprint,generated_at")
-    .eq("season_id", season.id).eq("code", "phase1").single();
+    .eq("season_id", season.id).eq("code", "phase1").maybeSingle();
   if (phaseError) return NextResponse.json({ error: phaseError.message }, { status: 500 });
+  if (!phase) return NextResponse.json({ data: { season, phase: null, teams: 0, rounds: 0, matches: 0, scheduled_rounds: 0, unscheduled_matches: 0, missing_results: 0, provisional_results: 0, confirmed_results: 0 } });
   const [{ count: teams }, { data: rounds }, { data: matches }] = await Promise.all([
     sb.from("league_teams").select("id", { count: "exact", head: true }).eq("season_id", season.id).eq("is_active", true),
     sb.from("league_rounds").select("id,status").eq("phase_id", phase.id),

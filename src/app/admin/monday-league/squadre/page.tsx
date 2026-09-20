@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, Pencil, Plus, Search, X } from "lucide-react";
+import { Loader2, Pencil, Plus, Search, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import LeagueAdminNav from "../_components/LeagueAdminNav";
 
@@ -38,15 +38,22 @@ export default function LeagueTeamsPage() {
     const json = await response.json().catch(() => ({}));
     if (!response.ok) toast.error(json.error || "Errore"); else { toast.success("Stato squadra aggiornato"); await load(); }
   }
+  async function remove(team: Team) {
+    const confirmation = window.prompt(`Eliminazione consentita solo senza storico. Digita esattamente: ${team.name}`);
+    if (confirmation !== team.name) return;
+    const response = await fetch(`/api/admin/monday-league/teams/${team.id}`, { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ confirmation }) });
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok) toast.error(json.error || "Eliminazione non riuscita"); else { toast.success("Squadra eliminata"); await load(); }
+  }
 
   return <main style={{ display: "grid", gap: 18, color: "#0f172a" }}>
     <h1 style={{ margin: 0 }}>Squadre Monday League</h1><LeagueAdminNav />
     <div><button style={button} disabled={!seasonId || phaseStatus !== "draft"} onClick={() => setEditing(null)}><Plus size={17} />Nuova squadra</button></div>
-    {phaseStatus !== "draft" && <div style={notice}>Calendario già generato: squadre e rose sono in sola lettura.</div>}
+    {phaseStatus !== "draft" && <div style={notice}>La rosa è bloccata per il capitano. L&apos;admin può ancora correggere squadra, capitano e rosa; per conservare lo storico usa Disattiva.</div>}
     {loading ? <Loader2 className="animate-spin" /> : !seasonId ? <div style={notice}>Crea prima una stagione dalla panoramica.</div> : <section style={{ display: "grid", gap: 10 }}>{teams.map((team) => <article key={team.id} style={panel}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 14, alignItems: "center", flexWrap: "wrap" }}>
         <div><strong style={{ fontSize: 18 }}>{team.name}</strong><div style={muted}>Capitano: {team.captain?.display_name ?? "—"} · {team.players.filter((player) => player.is_active).length} giocatori · Seed {team.seed_position ?? "—"} · {team.is_active ? "Attiva" : "Inattiva"}</div></div>
-        <div style={{ display: "flex", gap: 8 }}><button style={smallButton} disabled={phaseStatus !== "draft"} onClick={() => setEditing(team)}><Pencil size={15} />Modifica</button><button style={smallButton} disabled={phaseStatus !== "draft"} onClick={() => toggle(team)}>{team.is_active ? "Disattiva" : "Riattiva"}</button></div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}><button style={smallButton} onClick={() => setEditing(team)}><Pencil size={15} />Modifica / override</button><button style={smallButton} onClick={() => toggle(team)}>{team.is_active ? "Disattiva" : "Riattiva"}</button><button style={smallButton} onClick={() => void remove(team)}><Trash2 size={15} />Elimina se senza storico</button></div>
       </div>
     </article>)}</section>}
     {editing !== undefined && seasonId && <TeamForm seasonId={seasonId} team={editing} onClose={() => setEditing(undefined)} onSaved={async () => { setEditing(undefined); await load(); }} />}

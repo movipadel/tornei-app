@@ -9,11 +9,11 @@ const teamApi = read("src/app/api/monday-league/teams/[slug]/route.ts");
 const ui = read("src/components/monday-league/PublicLeagueViews.tsx");
 const css = read("src/app/monday-league/MondayLeague.module.css");
 
-test("publication gate requires a published non-draft season", () => {
+test("publication gate requires explicit Stage 5 visibility and publication", () => {
   assert.match(model, /\.in\("status", VISIBLE_SEASON_STATES\)/);
   assert.match(model, /\.not\("published_at", "is", null\)/);
   assert.match(model, /\.lte\("published_at", now\)/);
-  assert.deepEqual(model.match(/const VISIBLE_SEASON_STATES = \[[^\]]+\]/)?.[0].includes('"draft"'), false);
+  assert.match(model, /\.eq\("public_visibility", "public"\)/);
 });
 
 test("public APIs are GET-only, dynamic and no-store", () => {
@@ -51,7 +51,7 @@ test("result expansion is keyboard accessible and reports state", () => {
 
 test("team experience includes safe roster, metrics, next match and schedule", () => {
   for (const label of ["Capitano", "Posizione", "Punti", "Diff set", "Diff game", "Prossima partita", "Prossime giornate", "Risultati"]) assert.ok(ui.includes(label));
-  assert.match(model, /select\("id,display_name"\)/);
+  assert.match(model, /roster: \(players \?\? \[\]\)\.map\(\(player\) => \(\{ displayName:/);
 });
 
 test("responsive styles cover phone layout", () => {
