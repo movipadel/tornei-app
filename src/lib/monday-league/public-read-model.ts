@@ -44,6 +44,8 @@ export type PublicMatch = {
     summary: string;
     status: "submitted" | "contested" | "confirmed" | "special";
     statusLabel: string;
+    submittedAt?: string | null;
+    contestDeadline?: string | null;
     sets: Array<{ number: number; homeGames: number; awayGames: number }>;
     actualPlayers: { home: string[]; away: string[] };
     specialType?: "walkover" | "no_show" | "administrative";
@@ -102,6 +104,12 @@ type RawPublicLineupRow = {
   match_id: string;
   home_lineup: NonNullable<PublicMatch["lineups"]>["home"] | null;
   away_lineup: NonNullable<PublicMatch["lineups"]>["away"] | null;
+};
+type RawResultState = {
+  result_id: string;
+  effective_status: "submitted" | "contested" | "confirmed" | "superseded";
+  submitted_at: string;
+  contest_deadline: string;
 };
 
 const VISIBLE_SEASON_STATES = ["draft", "phase1", "phase2", "completed", "archived"];
@@ -218,7 +226,7 @@ export async function getPublicLeagueSnapshot(phaseId?: string | null): Promise<
 
   const currentResultIds = (matchRows ?? []).flatMap((match) => match.current_result_id ? [match.current_result_id] : []);
   const currentSpecialIds = (matchRows ?? []).flatMap((match) => match.current_special_outcome_id ? [match.current_special_outcome_id] : []);
-  const [{ data: resultRows, error: resultError }, { data: setRows, error: setError }, { data: specialRows, error: specialError }] = await Promise.all([
+  const [{ data: resultRows, error: resultError }, { data: setRows, error: setError }, { data: specialRows, error: specialError }, resultStatesResponse] = await Promise.all([
     currentResultIds.length
       ? sb.from("league_result_submissions").select("id,status,home_sets_won,away_sets_won").in("id", currentResultIds).in("status", ["submitted", "contested", "confirmed"])
       : Promise.resolve({ data: [], error: null }),
@@ -228,10 +236,14 @@ export async function getPublicLeagueSnapshot(phaseId?: string | null): Promise<
     currentSpecialIds.length
       ? sb.from("league_match_special_outcomes").select("id,outcome_type,winner_team_id,status").in("id", currentSpecialIds).eq("status", "active")
       : Promise.resolve({ data: [], error: null }),
+    currentResultIds.length
+      ? sb.rpc("league_get_result_states", { p_result_ids: currentResultIds })
+      : Promise.resolve({ data: [], error: null }),
   ]);
   assertQuery(resultError, "public results");
   assertQuery(setError, "public sets");
   assertQuery(specialError, "public special outcomes");
+  assertQuery(resultStatesResponse.error, "public result states");
 
   const rawStandings = (standingsResponse.data ?? {}) as RawStandingsResponse;
   const standings: PublicStanding[] = (rawStandings.rows ?? []).map((row) => ({
@@ -253,6 +265,7 @@ export async function getPublicLeagueSnapshot(phaseId?: string | null): Promise<
   const teamsById = new Map((teamRows ?? []).map((team) => [team.id, team]));
   const venuesById = new Map((venueRows ?? []).map((venue) => [venue.id, venue]));
   const resultsById = new Map((resultRows ?? []).map((result) => [result.id, result]));
+  const resultStatesById = new Map(((resultStatesResponse.data ?? []) as RawResultState[]).map((state) => [state.result_id, state]));
   const specialsById = new Map((specialRows ?? []).map((special) => [special.id, special]));
 
   const matches: PublicMatch[] = (matchRows ?? []).flatMap((match) => {
@@ -260,6 +273,7 @@ export async function getPublicLeagueSnapshot(phaseId?: string | null): Promise<
     const away = teamsById.get(match.away_team_id);
     if (!home || !away) return [];
     const standard = match.current_result_id ? resultsById.get(match.current_result_id) : null;
+    const resultState = standard ? resultStatesById.get(standard.id) : null;
     const special = match.current_special_outcome_id ? specialsById.get(match.current_special_outcome_id) : null;
     const sets = standard
       ? (setRows ?? []).filter((set) => set.result_submission_id === standard.id).map((set) => ({ number: set.set_number, homeGames: set.home_games, awayGames: set.away_games }))
@@ -267,8 +281,10 @@ export async function getPublicLeagueSnapshot(phaseId?: string | null): Promise<
     const result = standard ? {
       kind: "played" as const,
       summary: `${standard.home_sets_won}–${standard.away_sets_won}`,
-      status: standard.status as "submitted" | "contested" | "confirmed",
-      statusLabel: standard.status === "submitted" ? "Provvisorio" : standard.status === "contested" ? "Contestato" : "Definitivo",
+      status: (resultState?.effective_status ?? standard.status) as "submitted" | "contested" | "confirmed",
+      statusLabel: (resultState?.effective_status ?? standard.status) === "submitted" ? "Provvisorio" : (resultState?.effective_status ?? standard.status) === "contested" ? "Contestato" : "Definitivo",
+      submittedAt: resultState?.submitted_at ?? null,
+      contestDeadline: resultState?.contest_deadline ?? null,
       sets,
       actualPlayers: { home: [], away: [] },
     } : special ? {
@@ -357,8 +373,13 @@ export async function getPublicLeagueTeam(slug: string, phaseId?: string | null,
     ? await sb.rpc("league_get_captain_context", { p_user_id: viewerUserId, p_team_id: team.id })
     : { data: null, error: null };
   assertQuery(captainResponse.error, "captain context");
+  const captainResultResponse = viewerUserId
+    ? await sb.rpc("league_get_captain_result_context", { p_user_id: viewerUserId, p_team_id: team.id })
+    : { data: null, error: null };
+  assertQuery(captainResultResponse.error, "captain result context");
   const captainContext = captainResponse.data ? {
     ...captainResponse.data,
+    result: captainResultResponse.data ?? null,
     roster: (players ?? []).map((player) => ({ id: player.id, displayName: player.display_name, isCaptain: player.id === team.captain_player_id })),
   } : null;
 

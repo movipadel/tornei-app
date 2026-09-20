@@ -16,15 +16,22 @@ export async function GET() {
     sb.from("league_rounds").select("id,round_number,play_date").eq("phase_id", phase.id).order("round_number"),
     sb.from("league_matches").select("id,round_id,home_team_id,away_team_id,scheduled_at,schedule_version,match_status,current_result_id,current_special_outcome_id").eq("phase_id", phase.id).order("scheduled_at"),
   ]);
+  const matchIds = (matches ?? []).map((match) => match.id);
   const resultIds = (matches ?? []).flatMap((match) => match.current_result_id ? [match.current_result_id] : []);
   const specialIds = (matches ?? []).flatMap((match) => match.current_special_outcome_id ? [match.current_special_outcome_id] : []);
-  const [{ data: results }, { data: sets }, { data: specials }] = await Promise.all([
-    resultIds.length ? sb.from("league_result_submissions").select("*").in("id", resultIds) : Promise.resolve({ data: [] }),
-    resultIds.length ? sb.from("league_match_sets").select("*").in("result_submission_id", resultIds).order("set_number") : Promise.resolve({ data: [] }),
+  const [{ data: results }, { data: specials }, { data: contests }, stateResponse] = await Promise.all([
+    matchIds.length ? sb.from("league_result_submissions").select("*").in("match_id", matchIds).order("revision") : Promise.resolve({ data: [] }),
     specialIds.length ? sb.from("league_match_special_outcomes").select("*").in("id", specialIds) : Promise.resolve({ data: [] }),
+    matchIds.length ? sb.from("league_result_contests").select("*").in("match_id", matchIds).order("opened_at", { ascending: false }) : Promise.resolve({ data: [] }),
+    resultIds.length ? sb.rpc("league_get_result_states", { p_result_ids: resultIds }) : Promise.resolve({ data: [] }),
+  ]);
+  const allResultIds = (results ?? []).map((result) => result.id);
+  const [{ data: sets }, { data: contestUsers }] = await Promise.all([
+    allResultIds.length ? sb.from("league_match_sets").select("*").in("result_submission_id", allResultIds).order("set_number") : Promise.resolve({ data: [] }),
+    (contests ?? []).length ? sb.from("users").select("id,full_name").in("id", [...new Set((contests ?? []).map((contest) => contest.opened_by_user_id))]) : Promise.resolve({ data: [] }),
   ]);
   const teamIds = new Set((teams ?? []).map((team) => team.id));
-  return NextResponse.json({ data: { phase, teams: teams ?? [], players: (players ?? []).filter((player) => teamIds.has(player.team_id)), rounds: rounds ?? [], matches: matches ?? [], results: results ?? [], sets: sets ?? [], specials: specials ?? [] } });
+  return NextResponse.json({ data: { phase, teams: teams ?? [], players: (players ?? []).filter((player) => teamIds.has(player.team_id)), rounds: rounds ?? [], matches: matches ?? [], results: results ?? [], sets: sets ?? [], specials: specials ?? [], contests: contests ?? [], contestUsers: contestUsers ?? [], resultStates: stateResponse.data ?? [] } });
 }
 
 export async function POST(req: Request) {
@@ -35,6 +42,11 @@ export async function POST(req: Request) {
   if (action === "submit") call = sb.rpc("league_admin_submit_result", { p_actor_id: actor, p_match_id: body.match_id, p_sets: body.sets });
   else if (action === "correct") call = sb.rpc("league_admin_correct_result", { p_actor_id: actor, p_match_id: body.match_id, p_expected_result_id: body.expected_result_id, p_expected_status: body.expected_status, p_sets: body.sets, p_reason: body.reason });
   else if (action === "confirm") call = sb.rpc("league_admin_confirm_result", { p_actor_id: actor, p_match_id: body.match_id, p_expected_result_id: body.expected_result_id });
+  else if (action === "resolve_contest") call = sb.rpc("league_admin_resolve_contest", {
+    p_actor_id: actor, p_match_id: body.match_id, p_expected_result_id: body.expected_result_id,
+    p_expected_contest_id: body.expected_contest_id, p_resolution: body.resolution,
+    p_sets: body.resolution === "correct" ? body.sets : [], p_reason: body.reason,
+  });
   else if (action === "workflow") call = sb.rpc("league_set_match_workflow_state", { p_actor_id: actor, p_match_id: body.match_id, p_expected_schedule_version: body.expected_schedule_version, p_state: body.state, p_reason: body.reason });
   else if (action === "special") call = sb.rpc("league_set_match_special_outcome", {
     p_actor_id: actor, p_match_id: body.match_id, p_expected_result_id: body.expected_result_id ?? null,
