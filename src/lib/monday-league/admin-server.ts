@@ -101,6 +101,10 @@ const FRIENDLY_ERRORS: Record<string, string> = {
   ML_PHASE2_ROUND_INVALID: "Struttura giornata Fase 2 non valida",
   ML_PHASE2_MATCH_INVALID: "Abbinamento Fase 2 non valido",
   ML_PHASE2_MATCH_COUNT_INVALID: "Numero partite Fase 2 non valido",
+  ML_SEASON_NOT_COMPLETABLE: "La stagione non è in Fase 2",
+  ML_SEASON_NOT_READY: "Serie A e Serie B non sono ancora concluse",
+  ML_COMPLETION_STALE_PREVIEW: "I risultati sono cambiati: aggiorna la preview prima di concludere",
+  ML_SEASON_SPORTING_LOCKED: "Campionato già concluso: lo storico sportivo è in sola lettura",
 };
 
 export function mondayLeagueErrorResponse(error: { message?: string } | null | undefined) {

@@ -344,7 +344,7 @@ export async function getPublicLeagueSnapshot(phaseId?: string | null): Promise<
 export async function getPublicLeagueTeam(slug: string, phaseId?: string | null, viewerUserId?: string | null) {
   let snapshot = await getPublicLeagueSnapshot(phaseId);
   if (!snapshot.available) return snapshot;
-  if (!phaseId && snapshot.season.status === "phase2") {
+  if (!phaseId && ["phase2", "completed", "archived"].includes(snapshot.season.status)) {
     const lookup = supabaseAdmin();
     const { data: candidate } = await lookup.from("league_teams").select("id").eq("season_id", snapshot.season.id).eq("slug", slug).maybeSingle();
     if (candidate) {
