@@ -68,9 +68,9 @@ test("migration is additive, seeds only official configuration, and locks base t
   assert.match(migration, /league_match_team_slots_round_team_key/);
 });
 
-test("admin foundation is linked but no public route is implemented", () => {
+test("admin foundation remains linked after Stage 2 replaces its placeholder", () => {
   assert.match(adminPage, /title: "Monday League"/);
   assert.match(adminPage, /href: "\/admin\/monday-league"/);
-  assert.match(adminFoundationPage, /Stage 1 — Domain Foundation/);
-  assert.match(adminFoundationPage, /Nessuna pagina pubblica/);
+  assert.match(adminFoundationPage, /Monday League/);
+  assert.match(adminFoundationPage, /Squadre e generazione deterministica della Fase 1/);
 });
