@@ -11,6 +11,11 @@ type Overview = {
   teams: number;
   rounds: number;
   matches: number;
+  scheduled_rounds: number;
+  unscheduled_matches: number;
+  missing_results: number;
+  provisional_results: number;
+  confirmed_results: number;
 };
 
 export default function MondayLeagueAdminPage() {
@@ -44,7 +49,7 @@ export default function MondayLeagueAdminPage() {
     setCreating(false);
   }
 
-  return <main style={{ display: "grid", gap: 18, color: "white" }}>
+  return <main style={{ display: "grid", gap: 18, color: "#0f172a" }}>
     <section style={{ padding: 24, borderRadius: 24, background: "linear-gradient(135deg,rgba(20,184,166,.22),rgba(15,23,42,.92))", border: "1px solid rgba(94,234,212,.2)" }}>
       <CalendarDays size={30} /><h1 style={{ margin: "12px 0 6px", fontSize: 28, fontWeight: 900 }}>Monday League</h1>
       <p style={{ margin: 0, color: "rgba(255,255,255,.7)" }}>Squadre e generazione deterministica della Fase 1.</p>
@@ -56,7 +61,7 @@ export default function MondayLeagueAdminPage() {
       <button onClick={createSeason} disabled={creating || !name.trim()} style={button}><Plus size={17} />{creating ? "Creazione…" : "Crea stagione"}</button>
     </section> : <>
       <section style={{ ...panel, display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 12 }}>
-        <Metric label="Stagione" value={data.season.name} /><Metric label="Squadre" value={`${data.teams} / ${data.season.max_teams}`} /><Metric label="Fase 1" value={data.phase?.status ?? "—"} /><Metric label="Giornate" value={String(data.rounds)} /><Metric label="Partite" value={String(data.matches)} />
+        <Metric label="Stagione" value={data.season.name} /><Metric label="Squadre" value={`${data.teams} / ${data.season.max_teams}`} /><Metric label="Fase 1" value={data.phase?.status ?? "—"} /><Metric label="Giornate" value={String(data.rounds)} /><Metric label="Giornate programmate" value={String(data.scheduled_rounds)} /><Metric label="Partite non programmate" value={String(data.unscheduled_matches)} /><Metric label="Risultati mancanti" value={String(data.missing_results)} /><Metric label="Provvisori" value={String(data.provisional_results)} /><Metric label="Confermati" value={String(data.confirmed_results)} />
       </section>
       <section style={panel}><div style={{ display: "flex", alignItems: "center", gap: 10 }}><ShieldCheck color="#5eead4" /><strong>Stato modulo</strong></div><p style={muted}>{data.phase?.status === "generated" ? "Calendario generato e bloccato. La schedulazione arriverà nello Stage 3." : "Configura le squadre, ordina i seed e genera il calendario una sola volta."}</p></section>
     </>}
@@ -66,7 +71,7 @@ export default function MondayLeagueAdminPage() {
 function Metric({ label, value }: { label: string; value: string }) {
   return <div style={{ padding: 16, borderRadius: 16, background: "rgba(255,255,255,.05)" }}><div style={muted}>{label}</div><div style={{ fontSize: 20, fontWeight: 900, marginTop: 5 }}>{value}</div></div>;
 }
-const panel: React.CSSProperties = { padding: 20, borderRadius: 20, background: "rgba(255,255,255,.06)", border: "1px solid rgba(255,255,255,.09)" };
-const muted: React.CSSProperties = { color: "rgba(255,255,255,.62)", lineHeight: 1.5 };
-const input: React.CSSProperties = { width: "100%", padding: 12, borderRadius: 12, border: "1px solid rgba(255,255,255,.15)", background: "rgba(15,23,42,.8)", color: "white" };
+const panel: React.CSSProperties = { padding: 20, borderRadius: 20, background: "#ffffff", border: "1px solid #e2e8f0", boxShadow: "0 8px 24px rgba(15,23,42,.06)" };
+const muted: React.CSSProperties = { color: "#64748b", lineHeight: 1.5 };
+const input: React.CSSProperties = { width: "100%", padding: 12, borderRadius: 12, border: "1px solid #cbd5e1", background: "white", color: "#0f172a" };
 const button: React.CSSProperties = { marginTop: 12, display: "inline-flex", gap: 8, alignItems: "center", padding: "11px 15px", border: 0, borderRadius: 12, background: "#14b8a6", color: "#042f2e", fontWeight: 900, cursor: "pointer" };

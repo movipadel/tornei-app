@@ -58,7 +58,7 @@ export default function GenerateCalendarPage() {
   }
 
   if (loading) return <Loader2 className="animate-spin" />;
-  return <main style={{ display: "grid", gap: 18, color: "white" }}><h1 style={{ margin: 0 }}>Genera calendario Fase 1</h1><LeagueAdminNav />
+  return <main style={{ display: "grid", gap: 18, color: "#0f172a" }}><h1 style={{ margin: 0 }}>Genera calendario Fase 1</h1><LeagueAdminNav />
     {!phase ? <div style={panel}>Crea prima una stagione.</div> : phase.status === "generated" ? <GeneratedPanel phase={phase} schedule={generatedSchedule} names={names} /> : <>
       <section style={panel}><h2 style={{ marginTop: 0 }}>Ordine seed ({teams.length} squadre)</h2><p style={muted}>L’ordine è esplicito e determina il circle method. Il tie-break persistente viene assegnato separatamente.</p><div style={{ display: "grid", gap: 7 }}>{teams.map((team, index) => <div key={team.id} style={teamRow}><strong>{index + 1}. {team.name}</strong><span><button style={iconButton} onClick={() => move(index, -1)} disabled={index === 0}><ArrowUp size={16} /></button><button style={iconButton} onClick={() => move(index, 1)} disabled={index === teams.length - 1}><ArrowDown size={16} /></button></span></div>)}</div><button style={button} disabled={working || teams.length < 2} onClick={runPreview}><Eye size={17} />{working ? "Calcolo…" : "Anteprima calendario"}</button></section>
       {preview && <PreviewPanel preview={preview} names={names} onGenerate={generate} working={working} />}
@@ -78,9 +78,9 @@ function PreviewPanel({ preview, names, onGenerate, working }: { preview: Previe
   </section><section style={panel}><h2 style={{ marginTop: 0 }}>Anteprima giornate</h2><div style={{ display: "grid", gap: 12 }}>{preview.rounds.map((round) => <div key={round.roundNumber} style={{ padding: 12, background: "rgba(255,255,255,.04)", borderRadius: 12 }}><strong>Giornata {round.roundNumber}</strong>{round.byeTeamId && <div style={muted}>Riposa: {names[round.byeTeamId]}</div>}{round.matches.map((match) => <div key={`${match.homeTeamId}-${match.awayTeamId}`} style={{ marginTop: 6 }}>{names[match.homeTeamId]} <strong>—</strong> {names[match.awayTeamId]}</div>)}</div>)}</div><button style={button} disabled={working || preview.quality.invariantViolations.length > 0} onClick={onGenerate}>{working ? "Generazione…" : "Genera Fase 1"}</button></section></>;
 }
 function Metric({ label, value }: { label: string; value: string }) { return <div><div style={muted}>{label}</div><strong style={{ fontSize: 19 }}>{value}</strong></div>; }
-const panel: React.CSSProperties = { padding: 18, borderRadius: 18, background: "rgba(255,255,255,.06)", border: "1px solid rgba(255,255,255,.09)" };
-const muted: React.CSSProperties = { color: "rgba(255,255,255,.6)", lineHeight: 1.5 };
+const panel: React.CSSProperties = { padding: 18, borderRadius: 18, background: "#fff", border: "1px solid #e2e8f0", boxShadow: "0 8px 24px rgba(15,23,42,.06)" };
+const muted: React.CSSProperties = { color: "#64748b", lineHeight: 1.5 };
 const button: React.CSSProperties = { marginTop: 14, display: "inline-flex", gap: 8, alignItems: "center", padding: "11px 15px", border: 0, borderRadius: 12, background: "#14b8a6", color: "#042f2e", fontWeight: 900 };
-const iconButton: React.CSSProperties = { marginLeft: 5, padding: 7, borderRadius: 8, border: "1px solid rgba(255,255,255,.15)", background: "rgba(255,255,255,.05)", color: "white" };
-const teamRow: React.CSSProperties = { display: "flex", justifyContent: "space-between", alignItems: "center", padding: 10, borderRadius: 10, background: "rgba(255,255,255,.04)" };
+const iconButton: React.CSSProperties = { marginLeft: 5, padding: 7, borderRadius: 8, border: "1px solid #cbd5e1", background: "#f8fafc", color: "#0f172a" };
+const teamRow: React.CSSProperties = { display: "flex", justifyContent: "space-between", alignItems: "center", padding: 10, borderRadius: 10, background: "#f8fafc" };
 const metrics: React.CSSProperties = { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(100px,1fr))", gap: 12 };

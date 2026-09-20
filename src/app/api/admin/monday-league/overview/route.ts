@@ -16,20 +16,24 @@ export async function GET() {
     .limit(1)
     .maybeSingle();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  if (!season) return NextResponse.json({ data: { season: null, phase: null, teams: 0, rounds: 0, matches: 0 } });
+  if (!season) return NextResponse.json({ data: { season: null, phase: null, teams: 0, rounds: 0, matches: 0, scheduled_rounds: 0, unscheduled_matches: 0, missing_results: 0, provisional_results: 0, confirmed_results: 0 } });
 
-  const [{ data: phase, error: phaseError }, { count: teams }, { count: rounds }, { count: matches }] =
-    await Promise.all([
-      sb.from("league_phases").select("id,code,name,status,algorithm_version,generation_fingerprint,generated_at").eq("season_id", season.id).eq("code", "phase1").single(),
-      sb.from("league_teams").select("id", { count: "exact", head: true }).eq("season_id", season.id).eq("is_active", true),
-      sb.from("league_rounds").select("id", { count: "exact", head: true }).in("phase_id", await phaseIds(sb, season.id)),
-      sb.from("league_matches").select("id", { count: "exact", head: true }).in("phase_id", await phaseIds(sb, season.id)),
-    ]);
+  const { data: phase, error: phaseError } = await sb.from("league_phases")
+    .select("id,code,name,status,algorithm_version,generation_fingerprint,generated_at")
+    .eq("season_id", season.id).eq("code", "phase1").single();
   if (phaseError) return NextResponse.json({ error: phaseError.message }, { status: 500 });
-  return NextResponse.json({ data: { season, phase, teams: teams ?? 0, rounds: rounds ?? 0, matches: matches ?? 0 } });
-}
-
-async function phaseIds(sb: ReturnType<typeof supabaseAdmin>, seasonId: string) {
-  const { data } = await sb.from("league_phases").select("id").eq("season_id", seasonId);
-  return (data ?? []).map((row) => row.id);
+  const [{ count: teams }, { data: rounds }, { data: matches }] = await Promise.all([
+    sb.from("league_teams").select("id", { count: "exact", head: true }).eq("season_id", season.id).eq("is_active", true),
+    sb.from("league_rounds").select("id,status").eq("phase_id", phase.id),
+    sb.from("league_matches").select("id,match_status,current_result_id,current_special_outcome_id").eq("phase_id", phase.id),
+  ]);
+  const allMatches = matches ?? [];
+  return NextResponse.json({ data: {
+    season, phase, teams: teams ?? 0, rounds: rounds?.length ?? 0, matches: allMatches.length,
+    scheduled_rounds: (rounds ?? []).filter((round) => round.status === "scheduled" || round.status === "completed").length,
+    unscheduled_matches: allMatches.filter((match) => match.match_status === "unscheduled" || match.match_status === "postponed").length,
+    missing_results: allMatches.filter((match) => ["scheduled", "postponed"].includes(match.match_status) && !match.current_result_id && !match.current_special_outcome_id).length,
+    provisional_results: allMatches.filter((match) => ["submitted", "contested"].includes(match.match_status)).length,
+    confirmed_results: allMatches.filter((match) => match.match_status === "confirmed").length,
+  } });
 }

@@ -39,7 +39,7 @@ export default function LeagueTeamsPage() {
     if (!response.ok) toast.error(json.error || "Errore"); else { toast.success("Stato squadra aggiornato"); await load(); }
   }
 
-  return <main style={{ display: "grid", gap: 18, color: "white" }}>
+  return <main style={{ display: "grid", gap: 18, color: "#0f172a" }}>
     <h1 style={{ margin: 0 }}>Squadre Monday League</h1><LeagueAdminNav />
     <div><button style={button} disabled={!seasonId || phaseStatus !== "draft"} onClick={() => setEditing(null)}><Plus size={17} />Nuova squadra</button></div>
     {phaseStatus !== "draft" && <div style={notice}>Calendario già generato: squadre e rose sono in sola lettura.</div>}
@@ -90,13 +90,13 @@ function UserPicker({ selectedId, onSelect }: { selectedId: string | null; onSel
   return <div style={{ marginTop: 8 }}><div style={{ display: "flex", gap: 8, alignItems: "center" }}><Search size={16} /><input style={input} value={query} placeholder={selectedId ? "Utente collegato · cerca per cambiare" : "Cerca nome, telefono o email"} onChange={(event) => setQuery(event.target.value)} /></div>{results.length > 0 && <div style={{ display: "grid", gap: 4, marginTop: 5 }}>{results.map((user) => <button key={user.id} style={userResult} onClick={() => { onSelect(user); setQuery(user.full_name); setResults([]); }}>{user.full_name} · {user.phone} · {user.email}</button>)}</div>}{selectedId && <button style={linkButton} onClick={() => { onSelect(null); setQuery(""); }}>Scollega utente</button>}</div>;
 }
 
-const panel: React.CSSProperties = { padding: 18, borderRadius: 18, background: "rgba(255,255,255,.06)", border: "1px solid rgba(255,255,255,.09)" };
-const muted: React.CSSProperties = { color: "rgba(255,255,255,.6)", marginTop: 5 };
+const panel: React.CSSProperties = { padding: 18, borderRadius: 18, background: "#fff", border: "1px solid #e2e8f0", boxShadow: "0 8px 24px rgba(15,23,42,.06)" };
+const muted: React.CSSProperties = { color: "#64748b", marginTop: 5 };
 const notice: React.CSSProperties = { ...panel, color: "#fde68a" };
 const button: React.CSSProperties = { display: "inline-flex", gap: 8, alignItems: "center", padding: "11px 15px", border: 0, borderRadius: 12, background: "#14b8a6", color: "#042f2e", fontWeight: 900 };
-const smallButton: React.CSSProperties = { display: "inline-flex", gap: 6, alignItems: "center", padding: "8px 11px", borderRadius: 10, border: "1px solid rgba(255,255,255,.15)", background: "rgba(255,255,255,.06)", color: "white" };
+const smallButton: React.CSSProperties = { display: "inline-flex", gap: 6, alignItems: "center", padding: "8px 11px", borderRadius: 10, border: "1px solid #cbd5e1", background: "#f8fafc", color: "#0f172a" };
 const linkButton: React.CSSProperties = { marginTop: 8, border: 0, background: "transparent", color: "#99f6e4", fontWeight: 700 };
-const input: React.CSSProperties = { width: "100%", marginTop: 5, padding: 10, borderRadius: 10, border: "1px solid rgba(255,255,255,.15)", background: "rgba(15,23,42,.9)", color: "white" };
+const input: React.CSSProperties = { width: "100%", marginTop: 5, padding: 10, borderRadius: 10, border: "1px solid #cbd5e1", background: "white", color: "#0f172a" };
 const overlay: React.CSSProperties = { position: "fixed", inset: 0, zIndex: 100, display: "grid", placeItems: "center", background: "rgba(2,6,23,.82)", padding: 12 };
-const iconButton: React.CSSProperties = { border: 0, background: "transparent", color: "white" };
-const userResult: React.CSSProperties = { textAlign: "left", padding: 8, borderRadius: 8, border: "1px solid rgba(94,234,212,.15)", background: "rgba(20,184,166,.08)", color: "white" };
+const iconButton: React.CSSProperties = { border: 0, background: "transparent", color: "#0f172a" };
+const userResult: React.CSSProperties = { textAlign: "left", padding: 8, borderRadius: 8, border: "1px solid #99f6e4", background: "#f0fdfa", color: "#0f172a" };

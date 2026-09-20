@@ -37,12 +37,35 @@ const FRIENDLY_ERRORS: Record<string, string> = {
   ML_GENERATION_MATCH_COUNT_INVALID: "Numero partite non valido",
   ML_GENERATION_DIRTY_DRAFT: "La fase bozza contiene già dati di generazione",
   ML_GENERATION_CONFLICT: "La Fase 1 è già stata generata con un ordine diverso",
+  ML_SCHEDULE_PHASE_INVALID: "La fase non è schedulabile",
+  ML_ROUND_DATES_INVALID: "Elenco date non valido",
+  ML_ROUND_DATES_DUPLICATE: "La stessa giornata compare più volte",
+  ML_ROUND_NOT_FOUND: "Giornata non trovata",
+  ML_ROUND_DATE_NOT_MONDAY: "La data deve essere un lunedì",
+  ML_SCHEDULE_VERSION_CONFLICT: "Il calendario è stato modificato da un altro amministratore",
+  ML_SCHEDULE_ROUND_INVALID: "Giornata non schedulabile",
+  ML_SCHEDULE_ASSIGNMENTS_INVALID: "Le assegnazioni devono includere tutte le partite della giornata",
+  ML_SCHEDULE_SLOT_DUPLICATE: "Uno slot ufficiale è stato assegnato più volte",
+  ML_SCHEDULE_SLOT_CONFLICT: "Uno slot è già occupato",
+  ML_OFFICIAL_SLOT_INVALID: "Sede o orario non appartengono agli slot ufficiali attivi",
+  ML_SCHEDULE_MATCH_STATE_INVALID: "Una partita non può essere rischedulata nello stato corrente",
+  ML_RESULT_SETS_INVALID: "Set non validi",
+  ML_RESULT_SET_COUNT_INVALID: "Un risultato deve contenere due o tre set",
+  ML_RESULT_SET_SCORE_INVALID: "Punteggio set non valido",
+  ML_RESULT_MATCH_SCORE_INVALID: "Risultato finale non valido",
+  ML_RESULT_MATCH_STATE_INVALID: "La partita non accetta risultati nello stato corrente",
+  ML_RESULT_ALREADY_EXISTS: "La partita ha già un risultato autoritativo",
+  ML_RESULT_VERSION_CONFLICT: "Il risultato è stato modificato da un altro amministratore",
+  ML_RESULT_CORRECTION_REASON_REQUIRED: "La correzione richiede una motivazione",
+  ML_OUTCOME_VERSION_CONFLICT: "L’esito è stato modificato da un altro amministratore",
+  ML_SPECIAL_OUTCOME_INVALID: "Contributo amministrativo non valido",
+  ML_MATCH_WORKFLOW_INVALID: "Stato speciale o motivazione non validi",
 };
 
 export function mondayLeagueErrorResponse(error: { message?: string } | null | undefined) {
   const raw = String(error?.message ?? "Errore Monday League");
   const code = Object.keys(FRIENDLY_ERRORS).find((key) => raw.includes(key));
-  const conflict = code?.includes("CONFLICT") || code?.includes("NOT_EDITABLE") || code === "ML_GENERATION_DIRTY_DRAFT";
+  const conflict = code?.includes("CONFLICT") || code?.includes("NOT_EDITABLE") || code === "ML_GENERATION_DIRTY_DRAFT" || code === "ML_RESULT_ALREADY_EXISTS";
   return NextResponse.json(
     { error: code ? FRIENDLY_ERRORS[code] : raw, code: code ?? "ML_UNKNOWN" },
     { status: conflict ? 409 : 400 }
