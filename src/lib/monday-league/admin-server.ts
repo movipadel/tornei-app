@@ -92,6 +92,15 @@ const FRIENDLY_ERRORS: Record<string, string> = {
   ML_DELETE_CONFIRMATION_MISMATCH: "La conferma non corrisponde al nome richiesto",
   ML_TEAM_HAS_HISTORY_DEACTIVATE_INSTEAD: "La squadra ha storico sportivo: disattivala invece di eliminarla",
   ML_REASON_REQUIRED: "È richiesta una motivazione",
+  ML_PHASE1_NOT_READY: "La Fase 1 non è ancora conclusa",
+  ML_PHASE2_STALE_PREVIEW: "La classifica è cambiata: aggiorna la preview prima di generare",
+  ML_PHASE2_GENERATION_CONFLICT: "La Fase 2 esiste già con uno stato sorgente differente",
+  ML_PHASE2_PAYLOAD_INVALID: "Calendario Fase 2 non valido",
+  ML_PHASE2_TEAM_SET_INVALID: "Composizione Fase 2 non valida",
+  ML_PHASE2_ROUND_COUNT_INVALID: "Numero giornate Fase 2 non valido",
+  ML_PHASE2_ROUND_INVALID: "Struttura giornata Fase 2 non valida",
+  ML_PHASE2_MATCH_INVALID: "Abbinamento Fase 2 non valido",
+  ML_PHASE2_MATCH_COUNT_INVALID: "Numero partite Fase 2 non valido",
 };
 
 export function mondayLeagueErrorResponse(error: { message?: string } | null | undefined) {

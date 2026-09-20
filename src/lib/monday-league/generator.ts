@@ -317,11 +317,18 @@ function stableTieBreakOrder(phaseId: string, orderedTeamIds: string[]) {
   });
 }
 
-export function generateMondayLeaguePhase1(
+export function generateMondayLeagueRoundRobin(
   phaseId: string,
-  orderedTeamIds: string[]
+  orderedTeamIds: string[],
+  persistedTieBreakOrder?: string[]
 ): MondayLeagueGeneration {
   assertInput(phaseId, orderedTeamIds);
+  const tieBreakOrder = persistedTieBreakOrder ?? stableTieBreakOrder(phaseId, orderedTeamIds);
+  if (tieBreakOrder.length !== orderedTeamIds.length ||
+      new Set(tieBreakOrder).size !== orderedTeamIds.length ||
+      [...tieBreakOrder].sort().join(":") !== [...orderedTeamIds].sort().join(":")) {
+    throw new Error("Ordine tie-break non valido");
+  }
   const rawRounds = circlePairings(orderedTeamIds.length);
   const orientation =
     orderedTeamIds.length % 2 === 0
@@ -334,7 +341,6 @@ export function generateMondayLeaguePhase1(
 
   const rounds = orientedRounds(rawRounds, orientation, orderedTeamIds);
   const quality = qualityForRounds(rounds, orderedTeamIds);
-  const tieBreakOrder = stableTieBreakOrder(phaseId, orderedTeamIds);
   const fingerprintPayload = {
     phaseId,
     algorithmVersion: MONDAY_LEAGUE_GENERATOR_VERSION,
@@ -359,4 +365,11 @@ export function generateMondayLeaguePhase1(
     fingerprint,
     fingerprintPayload: canonicalFingerprintPayload,
   };
+}
+
+export function generateMondayLeaguePhase1(
+  phaseId: string,
+  orderedTeamIds: string[]
+): MondayLeagueGeneration {
+  return generateMondayLeagueRoundRobin(phaseId, orderedTeamIds);
 }

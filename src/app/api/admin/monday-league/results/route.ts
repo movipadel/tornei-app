@@ -3,12 +3,14 @@ import { guardAdmin } from "@/lib/adminGuard";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getMondayLeagueAdminActorId, mondayLeagueErrorResponse } from "@/lib/monday-league/admin-server";
 
-export async function GET() {
+export async function GET(req: Request) {
   const denied = await guardAdmin(); if (denied) return denied;
   const sb = supabaseAdmin();
-  const { data: season } = await sb.from("league_seasons").select("id").neq("status", "archived").order("created_at", { ascending: false }).limit(1).maybeSingle();
+  const { data: season } = await sb.from("league_seasons").select("id,status").neq("status", "archived").order("created_at", { ascending: false }).limit(1).maybeSingle();
   if (!season) return NextResponse.json({ data: null });
-  const { data: phase } = await sb.from("league_phases").select("id").eq("season_id", season.id).eq("code", "phase1").maybeSingle();
+  const { data: phases } = await sb.from("league_phases").select("id,code,name,status").eq("season_id", season.id).in("status", ["generated", "in_progress", "finalized"]).order("sequence_number");
+  const requestedPhase = new URL(req.url).searchParams.get("phase");
+  const phase = (phases ?? []).find((item) => item.id === requestedPhase || item.code === requestedPhase) ?? (phases ?? []).find((item) => item.code === "phase1") ?? null;
   if (!phase) return NextResponse.json({ data: null });
   const [{ data: teams }, { data: players }, { data: rounds }, { data: matches }] = await Promise.all([
     sb.from("league_teams").select("id,name").eq("season_id", season.id),
@@ -31,7 +33,7 @@ export async function GET() {
     (contests ?? []).length ? sb.from("users").select("id,full_name").in("id", [...new Set((contests ?? []).map((contest) => contest.opened_by_user_id))]) : Promise.resolve({ data: [] }),
   ]);
   const teamIds = new Set((teams ?? []).map((team) => team.id));
-  return NextResponse.json({ data: { phase, teams: teams ?? [], players: (players ?? []).filter((player) => teamIds.has(player.team_id)), rounds: rounds ?? [], matches: matches ?? [], results: results ?? [], sets: sets ?? [], specials: specials ?? [], contests: contests ?? [], contestUsers: contestUsers ?? [], resultStates: stateResponse.data ?? [] } });
+  return NextResponse.json({ data: { season, phase, phases: phases ?? [], teams: teams ?? [], players: (players ?? []).filter((player) => teamIds.has(player.team_id)), rounds: rounds ?? [], matches: matches ?? [], results: results ?? [], sets: sets ?? [], specials: specials ?? [], contests: contests ?? [], contestUsers: contestUsers ?? [], resultStates: stateResponse.data ?? [] } });
 }
 
 export async function POST(req: Request) {

@@ -342,8 +342,22 @@ export async function getPublicLeagueSnapshot(phaseId?: string | null): Promise<
 }
 
 export async function getPublicLeagueTeam(slug: string, phaseId?: string | null, viewerUserId?: string | null) {
-  const snapshot = await getPublicLeagueSnapshot(phaseId);
+  let snapshot = await getPublicLeagueSnapshot(phaseId);
   if (!snapshot.available) return snapshot;
+  if (!phaseId && snapshot.season.status === "phase2") {
+    const lookup = supabaseAdmin();
+    const { data: candidate } = await lookup.from("league_teams").select("id").eq("season_id", snapshot.season.id).eq("slug", slug).maybeSingle();
+    if (candidate) {
+      const currentPhaseIds = snapshot.phases.filter((phase) => phase.code !== "phase1").map((phase) => phase.id);
+      const { data: membership } = currentPhaseIds.length
+        ? await lookup.from("league_phase_teams").select("phase_id").eq("team_id", candidate.id).in("phase_id", currentPhaseIds).maybeSingle()
+        : { data: null };
+      if (membership?.phase_id && membership.phase_id !== snapshot.selectedPhase.id) {
+        snapshot = await getPublicLeagueSnapshot(membership.phase_id);
+        if (!snapshot.available) return snapshot;
+      }
+    }
+  }
   const summary = snapshot.teams.find((team) => team.slug === slug);
   if (!summary) return { available: true as const, found: false as const, snapshot };
 

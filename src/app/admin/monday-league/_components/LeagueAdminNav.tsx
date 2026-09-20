@@ -7,6 +7,7 @@ const links = [
   ["Calendario", "/admin/monday-league/calendario"],
   ["Classifica", "/admin/monday-league/classifica"],
   ["Risultati", "/admin/monday-league/risultati"],
+  ["Fase 2", "/admin/monday-league/fase-2"],
 ] as const;
 
 export default function LeagueAdminNav() {
