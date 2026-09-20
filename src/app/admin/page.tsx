@@ -15,6 +15,7 @@ import {
   ShoppingBag,
   BellRing,
   Loader2,
+  CalendarDays,
 } from "lucide-react";
 
 const cards = [
@@ -24,6 +25,13 @@ const cards = [
     href: "/admin/tournaments",
     icon: Trophy,
     accent: "#6366f1",
+  },
+  {
+    title: "Monday League",
+    description: "Configura il nuovo campionato a squadre.",
+    href: "/admin/monday-league",
+    icon: CalendarDays,
+    accent: "#14b8a6",
   },
   {
     title: "Scanner QR Code",

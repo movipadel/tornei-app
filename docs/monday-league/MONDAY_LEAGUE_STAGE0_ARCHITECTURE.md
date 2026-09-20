@@ -18,7 +18,7 @@ At this scale (maximum 16 teams and 120 Phase 1 matches), standings should be ca
 
 The round-robin generator should use the deterministic circle method for pairings and a deterministic bounded search for home/away orientation. Balance is a hard target: for even team counts every team has an odd number of matches and must finish with home/away difference 1; for odd team counts every team has an even number of matches and can target difference 0. Triple streaks are optimized before double streaks. Generation stores its input, algorithm version and quality report.
 
-Two business decisions remain blocking: the standings effect of each administrative outcome (especially walkover/no-show), and whether a suspended match keeps a provisional result or is excluded until resumed. Everything else can be selected safely as an implementation detail.
+The two former business blockers are resolved for implementation: an awarded walkover/no-show contributes 3–0 league points, 2–0 sets and 12–0 games without fake set rows; a suspended match contributes nothing until completed or administratively ruled.
 
 ## 2. Final business rules
 
@@ -37,6 +37,8 @@ Two business decisions remain blocking: the standings effect of each administrat
 - Submitted and contested results affect provisional standings immediately. An admin correction replaces the authoritative revision and standings recalculate.
 - After 48 hours without an open contest, the result is effectively confirmed. A scheduled finalizer should persist `confirmed_at`; command authorization must use the effective deadline even if that job is late.
 - Missing lineup never causes an automatic defeat or penalty.
+- An awarded walkover/no-show gives the winner 3 points, one win, two sets and 12 games; the loser receives 0 points, one loss, zero sets and zero games. Store this as an explicit administrative contribution, never as fake 6–0 set rows. Exceptional cases such as both teams absent require an explicit admin ruling.
+- A suspended match has zero standings impact until completed or administratively ruled. Any retained partial score is evidence only.
 
 ## 3. Domain boundaries
 
@@ -350,10 +352,10 @@ No points, sets or games are copied. Duplicate protection is a unique constraint
 - Postponement: clear or replace schedule, preserve pairing, no standings effect.
 - Cancellation: terminal match state, no result/standings effect unless admin later records an explicit ruling.
 - Suspension: nonterminal state; resume or resolve administratively.
-- Walkover/no-show: explicit special result with decision reason and configured standings effect; no fake set rows.
+- Walkover/no-show with an awarded winner: explicit special result contributing 3–0 league points, 2–0 sets and 12–0 games, with one win/loss and mandatory decision reason; no fake set rows. Both-absent and other exceptional cases require an explicit admin ruling.
 - Manual correction: new immutable result revision; never overwrite the submitted evidence.
 
-The admin form should present human terms and a standings-impact preview, not raw statuses. The exact points/set/game treatment for walkovers and no-shows is a blocking rule listed in section 35.
+The admin form should present human terms and a standings-impact preview, not raw statuses. A suspended match contributes zero until completed or ruled; partial scores, if retained later, are evidence only.
 
 ## 20. Notifications
 
@@ -679,7 +681,7 @@ Deployment gates: local migration replay from baseline, generated TypeScript typ
 - Existing user login is phone-keyed and updates a user record from supplied profile data; captain-sensitive actions deserve rate limiting and a future stronger authentication/verification review.
 - Multi-step application writes would allow partial phase/result state; transactional commands are required.
 - A late scheduler must not change deadline/contest authorization; DB-time effective states are required.
-- Walkover/no-show standings semantics are not yet specified and can materially change ranking.
+- Exceptional administrative rulings beyond the defined awarded walkover/no-show must show their explicit standings contribution before confirmation.
 - Public media needs content validation, size limits, safe paths and lifecycle cleanup.
 - Home/away search must have deterministic caps and surface quality, not time out or silently degrade.
 - Corrected contested results require immutable revisions or audit evidence becomes unreliable.
@@ -687,7 +689,6 @@ Deployment gates: local migration replay from baseline, generated TypeScript typ
 
 ## 35. Blocking open questions
 
-1. What exact standings contribution applies to a walkover or no-show: league points, win/loss, awarded sets and awarded games? This must be decided before the standings/special-outcome migration.
-2. If a match is suspended after some sets were played, should those partial scores remain visible/provisional, or should the match be excluded until resumed or administratively ruled? This determines whether partial set evidence needs a separate non-standings record.
+None for the staged implementation currently defined. Walkover/no-show and suspension semantics are resolved above. Whether suspended partial-score evidence is stored can be decided during the result-model stage because it never affects standings.
 
 Nonblocking implementation defaults recommended by this audit: one active season initially; transactional in-app reminders; Phase 2 preserves the season lottery order; logo/image use a dedicated public-media bucket with server-authorized writes; result auto-confirmation uses an authenticated scheduled worker with DB-time fallback semantics.
