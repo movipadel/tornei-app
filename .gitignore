@@ -20,3 +20,4 @@ yarn-error.log*
 
 # dev tools / test locali
 src/lib/baraonda-v2/dev/
+tsconfig.tsbuildinfo
