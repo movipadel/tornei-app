@@ -87,13 +87,21 @@ export default function UserLoginDialog({
       });
 
       const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json.error || "Errore");
+      if (!res.ok) {
+        if (json.code === "AUTH_LOGIN_REQUIRED" && json.redirect_to) {
+          toast.error(json.error || "Usa il nuovo accesso MOVI");
+          window.location.href = json.redirect_to;
+          return;
+        }
+        throw new Error(json.error || "Errore");
+      }
 
       toast.success("Dati salvati");
       onSaved(json.user);
+      window.dispatchEvent(new Event("movi:user-session-changed"));
       onClose();
-    } catch (e: any) {
-      toast.error(e?.message ?? "Errore");
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Errore");
     } finally {
       setSaving(false);
     }
@@ -131,7 +139,7 @@ export default function UserLoginDialog({
               <select
                 className="base44-input"
                 value={gender}
-                onChange={(e) => setGender(e.target.value as any)}
+                onChange={(e) => setGender(e.target.value as "M" | "F")}
               >
                 <option value="M">Uomo</option>
                 <option value="F">Donna</option>

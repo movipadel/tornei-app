@@ -17,8 +17,10 @@ $cleanup = @"
 SET session_replication_role=replica;
 DELETE FROM public.user_moviback_reconciliation_evidence WHERE source_user_id='$source' OR canonical_user_id='$canonical';
 DELETE FROM public.user_merge_journal WHERE source_user_id='$source' OR canonical_user_id='$canonical';
+DELETE FROM public.user_identity_aliases WHERE source_user_id='$source' OR canonical_user_id='$canonical';
 DELETE FROM public.user_duplicate_review_decisions WHERE group_id IN (SELECT group_id FROM public.user_duplicate_review_members WHERE user_id IN('$source','$canonical'));
 DELETE FROM public.user_merge_operations WHERE source_user_id='$source' OR canonical_user_id='$canonical';
+DELETE FROM public.user_duplicate_review_groups WHERE id IN (SELECT group_id FROM public.user_duplicate_review_members WHERE user_id IN('$source','$canonical'));
 DELETE FROM public.user_duplicate_review_members WHERE user_id IN('$source','$canonical');
 DELETE FROM public.user_duplicate_review_groups WHERE signal_value='stage4.concurrent@example.invalid';
 DELETE FROM public.user_duplicate_scan_runs WHERE actor_staff_id='$staff';

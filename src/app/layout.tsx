@@ -5,6 +5,7 @@ import { Toaster } from "sonner";
 import "./globals.css";
 
 import InstallAppPrompt from "@/components/InstallAppPrompt";
+import ProgressiveAuthPrompt from "@/components/ProgressiveAuthPrompt";
 
 const geistSans = Geist({
   subsets: ["latin"],
@@ -96,6 +97,7 @@ export default function RootLayout({
 
         {children}
 
+        <ProgressiveAuthPrompt />
         <InstallAppPrompt />
       </body>
     </html>

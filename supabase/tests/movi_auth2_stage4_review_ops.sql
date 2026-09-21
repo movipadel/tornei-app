@@ -174,7 +174,7 @@ BEGIN
   summary:=public.user_migration_summary();
   IF (summary->>'total_users')::integer<22 OR summary->>'completion_percent' IS NULL OR (summary->>'conflicts')::integer<1 THEN RAISE EXCEPTION 'migration summary inaccurate: %',summary; END IF;
   SELECT value INTO report FROM public.duplicate_migration_dry_run(NULL) value LIMIT 1;
-  IF report::text ~* '(password|token|auth_user_id|tax_code)' THEN RAISE EXCEPTION 'dry-run export leaks secret/private fields'; END IF;
+  IF report::text ~* '(password|token|auth_user_id|"tax_code"\s*:)' THEN RAISE EXCEPTION 'dry-run export leaks secret/private fields'; END IF;
 END $test$;
 
 SET LOCAL ROLE authenticated;

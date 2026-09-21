@@ -35,6 +35,7 @@ export async function GET(request: Request) {
   const params = new URL(request.url).searchParams;
   const stateFilter = params.get("state");
   const confidenceFilter = params.get("confidence");
+  const migrationStateFilter = params.get("migration_state");
   const [groupsResult, summaryResult, scanResult] = await Promise.all([
     sb.from("user_duplicate_review_groups")
       .select("id,signal_type,signal_value,confidence,state,recommended_user_id,canonical_user_id,warning_flags,review_note,created_at,updated_at,is_stale,stale_reason,recommendation_reasons,review_config,candidate_fingerprint")
@@ -56,6 +57,12 @@ export async function GET(request: Request) {
     ? await sb.from("users").select("id,full_name,phone,email,gender,created_at,updated_at,auth_user_id,identity_status,privacy_accepted_at,terms_accepted_at,age_confirmed_at,marketing_accepted,marketing_accepted_at").in("id", userIds)
     : { data: [], error: null };
   if (profileError) return NextResponse.json({ error: profileError.message }, { status: 500 });
+  let migrationUsersQuery = sb.from("users")
+    .select("id,full_name,email,phone,auth_user_id,auth_migration_state,identity_status,updated_at")
+    .order("updated_at", { ascending: false }).limit(500);
+  if (migrationStateFilter) migrationUsersQuery = migrationUsersQuery.eq("auth_migration_state", migrationStateFilter);
+  const { data: migrationUsers, error: migrationUsersError } = await migrationUsersQuery;
+  if (migrationUsersError) return NextResponse.json({ error: migrationUsersError.message }, { status: 500 });
 
   const counts = new Map<string, Record<string, number>>();
   await Promise.all(userIds.flatMap((userId) => countDomains.map(async ([table, column, label]) => {
@@ -130,6 +137,7 @@ export async function GET(request: Request) {
   return NextResponse.json({
     summary: summaryResult.data ?? null,
     latest_scan: scanResult.data ?? null,
+    migration_users: (migrationUsers ?? []).map(({ auth_user_id, ...user }) => ({ ...user, auth_linked: Boolean(auth_user_id) })),
     data: groups.map((group) => ({
       ...group,
       members: (members ?? []).filter((member) => member.group_id === group.id).map((member) => ({

@@ -11,5 +11,15 @@ export async function GET() {
       { status: 409 }
     );
   }
-  return NextResponse.json({ user: identity.profile });
+  const state = identity.migration_state;
+  const migration = identity.source === "legacy" ? {
+    status: state === "review_required" ? "review_required" : state === "conflict" ? "conflict" : "available",
+    activation_available: state === "legacy" || state === "activation_pending",
+    message: state === "review_required"
+      ? "Il passaggio al nuovo accesso richiede una verifica manuale. Il tuo accesso attuale resta disponibile."
+      : state === "conflict"
+        ? "Il passaggio al nuovo accesso richiede assistenza."
+        : "Nuovo accesso MOVI disponibile",
+  } : identity.source === "auth" && identity.profile ? { status: "linked", activation_available: false } : null;
+  return NextResponse.json({ user: identity.profile, migration });
 }

@@ -26,6 +26,7 @@ type Preview = {
   reversal: Record<string, string>;
 };
 type MergeResult = { verification?: { passed?: boolean; checks?: Record<string, boolean> }; domain_results?: Array<{ domain: string; status: string }> };
+type MigrationUser = { id: string; full_name: string; email: string; phone: string; auth_migration_state: string; identity_status: string; auth_linked: boolean; updated_at: string };
 
 async function api(path: string, body?: Record<string, unknown>) {
   const response = await fetch(path, body ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : { cache: "no-store" });
@@ -43,6 +44,8 @@ const profileFields = ["full_name", "phone", "email", "gender"] as const;
 export default function DuplicateUsersPage() {
   const [groups, setGroups] = useState<Group[]>([]);
   const [summary, setSummary] = useState<Summary | null>(null);
+  const [migrationUsers, setMigrationUsers] = useState<MigrationUser[]>([]);
+  const [migrationFilter, setMigrationFilter] = useState("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [filter, setFilter] = useState("all");
   const [loading, setLoading] = useState(true);
@@ -60,13 +63,14 @@ export default function DuplicateUsersPage() {
     setLoading(true);
     try {
       const json = await api("/api/admin/users/duplicates");
-      setGroups(json.data ?? []); setSummary(json.summary ?? null);
+      setGroups(json.data ?? []); setSummary(json.summary ?? null); setMigrationUsers(json.migration_users ?? []);
     } catch (error) { toast.error(error instanceof Error ? error.message : "Errore"); }
     finally { setLoading(false); }
   }, []);
   useEffect(() => { void load(); }, [load]);
   const selected = useMemo(() => groups.find((group) => group.id === selectedId) ?? null, [groups, selectedId]);
   const visibleGroups = useMemo(() => groups.filter((group) => filter === "all" || (filter === "high" ? group.confidence === "high" : group.state === filter)), [groups, filter]);
+  const visibleMigrationUsers = useMemo(() => migrationUsers.filter((user) => migrationFilter === "all" || user.auth_migration_state === migrationFilter), [migrationUsers, migrationFilter]);
 
   function choose(group: Group) {
     setSelectedId(group.id);
@@ -123,8 +127,18 @@ export default function DuplicateUsersPage() {
     </header>
 
     {summary && <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(145px,1fr))", gap: 9 }}>
-      {[['total_users','Utenti'],['unlinked_users','Non collegati'],['auth_linked_users','Auth collegati'],['pending_groups','Pending'],['manual_only_groups','Manual only'],['conflicts','Conflitti'],['merged_groups','Gruppi uniti'],['completion_percent','Completamento %']].map(([key,label]) => <div key={key} style={metric}><b style={{ fontSize: 22 }}>{String(summary[key] ?? 0)}</b><span>{label}</span></div>)}
+      {[['total_users','Utenti'],['legacy_users','Legacy'],['activation_pending','Attivazione avviata'],['linked_users','Collegati'],['review_required_users','Review required'],['conflict_users','Conflitti utenti'],['merged_users','Uniti'],['completion_percent','Completamento %']].map(([key,label]) => <div key={key} style={metric}><b style={{ fontSize: 22 }}>{String(summary[key] ?? 0)}</b><span>{label}</span></div>)}
     </section>}
+
+    <section style={panel}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}><div><strong>Migrazione utenti esistenti</strong><div style={{ color: "#64748b", fontSize: 13 }}>Stato progressivo; nessuna password viene impostata dall’amministrazione.</div></div>
+        <select className="base44-input" aria-label="Filtra stato migrazione" value={migrationFilter} onChange={(event) => setMigrationFilter(event.target.value)} style={{ maxWidth: 220 }}>
+          <option value="all">Tutti gli stati</option><option value="legacy">Legacy</option><option value="activation_pending">Activation pending</option><option value="linked">Linked</option><option value="review_required">Review required</option><option value="conflict">Conflict</option><option value="merged">Merged</option>
+        </select></div>
+      <div style={{ display: "grid", gap: 7, marginTop: 12 }}>{visibleMigrationUsers.slice(0, 100).map((user) => <div key={user.id} style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) auto", gap: 10, padding: 10, border: "1px solid #e2e8f0", borderRadius: 10 }}>
+        <div style={{ minWidth: 0 }}><b>{user.full_name}</b><div style={{ color: "#64748b", fontSize: 12, overflowWrap: "anywhere" }}>{user.email} · {user.phone}</div></div><Status value={user.auth_migration_state} />
+      </div>)}</div>
+    </section>
 
     <nav style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>{filterOptions.map(([value, label]) => <button key={value} onClick={() => setFilter(value)} style={{ ...filterButton, background: filter === value ? "#312e81" : "white", color: filter === value ? "white" : "#334155" }}>{label}</button>)}</nav>
 
