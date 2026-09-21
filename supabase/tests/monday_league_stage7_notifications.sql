@@ -138,6 +138,21 @@ BEGIN
      OR has_function_privilege('authenticated','public.league_deliver_notification_event(uuid,uuid)','EXECUTE')
      OR NOT has_function_privilege('service_role','public.league_scan_due_notifications(timestamptz,integer)','EXECUTE') THEN
     RAISE EXCEPTION 'S7_ASSERT_SECURITY'; END IF;
+  IF has_function_privilege('anon','public.league_preserve_revealed_lineups_on_reschedule()','EXECUTE')
+     OR has_function_privilege('authenticated','public.league_preserve_revealed_lineups_on_reschedule()','EXECUTE')
+     OR has_function_privilege('anon','public.league_block_result_reschedule()','EXECUTE')
+     OR has_function_privilege('authenticated','public.league_block_result_reschedule()','EXECUTE')
+     OR has_function_privilege('anon','public.league_enqueue_audit_notification()','EXECUTE')
+     OR has_function_privilege('authenticated','public.league_enqueue_audit_notification()','EXECUTE')
+     OR has_function_privilege('anon','public.league_enqueue_reschedule_notification()','EXECUTE')
+     OR has_function_privilege('authenticated','public.league_enqueue_reschedule_notification()','EXECUTE') THEN
+    RAISE EXCEPTION 'S7_ASSERT_TRIGGER_FUNCTION_GRANTS'; END IF;
+  IF EXISTS(SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+    WHERE n.nspname='public' AND p.proname LIKE 'league_%' AND p.prosrc LIKE '%/monday-league/team/%') THEN
+    RAISE EXCEPTION 'S7_ASSERT_LEGACY_TEAM_CTA'; END IF;
+  IF EXISTS(SELECT 1 FROM public.league_notification_events
+    WHERE cta_url LIKE '/monday-league/team/%' OR (team_id IS NOT NULL AND cta_url NOT LIKE '/monday-league/squadre/%')) THEN
+    RAISE EXCEPTION 'S7_ASSERT_CANONICAL_TEAM_CTA'; END IF;
 END $security$;
 
 ROLLBACK;

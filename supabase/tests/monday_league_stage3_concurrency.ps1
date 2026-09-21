@@ -1,13 +1,14 @@
-param([string]$Container = "supabase_db_tornei-app")
 $ErrorActionPreference = "Stop"
+$Psql = "C:\Program Files\PostgreSQL\17\bin\psql.exe"
+$Database = "postgresql://postgres:postgres@127.0.0.1:55022/postgres"
 
 function Sql([string]$Query) {
-  $output = $Query | docker exec -i $Container psql -v ON_ERROR_STOP=1 -At -U postgres -d postgres
+  $output = $Query | & $Psql $Database -X -v ON_ERROR_STOP=1 -At
   if ($LASTEXITCODE -ne 0) { throw "Local PostgreSQL command failed." }
   return ($output -join "`n")
 }
 function Race([string]$Left, [string]$Right) {
-  $jobs = @($Left, $Right) | ForEach-Object { Start-Job -ArgumentList $Container, $_ -ScriptBlock { param($C,$Q); $Q | docker exec -i $C psql -At -U postgres -d postgres 2>&1 } }
+  $jobs = @($Left, $Right) | ForEach-Object { Start-Job -ArgumentList $Psql,$Database,$_ -ScriptBlock { param($Exe,$Db,$Q); $Q | & $Exe $Db -X -At 2>&1 } }
   $jobs | Wait-Job | Out-Null; $result = ($jobs | Receive-Job) -join "`n"; $jobs | Remove-Job -Force; return $result
 }
 

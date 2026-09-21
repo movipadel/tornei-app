@@ -54,7 +54,7 @@ SET CONSTRAINTS ALL IMMEDIATE;
 SET CONSTRAINTS ALL DEFERRED;
 SET LOCAL ROLE service_role;
 
-DO $test$ DECLARE ready jsonb; fp text; first jsonb; replay jsonb; completed_at_before timestamptz; standings_a jsonb; failed boolean;
+DO $test$ DECLARE ready jsonb; fp text; ready_fp text; first jsonb; replay jsonb; completed_at_before timestamptz; standings_a jsonb; failed boolean;
 BEGIN
   ready:=public.league_phase2_completion_readiness('93000000-0000-4000-8000-000000000001');
   IF NOT(ready->>'ready')::boolean OR (ready->'serie_a'->>'terminal_matches')::int<>1 OR (ready->'serie_b'->>'terminal_matches')::int<>1 THEN RAISE EXCEPTION 'S9_READY'; END IF;
@@ -69,6 +69,24 @@ BEGIN
   UPDATE public.league_matches SET match_status='suspended' WHERE id='98000000-0000-4000-8000-00000000000b';
   IF (public.league_phase2_completion_readiness('93000000-0000-4000-8000-000000000001')->>'ready')::boolean THEN RAISE EXCEPTION 'S9_SUSPENDED'; END IF;
   UPDATE public.league_matches SET match_status='confirmed' WHERE id='98000000-0000-4000-8000-00000000000b';
+  ready_fp:=public.league_phase2_completion_readiness('93000000-0000-4000-8000-000000000001')->>'fingerprint';
+  INSERT INTO public.league_result_contests(id,match_id,result_submission_id,opened_by_user_id,reason)
+  VALUES('9c000000-0000-4000-8000-000000000001','98000000-0000-4000-8000-00000000000a','99000000-0000-4000-8000-00000000000a','91000000-0000-4000-8000-000000000002','Legacy current dispute');
+  ready:=public.league_phase2_completion_readiness('93000000-0000-4000-8000-000000000001');
+  IF (ready->>'ready')::boolean OR ready->>'fingerprint'=ready_fp THEN RAISE EXCEPTION 'H1_COMPLETION_CURRENT_CONTEST_BLOCK'; END IF;
+  UPDATE public.league_result_submissions SET status='superseded',confirmed_at=NULL WHERE id='99000000-0000-4000-8000-00000000000a';
+  INSERT INTO public.league_result_submissions(id,match_id,revision,status,submitter_type,submitted_by_staff_id,correction_reason,home_sets_won,away_sets_won,home_games_won,away_games_won,confirmed_at)
+  VALUES('99000000-0000-4000-8000-00000000010a','98000000-0000-4000-8000-00000000000a',2,'confirmed','staff','92000000-0000-4000-8000-000000000001','Fixture replacement',2,0,12,4,now());
+  UPDATE public.league_matches SET current_result_id='99000000-0000-4000-8000-00000000010a' WHERE id='98000000-0000-4000-8000-00000000000a';
+  IF (public.league_phase2_completion_readiness('93000000-0000-4000-8000-000000000001')->>'ready')::boolean THEN RAISE EXCEPTION 'H1_COMPLETION_HISTORICAL_CONTEST_BLOCK'; END IF;
+  failed:=false; BEGIN PERFORM public.league_complete_season('92000000-0000-4000-8000-000000000001','93000000-0000-4000-8000-000000000001',ready_fp);
+    EXCEPTION WHEN SQLSTATE 'P0001' THEN failed:=SQLERRM IN ('ML_COMPLETION_STALE_PREVIEW','ML_SEASON_NOT_READY'); END;
+  IF NOT failed OR (SELECT status FROM public.league_seasons WHERE id='93000000-0000-4000-8000-000000000001')<>'phase2' THEN RAISE EXCEPTION 'H1_COMPLETION_COMMAND_BLOCK'; END IF;
+  UPDATE public.league_result_contests SET status='resolved_rejected',resolved_at=now(),resolved_by_staff_id='92000000-0000-4000-8000-000000000001',resolution_note='Resolved' WHERE id='9c000000-0000-4000-8000-000000000001';
+  UPDATE public.league_result_submissions SET status='superseded',confirmed_at=NULL WHERE id='99000000-0000-4000-8000-00000000010a';
+  UPDATE public.league_result_submissions SET status='confirmed',confirmed_at=now() WHERE id='99000000-0000-4000-8000-00000000000a';
+  UPDATE public.league_matches SET current_result_id='99000000-0000-4000-8000-00000000000a' WHERE id='98000000-0000-4000-8000-00000000000a';
+  IF NOT (public.league_phase2_completion_readiness('93000000-0000-4000-8000-000000000001')->>'ready')::boolean THEN RAISE EXCEPTION 'H1_COMPLETION_RESOLVED_DOES_NOT_BLOCK'; END IF;
   standings_a:=public.league_get_standings('96000000-0000-4000-8000-00000000000a')->'rows';
   ready:=public.league_phase2_completion_readiness('93000000-0000-4000-8000-000000000001'); fp:=ready->>'fingerprint';
   INSERT INTO public.league_notification_events(event_type,season_id,match_id,team_id,recipient_user_id,idempotency_key,due_at,title,body,payload)

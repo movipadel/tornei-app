@@ -18,6 +18,16 @@ function Race([string]$Query) {
   return $outputs
 }
 
+function RacePair([string]$Left,[string]$Right) {
+  $jobs = @($Left,$Right) | ForEach-Object { Start-Job -ArgumentList $Psql,$Database,$_ -ScriptBlock {
+    param($Exe,$Db,$Sql); $Sql | & $Exe $Db -X -At 2>&1
+  } }
+  $jobs | Wait-Job | Out-Null
+  $outputs = @($jobs | ForEach-Object { (Receive-Job $_) -join "`n" })
+  $jobs | Remove-Job -Force
+  return $outputs
+}
+
 $source = Get-Content -LiteralPath "$PSScriptRoot\monday_league_stage8_phase2.sql" -Raw
 $setup = $source.Substring(0,$source.IndexOf("SET LOCAL ROLE service_role;")) + "COMMIT;"
 $cleanup = @'
@@ -27,6 +37,7 @@ DELETE FROM public.communications WHERE event_key LIKE 'league:83000000-0000-400
 DELETE FROM public.league_notification_events WHERE season_id='83000000-0000-4000-8000-000000000001';
 DELETE FROM public.league_audit_events WHERE season_id='83000000-0000-4000-8000-000000000001';
 UPDATE public.league_matches SET current_result_id=NULL,current_special_outcome_id=NULL WHERE phase_id IN (SELECT id FROM public.league_phases WHERE season_id='83000000-0000-4000-8000-000000000001');
+DELETE FROM public.league_result_contests WHERE match_id IN (SELECT id FROM public.league_matches WHERE phase_id IN (SELECT id FROM public.league_phases WHERE season_id='83000000-0000-4000-8000-000000000001'));
 DELETE FROM public.league_result_submissions WHERE match_id IN (SELECT id FROM public.league_matches WHERE phase_id IN (SELECT id FROM public.league_phases WHERE season_id='83000000-0000-4000-8000-000000000001'));
 DELETE FROM public.league_match_special_outcomes WHERE match_id IN (SELECT id FROM public.league_matches WHERE phase_id IN (SELECT id FROM public.league_phases WHERE season_id='83000000-0000-4000-8000-000000000001'));
 DELETE FROM public.league_matches WHERE phase_id IN (SELECT id FROM public.league_phases WHERE season_id='83000000-0000-4000-8000-000000000001');
@@ -60,6 +71,14 @@ try {
   if (@($outputs | Where-Object { $_ -match '"replayed"\s*:\s*true' }).Count -ne 1) { throw "Expected one replay: $outputs" }
   $state = (Sql "SELECT count(*)||':'||(SELECT count(*) FROM public.league_generation_runs WHERE generation_kind='phase2_split' AND phase_id='86000000-0000-4000-8000-00000000000a')||':'||(SELECT count(*) FROM public.league_phase_teams WHERE phase_id IN('86000000-0000-4000-8000-00000000000a','86000000-0000-4000-8000-00000000000b')) FROM public.league_phases WHERE season_id='83000000-0000-4000-8000-000000000001' AND code IN('serie_a','serie_b');").Trim()
   if ($state -ne '2:1:4') { throw "Invalid post-race state: $state" }
+
+  # H1 race D: generation versus a valid contest opening must never leave Phase 2 advanced with an open contest.
+  [void](Sql $cleanup); [void](Sql $setup)
+  [void](Sql "UPDATE public.league_result_submissions SET status='submitted',submitter_type='captain',submitted_by_staff_id=NULL,submitted_by_user_id='81000000-0000-4000-8000-000000000001',submitted_at=now()-interval '1 hour',confirmed_at=NULL WHERE id='89000000-0000-4000-8000-000000000001'; UPDATE public.league_matches SET match_status='submitted' WHERE id='88000000-0000-4000-8000-000000000001';")
+  $contest = "SET ROLE service_role; SELECT public.league_away_captain_contest_result('81000000-0000-4000-8000-000000000002','88000000-0000-4000-8000-000000000001','89000000-0000-4000-8000-000000000001','phase2 race');"
+  $outputs = RacePair $call $contest
+  $safe = (Sql "SELECT status||':'||(SELECT count(*) FROM public.league_result_contests WHERE match_id='88000000-0000-4000-8000-000000000001' AND status='open') FROM public.league_seasons WHERE id='83000000-0000-4000-8000-000000000001';").Trim()
+  if ($safe -ne 'phase1:1') { throw "Phase2/contest race violated finality: $safe $outputs" }
   Write-Output "monday_league_stage8_concurrency: ok"
 }
 finally { [void](Sql $cleanup) }

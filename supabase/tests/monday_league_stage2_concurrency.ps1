@@ -1,9 +1,9 @@
-param([string]$Container = "supabase_db_tornei-app")
-
 $ErrorActionPreference = "Stop"
+$Psql = "C:\Program Files\PostgreSQL\17\bin\psql.exe"
+$Database = "postgresql://postgres:postgres@127.0.0.1:55022/postgres"
 
 function Invoke-LocalSql([string]$Sql) {
-  $output = $Sql | docker exec -i $Container psql -v ON_ERROR_STOP=1 -At -U postgres -d postgres
+  $output = $Sql | & $Psql $Database -X -v ON_ERROR_STOP=1 -At
   if ($LASTEXITCODE -ne 0) { throw "Local PostgreSQL command failed." }
   return ($output -join "`n")
 }
@@ -71,9 +71,9 @@ DELETE FROM public.users WHERE id::text LIKE '37000000-0000-4000-8000-0000000000
 try {
   [void](Invoke-LocalSql $setup)
   $jobs = 1..2 | ForEach-Object {
-    Start-Job -ArgumentList $Container, $generate -ScriptBlock {
-      param($DbContainer, $Sql)
-      $Sql | docker exec -i $DbContainer psql -v ON_ERROR_STOP=1 -At -U postgres -d postgres
+    Start-Job -ArgumentList $Psql, $Database, $generate -ScriptBlock {
+      param($Exe, $Db, $Sql)
+      $Sql | & $Exe $Db -X -v ON_ERROR_STOP=1 -At
       if ($LASTEXITCODE -ne 0) { throw "Concurrent generator call failed." }
     }
   }

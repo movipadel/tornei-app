@@ -109,12 +109,37 @@ BEGIN
     EXCEPTION WHEN SQLSTATE 'P0001' THEN failed:=SQLERRM IN ('ML_CONTEST_NOT_OPEN','ML_CONTEST_ALREADY_OPEN'); END;
   IF NOT failed THEN RAISE EXCEPTION 'S6_ASSERT_DUPLICATE_CONTEST'; END IF;
 
+  -- Pre-release H1: no generic admin command may replace an outcome or silently
+  -- resolve the dispute. Walkover, no-show and administrative paths are explicit.
+  failed:=false; BEGIN PERFORM public.league_admin_correct_result(admin,m1,result_id,'contested','[{"homeGames":6,"awayGames":0},{"homeGames":6,"awayGames":0}]','Direct correction');
+    EXCEPTION WHEN SQLSTATE 'P0001' THEN failed:=SQLERRM='OPEN_CONTEST_REQUIRES_RESOLUTION'; END;
+  IF NOT failed THEN RAISE EXCEPTION 'H1_ASSERT_CORRECTION_BLOCK'; END IF;
+  failed:=false; BEGIN PERFORM public.league_set_match_special_outcome(admin,m1,result_id,NULL,'walkover','64000000-0000-4000-8000-000000000001',true,3,0,true,false,2,0,12,0,'Walkover');
+    EXCEPTION WHEN SQLSTATE 'P0001' THEN failed:=SQLERRM='OPEN_CONTEST_REQUIRES_RESOLUTION'; END;
+  IF NOT failed THEN RAISE EXCEPTION 'H1_ASSERT_WALKOVER_BLOCK'; END IF;
+  failed:=false; BEGIN PERFORM public.league_set_match_special_outcome(admin,m1,result_id,NULL,'no_show','64000000-0000-4000-8000-000000000001',true,3,0,true,false,2,0,12,0,'No show');
+    EXCEPTION WHEN SQLSTATE 'P0001' THEN failed:=SQLERRM='OPEN_CONTEST_REQUIRES_RESOLUTION'; END;
+  IF NOT failed THEN RAISE EXCEPTION 'H1_ASSERT_NO_SHOW_BLOCK'; END IF;
+  failed:=false; BEGIN PERFORM public.league_set_match_special_outcome(admin,m1,result_id,NULL,'administrative',NULL,false,0,0,false,false,0,0,0,0,'Admin ruling');
+    EXCEPTION WHEN SQLSTATE 'P0001' THEN failed:=SQLERRM='OPEN_CONTEST_REQUIRES_RESOLUTION'; END;
+  IF NOT failed THEN RAISE EXCEPTION 'H1_ASSERT_ADMIN_OUTCOME_BLOCK'; END IF;
+  failed:=false; BEGIN PERFORM public.league_set_match_workflow_state(admin,m1,1,'cancelled','Workflow replacement');
+    EXCEPTION WHEN SQLSTATE 'P0001' THEN failed:=SQLERRM='OPEN_CONTEST_REQUIRES_RESOLUTION'; END;
+  IF NOT failed THEN RAISE EXCEPTION 'H1_ASSERT_WORKFLOW_BLOCK'; END IF;
+  IF (SELECT status FROM public.league_result_contests WHERE id=contest_id)<>'open'
+     OR (SELECT status FROM public.league_result_submissions WHERE id=result_id)<>'contested'
+     OR (SELECT current_result_id FROM public.league_matches WHERE id=m1)<>result_id THEN
+    RAISE EXCEPTION 'H1_ASSERT_OPEN_CONTEST_PRESERVED'; END IF;
+
   -- Reject keeps the exact revision and finalizes it.
   PERFORM public.league_admin_resolve_contest(admin,m1,result_id,contest_id,'reject','[]','Referto verificato');
   IF (SELECT current_result_id FROM public.league_matches WHERE id=m1)<>result_id
      OR (SELECT status FROM public.league_result_submissions WHERE id=result_id)<>'confirmed'
      OR (SELECT status FROM public.league_result_contests WHERE id=contest_id)<>'resolved_rejected' THEN
     RAISE EXCEPTION 'S6_ASSERT_REJECT'; END IF;
+  PERFORM public.league_set_match_special_outcome(admin,m1,result_id,NULL,'administrative',NULL,false,0,0,false,false,0,0,0,0,'Post-resolution ruling');
+  IF (SELECT current_special_outcome_id IS NULL FROM public.league_matches WHERE id=m1) THEN
+    RAISE EXCEPTION 'H1_ASSERT_RESOLVED_ALLOWS_REPLACEMENT'; END IF;
 
   -- 2-1 is legal; DB-time boundary is open at 47:59:59 and closed at equality/after.
   result:=public.league_captain_submit_result(other,m2,'[{"homeGames":6,"awayGames":4},{"homeGames":4,"awayGames":6},{"homeGames":7,"awayGames":6}]');

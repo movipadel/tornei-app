@@ -47,6 +47,13 @@ try {
   [void](Race $submitM1 $submitM1)
   if ((Sql "SELECT count(*)||':'||count(*) FILTER(WHERE id=(SELECT current_result_id FROM public.league_matches WHERE id='68000000-0000-4000-8000-000000000001')) FROM public.league_result_submissions WHERE match_id='68000000-0000-4000-8000-000000000001';").Trim() -ne "1:1") { throw "Double submit split authority." }
 
+  # H1 race A: contest opening versus special outcome.
+  $m1Result = (Sql "SELECT current_result_id FROM public.league_matches WHERE id='68000000-0000-4000-8000-000000000001';").Trim()
+  $contestM1 = "SELECT public.league_away_captain_contest_result('61000000-0000-4000-8000-000000000002','68000000-0000-4000-8000-000000000001','$m1Result','Special race');"
+  $specialM1 = "SELECT public.league_set_match_special_outcome($admin,'68000000-0000-4000-8000-000000000001','$m1Result',NULL,'walkover','64000000-0000-4000-8000-000000000001',true,3,0,true,false,2,0,12,0,'Special race');"
+  [void](Race $contestM1 $specialM1)
+  if ((Sql "SELECT count(*) FROM public.league_result_contests c JOIN public.league_matches m ON m.id=c.match_id WHERE c.match_id='68000000-0000-4000-8000-000000000001' AND c.status='open' AND m.current_special_outcome_id IS NOT NULL;").Trim() -ne '0') { throw "Contest/special race left an unresolved replaced outcome." }
+
   # 2. Captain submit versus admin special outcome.
   $submitM2 = "SELECT public.league_captain_submit_result('61000000-0000-4000-8000-000000000003','68000000-0000-4000-8000-000000000002',$score20);"
   $specialM2 = "SELECT public.league_set_match_special_outcome($admin,'68000000-0000-4000-8000-000000000002',NULL,NULL,'walkover','64000000-0000-4000-8000-000000000003',true,3,0,true,false,2,0,12,0,'Race ruling');"
@@ -76,6 +83,15 @@ try {
   $correctM5 = "SELECT public.league_admin_correct_result($admin,'68000000-0000-4000-8000-000000000005','$m5Result','submitted',$score21,'Admin race');"
   [void](Race $contestM5 $correctM5)
   if ((Sql "SELECT count(*) FROM public.league_result_submissions WHERE match_id='68000000-0000-4000-8000-000000000005' AND status<>'superseded';").Trim() -ne "1") { throw "Contest/correction split authority." }
+  if ((Sql "SELECT count(*) FROM public.league_result_contests c JOIN public.league_result_submissions r ON r.id=c.result_submission_id WHERE c.match_id='68000000-0000-4000-8000-000000000005' AND c.status='open' AND r.status='superseded';").Trim() -ne '0') { throw "Contest/correction race superseded an unresolved result." }
+
+  # H1 race C: explicit resolution versus special outcome. Either ordering is valid,
+  # but the special outcome can only win after the contest has been resolved.
+  $m3Contest = (Sql "SELECT id FROM public.league_result_contests WHERE match_id='68000000-0000-4000-8000-000000000003' AND status='open';").Trim()
+  $resolveM3 = "SELECT public.league_admin_resolve_contest($admin,'68000000-0000-4000-8000-000000000003','$m3Result','$m3Contest','reject','[]'::jsonb,'Resolve special race');"
+  $specialM3 = "SELECT public.league_set_match_special_outcome($admin,'68000000-0000-4000-8000-000000000003','$m3Result',NULL,'walkover','64000000-0000-4000-8000-000000000001',true,3,0,true,false,2,0,12,0,'Resolved special race');"
+  [void](Race $resolveM3 $specialM3)
+  if ((Sql "SELECT count(*) FROM public.league_result_contests WHERE id='$m3Contest' AND status='open';").Trim() -ne '0') { throw "Resolution/special race left the contest open." }
 
   # 7-10. Resolve versus correction, two corrections, stale correction and contest on superseded revision.
   [void](Sql "SELECT public.league_captain_submit_result('61000000-0000-4000-8000-000000000003','68000000-0000-4000-8000-000000000006',$score20);")

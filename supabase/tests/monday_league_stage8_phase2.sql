@@ -47,7 +47,7 @@ SET CONSTRAINTS ALL IMMEDIATE;
 SET CONSTRAINTS ALL DEFERRED;
 SET LOCAL ROLE service_role;
 
-DO $test$ DECLARE ready jsonb; fp text; created jsonb; replay jsonb; failed boolean; a uuid:='86000000-0000-4000-8000-00000000000a'; b uuid:='86000000-0000-4000-8000-00000000000b'; phase1_before jsonb; snapshot jsonb;
+DO $test$ DECLARE ready jsonb; fp text; ready_fp text; created jsonb; replay jsonb; failed boolean; a uuid:='86000000-0000-4000-8000-00000000000a'; b uuid:='86000000-0000-4000-8000-00000000000b'; phase1_before jsonb; snapshot jsonb;
 BEGIN
   -- Every named non-terminal state blocks readiness.
   UPDATE public.league_matches SET current_result_id=NULL,match_status='scheduled' WHERE id='88000000-0000-4000-8000-000000000001';
@@ -59,6 +59,24 @@ BEGIN
   UPDATE public.league_matches SET match_status='postponed' WHERE id='88000000-0000-4000-8000-000000000003';
   IF (public.league_phase2_readiness('83000000-0000-4000-8000-000000000001')->>'ready')::boolean THEN RAISE EXCEPTION 'S8_POSTPONED_BLOCK'; END IF;
   UPDATE public.league_matches SET match_status='confirmed' WHERE id='88000000-0000-4000-8000-000000000003';
+  ready_fp:=public.league_phase2_readiness('83000000-0000-4000-8000-000000000001')->>'fingerprint';
+  INSERT INTO public.league_result_contests(id,match_id,result_submission_id,opened_by_user_id,reason)
+  VALUES('8c000000-0000-4000-8000-000000000001','88000000-0000-4000-8000-000000000001','89000000-0000-4000-8000-000000000001','81000000-0000-4000-8000-000000000002','Legacy current dispute');
+  ready:=public.league_phase2_readiness('83000000-0000-4000-8000-000000000001');
+  IF (ready->>'ready')::boolean OR ready->>'fingerprint'=ready_fp THEN RAISE EXCEPTION 'H1_PHASE2_CURRENT_CONTEST_BLOCK'; END IF;
+  UPDATE public.league_result_submissions SET status='superseded',confirmed_at=NULL WHERE id='89000000-0000-4000-8000-000000000001';
+  INSERT INTO public.league_result_submissions(id,match_id,revision,status,submitter_type,submitted_by_staff_id,correction_reason,home_sets_won,away_sets_won,home_games_won,away_games_won,confirmed_at)
+  VALUES('89000000-0000-4000-8000-000000000101','88000000-0000-4000-8000-000000000001',2,'confirmed','staff','82000000-0000-4000-8000-000000000001','Fixture replacement',2,0,12,4,now());
+  UPDATE public.league_matches SET current_result_id='89000000-0000-4000-8000-000000000101' WHERE id='88000000-0000-4000-8000-000000000001';
+  IF (public.league_phase2_readiness('83000000-0000-4000-8000-000000000001')->>'ready')::boolean THEN RAISE EXCEPTION 'H1_PHASE2_HISTORICAL_CONTEST_BLOCK'; END IF;
+  failed:=false; BEGIN PERFORM public.league_generate_phase2('82000000-0000-4000-8000-000000000001','83000000-0000-4000-8000-000000000001',ready_fp,a,b,'[]','[]','{}','{}');
+    EXCEPTION WHEN SQLSTATE 'P0001' THEN failed:=SQLERRM IN ('ML_PHASE1_NOT_READY','ML_PHASE2_STALE_PREVIEW'); END;
+  IF NOT failed OR EXISTS(SELECT 1 FROM public.league_phases WHERE season_id='83000000-0000-4000-8000-000000000001' AND code IN('serie_a','serie_b')) THEN RAISE EXCEPTION 'H1_PHASE2_COMMAND_BLOCK'; END IF;
+  UPDATE public.league_result_contests SET status='resolved_rejected',resolved_at=now(),resolved_by_staff_id='82000000-0000-4000-8000-000000000001',resolution_note='Resolved' WHERE id='8c000000-0000-4000-8000-000000000001';
+  UPDATE public.league_result_submissions SET status='superseded',confirmed_at=NULL WHERE id='89000000-0000-4000-8000-000000000101';
+  UPDATE public.league_result_submissions SET status='confirmed',confirmed_at=now() WHERE id='89000000-0000-4000-8000-000000000001';
+  UPDATE public.league_matches SET current_result_id='89000000-0000-4000-8000-000000000001' WHERE id='88000000-0000-4000-8000-000000000001';
+  IF NOT (public.league_phase2_readiness('83000000-0000-4000-8000-000000000001')->>'ready')::boolean THEN RAISE EXCEPTION 'H1_PHASE2_RESOLVED_DOES_NOT_BLOCK'; END IF;
   ready:=public.league_phase2_readiness('83000000-0000-4000-8000-000000000001'); fp:=ready->>'fingerprint';
   IF NOT (ready->>'ready')::boolean OR (ready->>'terminal_matches')::int<>6 OR jsonb_array_length(ready->'serie_a')<>2 OR jsonb_array_length(ready->'serie_b')<>2 THEN RAISE EXCEPTION 'S8_READY_SPLIT %',ready; END IF;
   phase1_before:=public.league_get_standings('86000000-0000-4000-8000-000000000001');

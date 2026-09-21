@@ -54,10 +54,11 @@ SELECT public.league_admin_correct_result('92000000-0000-4000-8000-000000000001'
   if ($state -notin @('completed:1','phase2:0')) { throw "Completion/correction race state invalid: $state $outputs" }
 
   [void](Sql $cleanup); [void](Sql $setup)
-  [void](Sql "UPDATE public.league_result_submissions SET status='submitted',submitter_type='captain',submitted_by_staff_id=NULL,submitted_by_user_id='91000000-0000-4000-8000-000000000001',submitted_at=now()-interval '49 hours',confirmed_at=NULL WHERE id='99000000-0000-4000-8000-00000000000a'; UPDATE public.league_matches SET match_status='submitted' WHERE id='98000000-0000-4000-8000-00000000000a';")
+  [void](Sql "UPDATE public.league_result_submissions SET status='submitted',submitter_type='captain',submitted_by_staff_id=NULL,submitted_by_user_id='91000000-0000-4000-8000-000000000001',submitted_at=now()-interval '1 hour',confirmed_at=NULL WHERE id='99000000-0000-4000-8000-00000000000a'; UPDATE public.league_matches SET match_status='submitted' WHERE id='98000000-0000-4000-8000-00000000000a';")
   $contest = "SET ROLE service_role; SELECT public.league_away_captain_contest_result('91000000-0000-4000-8000-000000000002','98000000-0000-4000-8000-00000000000a','99000000-0000-4000-8000-00000000000a','late race');"
   $outputs = Race $complete $contest
-  if ((Sql "SELECT status FROM public.league_seasons WHERE id='93000000-0000-4000-8000-000000000001';").Trim() -ne 'completed') { throw "Completion/contest race did not complete safely: $outputs" }
+  $safe = (Sql "SELECT status||':'||(SELECT count(*) FROM public.league_result_contests WHERE match_id='98000000-0000-4000-8000-00000000000a' AND status='open') FROM public.league_seasons WHERE id='93000000-0000-4000-8000-000000000001';").Trim()
+  if ($safe -ne 'phase2:1') { throw "Completion/contest race violated finality: $safe $outputs" }
 
   [void](Sql $cleanup); [void](Sql $setup)
   [void](Sql @'

@@ -70,6 +70,7 @@ const FRIENDLY_ERRORS: Record<string, string> = {
   ML_RESULTED_MATCH_RESCHEDULE_FORBIDDEN: "Una partita con risultato non può essere rischedulata senza un override amministrativo esplicito",
   ML_RESULT_VERSION_CONFLICT: "Il risultato è stato modificato da un altro amministratore",
   ML_RESULT_CORRECTION_REASON_REQUIRED: "La correzione richiede una motivazione",
+  OPEN_CONTEST_REQUIRES_RESOLUTION: "Esiste una contestazione aperta. Risolvila prima di modificare l'esito della partita.",
   ML_OUTCOME_VERSION_CONFLICT: "L’esito è stato modificato da un altro amministratore",
   ML_SPECIAL_OUTCOME_INVALID: "Contributo amministrativo non valido",
   ML_MATCH_WORKFLOW_INVALID: "Stato speciale o motivazione non validi",
@@ -110,7 +111,7 @@ const FRIENDLY_ERRORS: Record<string, string> = {
 export function mondayLeagueErrorResponse(error: { message?: string } | null | undefined) {
   const raw = String(error?.message ?? "Errore Monday League");
   const code = Object.keys(FRIENDLY_ERRORS).find((key) => raw.includes(key));
-  const conflict = code?.includes("CONFLICT") || code?.includes("NOT_EDITABLE") || code === "ML_GENERATION_DIRTY_DRAFT" || code === "ML_RESULT_ALREADY_EXISTS" || code === "ML_CONTEST_ALREADY_OPEN";
+  const conflict = code?.includes("CONFLICT") || code?.includes("NOT_EDITABLE") || code === "ML_GENERATION_DIRTY_DRAFT" || code === "ML_RESULT_ALREADY_EXISTS" || code === "ML_CONTEST_ALREADY_OPEN" || code === "OPEN_CONTEST_REQUIRES_RESOLUTION";
   return NextResponse.json(
     { error: code ? FRIENDLY_ERRORS[code] : raw, code: code ?? "ML_UNKNOWN" },
     { status: conflict ? 409 : 400 }
