@@ -58,14 +58,14 @@ test("merged legacy users do not gain canonical authorization", () => {
 test("duplicate APIs are admin-only and execution requires explicit confirmation", () => {
   for (const route of [queue, preview, execute]) assert.match(route, /guardAdmin\(\)/);
   assert.match(execute, /confirmation !== "MERGE"/);
-  assert.match(execute, /group\?\.state !== "approved"/);
-  assert.match(execute, /approvedMembers\?\.length !== 2/);
+  assert.match(execute, /preview_reviewed_user_merge/);
+  assert.match(execute, /create_reviewed_user_merge_operation/);
 });
 
 test("admin UI exposes review, exclusion, preview, conflicts and explicit merge", () => {
   assert.match(ui, /Incluso/);
   assert.match(ui, /Usa come canonico/);
-  assert.match(ui, /Genera preview/);
+  assert.match(ui, /Aggiorna preflight/);
   assert.match(ui, /Merge bloccato/);
   assert.match(ui, /Digita MERGE/);
   assert.match(ui, /reference_counts/);
@@ -74,5 +74,5 @@ test("admin UI exposes review, exclusion, preview, conflicts and explicit merge"
 test("Stage 3 never changes session precedence or implements automatic merge", () => {
   assert.doesNotMatch(migration, /CREATE TRIGGER[^;]*execute_user_merge/is);
   assert.doesNotMatch(queue + preview, /execute_user_merge/);
-  assert.match(execute, /create_user_merge_operation/);
+  assert.match(execute, /create_(?:reviewed_)?user_merge_operation/);
 });
