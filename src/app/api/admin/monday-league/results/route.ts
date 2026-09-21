@@ -2,36 +2,56 @@ import { NextResponse } from "next/server";
 import { guardAdmin } from "@/lib/adminGuard";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getMondayLeagueAdminActorId, mondayLeagueErrorResponse } from "@/lib/monday-league/admin-server";
+import { mondayLeagueAdminReadError } from "@/lib/monday-league/admin-read-error";
+
+function adminResultsReadFailure(scope: string, error: { code?: string } | null | undefined) {
+  const failure = mondayLeagueAdminReadError("results", scope, error);
+  return NextResponse.json(failure.body, { status: failure.status });
+}
 
 export async function GET(req: Request) {
   const denied = await guardAdmin(); if (denied) return denied;
   const sb = supabaseAdmin();
-  const { data: season } = await sb.from("league_seasons").select("id,status").neq("status", "archived").order("created_at", { ascending: false }).limit(1).maybeSingle();
+  const { data: season, error: seasonError } = await sb.from("league_seasons").select("id,status").neq("status", "archived").order("created_at", { ascending: false }).limit(1).maybeSingle();
+  if (seasonError) return adminResultsReadFailure("season", seasonError);
   if (!season) return NextResponse.json({ data: null });
-  const { data: phases } = await sb.from("league_phases").select("id,code,name,status").eq("season_id", season.id).in("status", ["generated", "in_progress", "finalized"]).order("sequence_number");
+  const { data: phases, error: phaseError } = await sb.from("league_phases").select("id,code,name,status").eq("season_id", season.id).in("status", ["generated", "in_progress", "finalized"]).order("sequence");
+  if (phaseError) return adminResultsReadFailure("phases", phaseError);
   const requestedPhase = new URL(req.url).searchParams.get("phase");
   const phase = (phases ?? []).find((item) => item.id === requestedPhase || item.code === requestedPhase) ?? (phases ?? []).find((item) => item.code === "phase1") ?? null;
   if (!phase) return NextResponse.json({ data: null });
-  const [{ data: teams }, { data: players }, { data: rounds }, { data: matches }] = await Promise.all([
+  const [teamResponse, playerResponse, roundResponse, matchResponse] = await Promise.all([
     sb.from("league_teams").select("id,name").eq("season_id", season.id),
     sb.from("league_team_players").select("id,team_id,display_name,is_active").eq("is_active", true),
     sb.from("league_rounds").select("id,round_number,play_date").eq("phase_id", phase.id).order("round_number"),
     sb.from("league_matches").select("id,round_id,home_team_id,away_team_id,scheduled_at,schedule_version,match_status,current_result_id,current_special_outcome_id").eq("phase_id", phase.id).order("scheduled_at"),
   ]);
+  for (const [scope, response] of [["teams", teamResponse], ["players", playerResponse], ["rounds", roundResponse], ["matches", matchResponse]] as const) {
+    if (response.error) return adminResultsReadFailure(scope, response.error);
+  }
+  const teams = teamResponse.data; const players = playerResponse.data;
+  const rounds = roundResponse.data; const matches = matchResponse.data;
   const matchIds = (matches ?? []).map((match) => match.id);
   const resultIds = (matches ?? []).flatMap((match) => match.current_result_id ? [match.current_result_id] : []);
   const specialIds = (matches ?? []).flatMap((match) => match.current_special_outcome_id ? [match.current_special_outcome_id] : []);
-  const [{ data: results }, { data: specials }, { data: contests }, stateResponse] = await Promise.all([
-    matchIds.length ? sb.from("league_result_submissions").select("*").in("match_id", matchIds).order("revision") : Promise.resolve({ data: [] }),
-    specialIds.length ? sb.from("league_match_special_outcomes").select("*").in("id", specialIds) : Promise.resolve({ data: [] }),
-    matchIds.length ? sb.from("league_result_contests").select("*").in("match_id", matchIds).order("opened_at", { ascending: false }) : Promise.resolve({ data: [] }),
-    resultIds.length ? sb.rpc("league_get_result_states", { p_result_ids: resultIds }) : Promise.resolve({ data: [] }),
+  const [resultResponse, specialResponse, contestResponse, stateResponse] = await Promise.all([
+    matchIds.length ? sb.from("league_result_submissions").select("*").in("match_id", matchIds).order("revision") : Promise.resolve({ data: [], error: null }),
+    specialIds.length ? sb.from("league_match_special_outcomes").select("*").in("id", specialIds) : Promise.resolve({ data: [], error: null }),
+    matchIds.length ? sb.from("league_result_contests").select("*").in("match_id", matchIds).order("opened_at", { ascending: false }) : Promise.resolve({ data: [], error: null }),
+    resultIds.length ? sb.rpc("league_get_result_states", { p_result_ids: resultIds }) : Promise.resolve({ data: [], error: null }),
   ]);
+  for (const [scope, response] of [["results", resultResponse], ["special outcomes", specialResponse], ["contests", contestResponse], ["result states", stateResponse]] as const) {
+    if (response.error) return adminResultsReadFailure(scope, response.error);
+  }
+  const results = resultResponse.data; const specials = specialResponse.data; const contests = contestResponse.data;
   const allResultIds = (results ?? []).map((result) => result.id);
-  const [{ data: sets }, { data: contestUsers }] = await Promise.all([
-    allResultIds.length ? sb.from("league_match_sets").select("*").in("result_submission_id", allResultIds).order("set_number") : Promise.resolve({ data: [] }),
-    (contests ?? []).length ? sb.from("users").select("id,full_name").in("id", [...new Set((contests ?? []).map((contest) => contest.opened_by_user_id))]) : Promise.resolve({ data: [] }),
+  const [setResponse, contestUserResponse] = await Promise.all([
+    allResultIds.length ? sb.from("league_match_sets").select("*").in("result_submission_id", allResultIds).order("set_number") : Promise.resolve({ data: [], error: null }),
+    (contests ?? []).length ? sb.from("users").select("id,full_name").in("id", [...new Set((contests ?? []).map((contest) => contest.opened_by_user_id))]) : Promise.resolve({ data: [], error: null }),
   ]);
+  if (setResponse.error) return adminResultsReadFailure("sets", setResponse.error);
+  if (contestUserResponse.error) return adminResultsReadFailure("contest users", contestUserResponse.error);
+  const sets = setResponse.data; const contestUsers = contestUserResponse.data;
   const teamIds = new Set((teams ?? []).map((team) => team.id));
   return NextResponse.json({ data: { season, phase, phases: phases ?? [], teams: teams ?? [], players: (players ?? []).filter((player) => teamIds.has(player.team_id)), rounds: rounds ?? [], matches: matches ?? [], results: results ?? [], sets: sets ?? [], specials: specials ?? [], contests: contests ?? [], contestUsers: contestUsers ?? [], resultStates: stateResponse.data ?? [] } });
 }
