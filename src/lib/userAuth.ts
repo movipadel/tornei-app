@@ -56,9 +56,17 @@ export function userCookieOptions() {
   };
 }
 
-export async function getUserIdFromCookie(): Promise<string | null> {
+export async function getLegacyUserIdFromCookie(): Promise<string | null> {
   const c = await cookies();
   const token = c.get(USER_COOKIE_NAME)?.value ?? null;
   const decoded = verifyUserSessionToken(token);
   return decoded?.uid ?? null;
+}
+
+// Compatibility entry point used by existing domain routes. Auth is authoritative;
+// a valid unlinked or conflicting Auth session deliberately returns no user id.
+export async function getUserIdFromCookie(): Promise<string | null> {
+  const { getCurrentMoviUser } = await import("@/lib/currentMoviUser");
+  const identity = await getCurrentMoviUser();
+  return identity.conflict_state ? null : identity.public_user_id;
 }

@@ -59,13 +59,12 @@ test("alias and journal tables deny browser mutations and enable RLS", () => {
   assert.match(migration, /An alias never authenticates a legacy cookie/);
 });
 
-test("legacy login, me, and HMAC contracts remain unchanged", () => {
+test("legacy login and HMAC issuance remain available after the additive foundation", () => {
   assert.match(loginRoute, /\.upsert\(payload, \{ onConflict: "phone" \}\)/);
   assert.match(loginRoute, /createUserSessionToken\(data\.id\)/);
-  assert.match(meRoute, /getUserIdFromCookie\(\)/);
-  assert.match(meRoute, /\.eq\("id", uid\)/);
+  assert.match(meRoute, /getCurrentMoviUser\(\)/);
+  assert.match(meRoute, /identity\.profile/);
   assert.match(userAuth, /exp: now \+ 60 \* 60 \* 24 \* 30/);
   assert.doesNotMatch(loginRoute + meRoute + userAuth, /resolve_canonical_user_id/);
-  assert.doesNotMatch(loginRoute + meRoute + userAuth, /auth_user_id/);
+  assert.match(loginRoute, /existing\?\.auth_user_id/);
 });
-

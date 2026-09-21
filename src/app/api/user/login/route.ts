@@ -63,6 +63,20 @@ export async function POST(req: Request) {
   const sb = supabaseAdmin();
   const now = new Date().toISOString();
 
+  // A profile already activated with Supabase Auth cannot be claimed through
+  // the possession-free legacy form. Unlinked legacy profiles keep working.
+  const { data: existing } = await sb
+    .from("users")
+    .select("id,auth_user_id")
+    .eq("phone", phone)
+    .maybeSingle();
+  if (existing?.auth_user_id) {
+    return NextResponse.json(
+      { error: "Questo profilo richiede il nuovo accesso con email e password" },
+      { status: 409 }
+    );
+  }
+
   const payload = {
     full_name,
     phone,
