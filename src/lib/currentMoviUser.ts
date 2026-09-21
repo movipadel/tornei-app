@@ -30,7 +30,12 @@ export async function getCurrentMoviUser(): Promise<MoviIdentityContext> {
       ? admin.from("users").select(internalProfileFields).eq("auth_user_id", authUser.id).eq("identity_status", "active").maybeSingle()
       : Promise.resolve({ data: null }),
     legacyId
-      ? admin.from("users").select(internalProfileFields).eq("id", legacyId).eq("identity_status", "active").maybeSingle()
+      ? admin.from("users").select(internalProfileFields)
+        .eq("id", legacyId)
+        .eq("identity_status", "active")
+        .is("auth_user_id", null)
+        .in("auth_migration_state", ["legacy", "activation_pending", "review_required"])
+        .maybeSingle()
       : Promise.resolve({ data: null }),
     authUser
       ? admin.from("user_auth_onboarding").select("state").eq("auth_user_id", authUser.id).maybeSingle()

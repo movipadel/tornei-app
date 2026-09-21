@@ -51,7 +51,7 @@ test("merged legacy users do not gain canonical authorization", () => {
   assert.match(migration, /OLD\.identity_status = 'merged' AND NEW IS DISTINCT FROM OLD/);
   assert.match(migration, /'authorization',false/);
   assert.doesNotMatch(resolver, /resolve_canonical_user_id/);
-  assert.match(legacyLogin, /existing\?\.identity_status === "merged"/);
+  assert.match(legacyLogin, /state === "auth_required" \|\| state === "merged"/);
   assert.match(captainSearch, /eq\("identity_status", "active"\)/);
 });
 

@@ -118,7 +118,7 @@ export default function MoviAuthForm({ mode }: { mode: Mode }) {
           {mode !== "activate" && <Link href="/attiva-account">Attiva il nuovo accesso MOVI</Link>}
           {mode !== "signup" && <Link href="/registrati">Crea un nuovo account</Link>}
           {mode === "login" && <Link href="/password-dimenticata">Password dimenticata</Link>}
-          <Link href="/">Accesso precedente (temporaneo)</Link>
+          {mode === "login" && <Link href="/accesso-precedente">Hai ancora il vecchio accesso? Accedi temporaneamente con i tuoi dati</Link>}
         </nav>
       </section>
     </main>
@@ -139,6 +139,7 @@ function title(mode: Mode) {
 function subtitle(mode: Mode, verified: boolean) {
   if (mode === "activate") return verified ? "Email verificata. Scegli una password per collegare il profilo esistente." : "Verifica l'email già associata al tuo profilo MOVI.";
   if (mode === "signup" && verified) return "Email verificata: stiamo creando il profilo in modo sicuro.";
+  if (mode === "login") return "Accedi con email e password. Per i nuovi utenti questo è l’unico metodo di registrazione.";
   return mode === "signup" ? "La registrazione sarà completata solo dopo la verifica email." : "Le risposte email non rivelano se un account esiste.";
 }
 function action(mode: Mode, verified: boolean) {

@@ -493,7 +493,7 @@ if (!loading && !user) {
               cursor: "pointer",
             }}
           >
-            Accedi / Registrati
+            Accedi
           </button>
         </section>
       </div>

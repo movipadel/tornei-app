@@ -24,11 +24,11 @@ test("migration state is additive and progressive", () => {
 });
 
 test("legacy login remains available but linked profiles must use Auth", () => {
-  assert.match(legacyLogin, /existing\?\.auth_user_id/);
+  assert.match(legacyLogin, /profile\.auth_user_id/);
   assert.match(legacyLogin, /AUTH_LOGIN_REQUIRED/);
-  assert.match(legacyLogin, /legacy_user_auth_migration_preflight/);
+  assert.match(legacyLogin, /legacy_user_login_lookup/);
   assert.match(migration, /normalize_user_mobile_e164\(p_phone\)/);
-  assert.match(legacyLogin, /email: existing\?\.email \?\? email/);
+  assert.doesNotMatch(legacyLogin, /\.update\(|\.upsert\(/);
   assert.match(legacyLogin, /createUserSessionToken/);
   assert.match(legacyLogin, /activation_available/);
 });

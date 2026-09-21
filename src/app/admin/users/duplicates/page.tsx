@@ -127,7 +127,7 @@ export default function DuplicateUsersPage() {
     </header>
 
     {summary && <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(145px,1fr))", gap: 9 }}>
-      {[['total_users','Utenti'],['legacy_users','Legacy'],['activation_pending','Attivazione avviata'],['linked_users','Collegati'],['review_required_users','Review required'],['conflict_users','Conflitti utenti'],['merged_users','Uniti'],['completion_percent','Completamento %']].map(([key,label]) => <div key={key} style={metric}><b style={{ fontSize: 22 }}>{String(summary[key] ?? 0)}</b><span>{label}</span></div>)}
+      {[['active_person_profiles','Profili persona attivi'],['legacy_person_profiles','Legacy rimasti'],['activation_pending','Attivazione avviata'],['linked_users','Collegati'],['review_required_users','Review required'],['conflict_users','Conflitti utenti'],['merged_users','Uniti'],['auth_linked_active_percent','Auth-linked attivi %'],['legacy_logins_30d','Login legacy 30 gg']].map(([key,label]) => <div key={key} style={metric}><b style={{ fontSize: 22 }}>{String(summary[key] ?? 0)}</b><span>{label}</span></div>)}
     </section>}
 
     <section style={panel}>

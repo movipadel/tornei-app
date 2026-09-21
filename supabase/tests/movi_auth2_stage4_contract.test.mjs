@@ -69,7 +69,7 @@ test("dry-run export is read-only and excludes secret fields", () => {
 
 test("admin UX provides filters, summary, reconciliation and verified merge result", () => {
   for (const text of ["Pending review", "High confidence", "Manual only", "Conflict", "Approved", "Merged", "Rejected", "Riconciliazione MoviBack", "Digita MERGE", "Verifica post-merge"]) assert.match(ui, new RegExp(text));
-  assert.match(ui, /completion_percent/);
+  assert.match(ui, /auth_linked_active_percent/);
   assert.match(ui, /fieldWinners/);
   assert.match(ui, /format=csv/);
 });

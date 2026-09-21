@@ -60,11 +60,12 @@ test("alias and journal tables deny browser mutations and enable RLS", () => {
 });
 
 test("legacy login and HMAC issuance remain available after the additive foundation", () => {
-  assert.match(loginRoute, /\.upsert\(payload, \{ onConflict: "phone" \}\)/);
-  assert.match(loginRoute, /createUserSessionToken\(data\.id\)/);
+  assert.match(loginRoute, /legacy_user_login_lookup/);
+  assert.match(loginRoute, /createUserSessionToken\(profile\.id\)/);
+  assert.doesNotMatch(loginRoute, /\.insert\(|\.upsert\(/);
   assert.match(meRoute, /getCurrentMoviUser\(\)/);
   assert.match(meRoute, /identity\.profile/);
   assert.match(userAuth, /exp: now \+ 60 \* 60 \* 24 \* 30/);
   assert.doesNotMatch(loginRoute + meRoute + userAuth, /resolve_canonical_user_id/);
-  assert.match(loginRoute, /existing\?\.auth_user_id/);
+  assert.match(loginRoute, /profile\.auth_user_id/);
 });

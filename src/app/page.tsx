@@ -730,7 +730,7 @@ const notificationSmallBtn: React.CSSProperties = {
       ) : (
         <button
           type="button"
-          onClick={() => setUserDialogOpen(true)}
+          onClick={() => { window.location.href = "/accedi"; }}
           style={{
             border: "1px solid rgba(255,255,255,0.12)",
             background: "rgba(255,255,255,0.07)",
@@ -1900,6 +1900,7 @@ const notificationSmallBtn: React.CSSProperties = {
 
 <UserLoginDialog
   open={userDialogOpen}
+  existingUser={user}
   onClose={() => {
     if (missingRequiredConsents) {
       toast.error("Devi confermare Privacy, Termini e maggiore età per continuare");

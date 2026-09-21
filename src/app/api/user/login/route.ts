@@ -8,136 +8,115 @@ import {
 
 export const runtime = "nodejs";
 
-const normalizePhone = (s: string) => s.trim().replace(/\s+/g, "");
+type LookupResult = { state?: string; public_user_id?: string | null };
 
 export async function POST(req: Request) {
+  // Stage 5B is fail-closed. An explicit false disables this endpoint; it never
+  // restores the historical create/upsert behavior.
+  if (process.env.AUTH2_LEGACY_REGISTRATION_DISABLED === "false") {
+    return NextResponse.json(
+      { error: "Accesso precedente temporaneamente non disponibile", code: "LEGACY_CUTOVER_CONFIG_DISABLED" },
+      { status: 503 },
+    );
+  }
+
   const body = await req.json().catch(() => ({}));
-
-  const full_name = String(body.full_name ?? "").trim();
-  const phone = normalizePhone(String(body.phone ?? ""));
+  const phone = String(body.phone ?? "").trim();
   const email = String(body.email ?? "").trim();
-  const gender = String(body.gender ?? "").trim().toUpperCase();
-
-  const privacyAccepted = Boolean(body.privacy_accepted);
-  const termsAccepted = Boolean(body.terms_accepted);
-  const ageConfirmed = Boolean(body.age_confirmed);
-  const marketingAccepted = Boolean(body.marketing_accepted);
-
-  if (!full_name) {
-    return NextResponse.json({ error: "Nome obbligatorio" }, { status: 400 });
-  }
-
-  if (!phone) {
-    return NextResponse.json({ error: "Telefono obbligatorio" }, { status: 400 });
-  }
-
-  if (!email) {
-    return NextResponse.json({ error: "Email obbligatoria" }, { status: 400 });
-  }
-
-  if (!["M", "F"].includes(gender)) {
-    return NextResponse.json({ error: "Sesso non valido (M/F)" }, { status: 400 });
-  }
-
-  if (!privacyAccepted) {
-    return NextResponse.json(
-      { error: "Privacy Policy obbligatoria" },
-      { status: 400 }
-    );
-  }
-
-  if (!termsAccepted) {
-    return NextResponse.json(
-      { error: "Termini di utilizzo obbligatori" },
-      { status: 400 }
-    );
-  }
-
-  if (!ageConfirmed) {
-    return NextResponse.json(
-      { error: "Conferma maggiore età obbligatoria" },
-      { status: 400 }
-    );
+  if (!phone || !email) {
+    return NextResponse.json({ error: "Telefono ed email sono obbligatori" }, { status: 400 });
   }
 
   const sb = supabaseAdmin();
-  const now = new Date().toISOString();
-
-  const { data: migrationPreflight, error: migrationPreflightError } = await sb.rpc("legacy_user_auth_migration_preflight", { p_phone: phone });
-  if (migrationPreflightError) return NextResponse.json({ error: "Accesso temporaneamente non disponibile" }, { status: 500 });
-  const preflightState = String((migrationPreflight as { state?: string } | null)?.state ?? "legacy_allowed");
-  const preflightUserId = String((migrationPreflight as { public_user_id?: string } | null)?.public_user_id ?? "");
-  if (preflightState === "auth_required") {
-    return NextResponse.json(
-      { error: "Questo profilo richiede il nuovo accesso con email e password", code: "AUTH_LOGIN_REQUIRED", redirect_to: "/accedi" },
-      { status: 409 }
-    );
-  }
-  if (preflightState === "merged") {
-    return NextResponse.json(
-      { error: "Questo profilo non è più attivo. Usa l’accesso associato al profilo principale" },
-      { status: 409 }
-    );
+  const { data, error } = await sb.rpc("legacy_user_login_lookup", {
+    p_phone: phone,
+    p_email: email,
+  });
+  if (error) {
+    return NextResponse.json({ error: "Accesso temporaneamente non disponibile" }, { status: 500 });
   }
 
-  // A profile already activated with Supabase Auth cannot be claimed through
-  // the possession-free legacy form. Unlinked legacy profiles keep working.
-  let existingQuery = sb.from("users").select("id,email,phone,auth_user_id,identity_status,auth_migration_state");
-  existingQuery = preflightUserId ? existingQuery.eq("id", preflightUserId) : existingQuery.eq("phone", phone);
-  const { data: existing } = await existingQuery.maybeSingle();
-  if (existing?.identity_status === "merged") {
+  const lookup = (data ?? {}) as LookupResult;
+  const state = String(lookup.state ?? "not_found");
+  if (state === "not_found") {
     return NextResponse.json(
-      { error: "Questo profilo non è più attivo. Usa l’accesso associato al profilo principale" },
-      { status: 409 }
+      {
+        error: "Profilo non trovato. Registrati con il nuovo accesso MOVI.",
+        code: "LEGACY_PROFILE_NOT_FOUND",
+        redirect_to: "/registrati",
+      },
+      { status: 404 },
     );
   }
-  if (existing?.auth_user_id) {
+  if (state === "auth_required" || state === "merged") {
     return NextResponse.json(
-      { error: "Questo profilo richiede il nuovo accesso con email e password", code: "AUTH_LOGIN_REQUIRED", redirect_to: "/accedi" },
-      { status: 409 }
+      {
+        error: "Questo profilo richiede il nuovo accesso con email e password.",
+        code: "AUTH_LOGIN_REQUIRED",
+        redirect_to: "/accedi",
+      },
+      { status: 409 },
+    );
+  }
+  if (state === "review_required") {
+    return NextResponse.json(
+      {
+        error: "Questo profilo richiede una verifica manuale prima di un nuovo accesso.",
+        code: "LEGACY_REVIEW_REQUIRED",
+      },
+      { status: 409 },
+    );
+  }
+  if (state === "conflict") {
+    return NextResponse.json(
+      {
+        error: "Questo profilo richiede assistenza prima di un nuovo accesso.",
+        code: "LEGACY_CONFLICT",
+      },
+      { status: 409 },
+    );
+  }
+  if (state !== "legacy_allowed" || !lookup.public_user_id) {
+    return NextResponse.json({ error: "Accesso non disponibile" }, { status: 403 });
+  }
+
+  // Re-read the exact row after the serialized decision. This does not mutate
+  // profile data and catches links or merges completed immediately afterwards.
+  const { data: profile, error: profileError } = await sb
+    .from("users")
+    .select("id,full_name,phone,email,gender,privacy_accepted_at,terms_accepted_at,age_confirmed_at,marketing_accepted,marketing_accepted_at,auth_user_id,identity_status,auth_migration_state")
+    .eq("id", lookup.public_user_id)
+    .maybeSingle();
+  if (profileError || !profile) {
+    return NextResponse.json({ error: "Accesso non disponibile" }, { status: 403 });
+  }
+  if (profile.auth_user_id || profile.identity_status !== "active" || !["legacy", "activation_pending"].includes(profile.auth_migration_state)) {
+    return NextResponse.json(
+      { error: "Questo profilo richiede il nuovo accesso con email e password.", code: "AUTH_LOGIN_REQUIRED", redirect_to: "/accedi" },
+      { status: 409 },
     );
   }
 
-  const payload = {
-    full_name,
-    phone: existing?.phone ?? phone,
-    email: existing?.email ?? email,
-    gender,
-    privacy_accepted_at: now,
-    terms_accepted_at: now,
-    age_confirmed_at: now,
-    marketing_accepted: marketingAccepted,
-    marketing_accepted_at: marketingAccepted ? now : null,
-    updated_at: now,
-  };
-
-  const fields = "id,full_name,phone,email,gender,privacy_accepted_at,terms_accepted_at,age_confirmed_at,marketing_accepted,marketing_accepted_at,auth_migration_state";
-  const result = existing
-    ? await sb.from("users").update(payload).eq("id", existing.id).select(fields).single()
-    : await sb.from("users").upsert(payload, { onConflict: "phone" }).select(fields).single();
-  const { data, error } = result;
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-  const token = createUserSessionToken(data.id);
-  const migrationState = data.auth_migration_state;
   const publicUser = {
-    id: data.id, full_name: data.full_name, phone: data.phone, email: data.email, gender: data.gender,
-    privacy_accepted_at: data.privacy_accepted_at, terms_accepted_at: data.terms_accepted_at,
-    age_confirmed_at: data.age_confirmed_at, marketing_accepted: data.marketing_accepted,
-    marketing_accepted_at: data.marketing_accepted_at,
+    id: profile.id,
+    full_name: profile.full_name,
+    phone: profile.phone,
+    email: profile.email,
+    gender: profile.gender,
+    privacy_accepted_at: profile.privacy_accepted_at,
+    terms_accepted_at: profile.terms_accepted_at,
+    age_confirmed_at: profile.age_confirmed_at,
+    marketing_accepted: profile.marketing_accepted,
+    marketing_accepted_at: profile.marketing_accepted_at,
   };
-
   const res = NextResponse.json({
     user: publicUser,
     migration: {
-      status: migrationState === "review_required" ? "review_required" : migrationState === "conflict" ? "conflict" : "available",
-      activation_available: migrationState === "legacy" || migrationState === "activation_pending",
-      message: migrationState === "review_required"
-        ? "Il passaggio al nuovo accesso richiede una verifica manuale. Il tuo accesso attuale resta disponibile."
-        : "Nuovo accesso MOVI disponibile",
+      status: "available",
+      activation_available: true,
+      message: "Nuovo accesso MOVI disponibile",
     },
   });
-  res.cookies.set(USER_COOKIE_NAME, token, userCookieOptions());
+  res.cookies.set(USER_COOKIE_NAME, createUserSessionToken(profile.id), userCookieOptions());
   return res;
 }
