@@ -67,9 +67,15 @@ export async function POST(req: Request) {
   // the possession-free legacy form. Unlinked legacy profiles keep working.
   const { data: existing } = await sb
     .from("users")
-    .select("id,auth_user_id")
+    .select("id,auth_user_id,identity_status")
     .eq("phone", phone)
     .maybeSingle();
+  if (existing?.identity_status === "merged") {
+    return NextResponse.json(
+      { error: "Questo profilo non è più attivo. Usa l’accesso associato al profilo principale" },
+      { status: 409 }
+    );
+  }
   if (existing?.auth_user_id) {
     return NextResponse.json(
       { error: "Questo profilo richiede il nuovo accesso con email e password" },

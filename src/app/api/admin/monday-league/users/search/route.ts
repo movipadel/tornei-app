@@ -14,6 +14,7 @@ export async function GET(req: Request) {
   const { data, error } = await supabaseAdmin()
     .from("users")
     .select("id,full_name,phone,email")
+    .eq("identity_status", "active")
     .or(`full_name.ilike.%${safe}%,phone.ilike.%${safe}%,email.ilike.%${safe}%`)
     .order("full_name")
     .limit(12);

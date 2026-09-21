@@ -16,6 +16,7 @@ import {
   BellRing,
   Loader2,
   CalendarDays,
+  GitMerge,
 } from "lucide-react";
 
 const cards = [
@@ -74,6 +75,13 @@ const cards = [
     href: "/admin/users",
     icon: UsersRound,
     accent: "#38bdf8",
+  },
+  {
+    title: "Duplicati utenti",
+    description: "Rivedi e unisci profili duplicati con preview transazionale.",
+    href: "/admin/users/duplicates",
+    icon: GitMerge,
+    accent: "#8b5cf6",
   },
   {
     title: "Comunicazioni",
@@ -174,8 +182,8 @@ useEffect(() => {
 
       toast.success("Notifiche admin attivate su questo dispositivo.");
       setPushPermission(Notification.permission);
-    } catch (e: any) {
-      toast.error(e?.message || "Errore attivazione notifiche.");
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Errore attivazione notifiche.");
     } finally {
       setPushLoading(false);
     }
