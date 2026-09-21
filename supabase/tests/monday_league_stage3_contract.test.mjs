@@ -41,10 +41,16 @@ test("all Stage 3 APIs are admin guarded and mutations use transactional RPCs", 
 test("admin navigation and pages expose scheduling, results and standings workflows", () => {
   const nav = read("../../src/app/admin/monday-league/_components/LeagueAdminNav.tsx");
   const calendar = read("../../src/app/admin/monday-league/calendario/page.tsx");
+  const calendarCss = read("../../src/app/admin/monday-league/calendario/calendar.module.css");
   const results = read("../../src/app/admin/monday-league/risultati/page.tsx");
   const standings = read("../../src/app/admin/monday-league/classifica/page.tsx");
   assert.match(nav, /Calendario/); assert.match(nav, /Classifica/); assert.match(nav, /Risultati/);
   assert.match(calendar, /Genera date settimanali/); assert.match(calendar, /Salva giornata atomicamente/);
+  assert.match(calendar, /styles\.dateRow/); assert.match(calendar, /styles\.matchRow/); assert.match(calendar, /styles\.control/);
+  assert.match(calendarCss, /@media \(max-width: 639px\)/);
+  assert.match(calendarCss, /grid-template-columns:\s*minmax\(0, 1fr\)/);
+  assert.match(calendarCss, /box-sizing:\s*border-box/);
+  assert.doesNotMatch(calendarCss, /min-width:\s*530px/);
   assert.match(results, /DA INSERIRE/); assert.match(results, /Salva correzione/); assert.match(results, /Vittoria a tavolino/); assert.match(results, /Sospendi partita/);
   assert.match(standings, /Classifica provvisoria/); assert.match(standings, /tie_break_order/);
 });

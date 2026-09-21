@@ -1,0 +1,60 @@
+.layout,
+.panel,
+.actionRow,
+.dateRow,
+.matchRow,
+.matchLabel {
+  min-width: 0;
+}
+
+.panel {
+  box-sizing: border-box;
+  max-width: 100%;
+}
+
+.heading,
+.matchLabel {
+  overflow-wrap: anywhere;
+}
+
+.control {
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.dateRow {
+  display: grid;
+  grid-template-columns: minmax(130px, 1fr) minmax(170px, 240px);
+  gap: 10px;
+  align-items: center;
+}
+
+.matchRow {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(220px, 320px);
+  gap: 12px;
+  align-items: center;
+  padding: 12px;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.actionButton {
+  max-width: 100%;
+  white-space: normal;
+  text-align: center;
+}
+
+@media (max-width: 639px) {
+  .dateRow,
+  .matchRow {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .actionRow > .control,
+  .actionButton {
+    width: 100%;
+    justify-content: center;
+  }
+}
