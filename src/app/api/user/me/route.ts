@@ -16,10 +16,10 @@ export async function GET() {
     status: state === "review_required" ? "review_required" : state === "conflict" ? "conflict" : "available",
     activation_available: state === "legacy" || state === "activation_pending",
     message: state === "review_required"
-      ? "Il passaggio al nuovo accesso richiede una verifica manuale. Il tuo accesso attuale resta disponibile."
+      ? "Abbiamo trovato più profili associati ai tuoi dati. Li sistemiamo noi senza perdere punti, tornei o storico."
       : state === "conflict"
-        ? "Il passaggio al nuovo accesso richiede assistenza."
-        : "Nuovo accesso MOVI disponibile",
+        ? "Il tuo profilo resta invariato. Contatta MOVI e lo sistemiamo."
+        : "Userai email e password senza perdere nulla del tuo profilo.",
   } : identity.source === "auth" && identity.profile ? { status: "linked", activation_available: false } : null;
   return NextResponse.json({ user: identity.profile, migration });
 }

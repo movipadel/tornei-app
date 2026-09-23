@@ -71,13 +71,13 @@ export default function UserLoginDialog({
         <ConsentCheck checked={marketingAccepted} onChange={setMarketingAccepted}>Acconsento alle comunicazioni marketing</ConsentCheck>
         <button className="base44-primary-btn" disabled={saving}>{saving ? "Salvataggio…" : "Salva consensi"}</button>
       </form> : <div style={{ display: "grid", gap: 14, marginTop: 8 }}>
-        <p style={copyStyle}>Il nuovo accesso con email e password è il metodo principale e più sicuro.</p>
+        <p style={copyStyle}>Usa email e password per ritrovare il tuo profilo MOVI.</p>
         <Link href="/accedi" className="base44-primary-btn" style={{ minHeight: 46, display: "grid", placeItems: "center", textDecoration: "none" }}>
           Accedi con email e password
         </Link>
         <div style={{ borderTop: "1px solid #e2e8f0", paddingTop: 14 }}>
-          <strong>Hai ancora il vecchio accesso?</strong>
-          <p style={copyStyle}>Accedi temporaneamente con telefono ed email già presenti nel profilo. Questo modulo non registra nuovi utenti.</p>
+          <strong>Usi ancora l’accesso precedente?</strong>
+          <p style={copyStyle}>Inserisci telefono ed email del tuo profilo.</p>
         </div>
         <LegacyAccessForm onSaved={onSaved} />
         <p style={{ ...copyStyle, marginBottom: 0 }}>Non hai ancora un profilo? <Link href="/registrati" style={{ fontWeight: 850 }}>Registrati con il nuovo accesso MOVI</Link>.</p>

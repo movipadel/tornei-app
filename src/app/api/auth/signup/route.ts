@@ -29,7 +29,7 @@ export async function POST(request: Request) {
   const { data, error } = await supabase.auth.signUp({
     email,
     password: body.password,
-    options: { emailRedirectTo: authRedirect("/auth/callback?next=/registrati?verified=1") },
+    options: { emailRedirectTo: authRedirect("/auth/callback?flow=signup") },
   });
 
   // Supabase intentionally obscures duplicate signups. Only a newly-created identity

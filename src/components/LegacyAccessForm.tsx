@@ -49,10 +49,10 @@ export default function LegacyAccessForm({ onSaved }: { onSaved?: (user: LegacyU
   }
 
   return <form onSubmit={submit} style={{ display: "grid", gap: 12 }}>
-    <label style={labelStyle}>Telefono del profilo esistente
+    <label style={labelStyle}>Telefono
       <input className="base44-input" inputMode="tel" autoComplete="tel" required value={phone} onChange={(event) => setPhone(event.target.value)} />
     </label>
-    <label style={labelStyle}>Email dello stesso profilo
+    <label style={labelStyle}>Email
       <input className="base44-input" type="email" autoComplete="email" required value={email} onChange={(event) => setEmail(event.target.value)} />
     </label>
     <button className="base44-primary-btn" type="submit" disabled={busy} style={{ minHeight: 46, opacity: busy ? .7 : 1 }}>

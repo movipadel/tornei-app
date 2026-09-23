@@ -34,8 +34,8 @@ test("legacy login remains available but linked profiles must use Auth", () => {
 });
 
 test("activation prompt is non-blocking and handoff still requires verified email", () => {
-  assert.match(prompt, /Nuovo accesso MOVI disponibile/);
-  assert.match(prompt, /senza perdere punti, ordini, tornei o Monday League/);
+  assert.match(prompt, /Attiva il nuovo accesso/);
+  assert.match(prompt, /senza perdere nulla del tuo profilo/);
   assert.match(start, /identity\.source !== "legacy"/);
   assert.match(migration, /verification_completed/);
   assert.match(migration, /email_confirmed_at/);

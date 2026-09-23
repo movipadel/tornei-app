@@ -37,11 +37,11 @@ export default function ProgressiveAuthPrompt() {
   }
 
   return <aside aria-live="polite" style={shell}>
-    <div><strong>{migration.status === "review_required" ? "Verifica del nuovo accesso in corso" : "Nuovo accesso MOVI disponibile"}</strong>
-      <p style={{ margin: "4px 0 0", fontSize: 13 }}>{migration.message ?? "Usa email e password per un accesso più stabile, senza perdere punti, ordini, tornei o Monday League."}</p>
+    <div><strong>{migration.status === "review_required" ? "Ci pensiamo noi" : "Attiva il nuovo accesso"}</strong>
+      <p style={{ margin: "4px 0 0", fontSize: 13 }}>{migration.message ?? "Userai email e password senza perdere nulla del tuo profilo."}</p>
     </div>
     {migration.activation_available && <button type="button" onClick={activate} disabled={busy} style={button}>
-      {busy ? "Attendi…" : "Attiva il nuovo accesso"}
+      {busy ? "Attendi…" : "Continua"}
     </button>}
   </aside>;
 }
