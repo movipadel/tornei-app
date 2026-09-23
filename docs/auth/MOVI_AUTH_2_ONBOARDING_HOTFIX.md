@@ -14,7 +14,7 @@ Registrazione: form completo → email di conferma → callback → pagina `veri
 
 Attivazione: prompt → form con email, password e conferma → una chiamata `signUp` → stato “Controlla la tua email” → callback → `resolve_and_link_verified_auth_user` → sessione Auth già valida → app. L’email del profilo legacy viene precompilata e bloccata nell’interfaccia; l’API impedisce che una sessione legacy conosciuta venga usata con un indirizzo differente.
 
-Registrazione: form completo → una chiamata `signUp` → stato “Controlla la tua email” → callback → `finalize_verified_auth_signup` → sessione Auth già valida → app. Non esiste più un passaggio finalize visibile nel percorso normale.
+Registrazione: form completo → una chiamata `signUp` → stato “Controlla la tua email” → callback → risoluzione server-side → sessione Auth già valida → app. La risoluzione crea un profilo soltanto quando non esiste alcun candidato. Se email verificata e telefono normalizzato individuano un solo profilo legacy attivo e scollegato, riusa il resolver certificato e collega quello stesso `public.users.id`. Più profili producono `review_required`; un telefono discordante o un collegamento appartenente a un altro Auth produce `conflict`.
 
 Il reinvio è separato e avviene soltanto dopo un’azione esplicita dell’utente. La route di reinvio non crea, collega o modifica profili applicativi.
 
@@ -38,6 +38,7 @@ Il reinvio è separato e avviene soltanto dopo un’azione esplicita dell’uten
 - La ricerca Auth e la lettura onboarding falliscono in modo chiuso: se non sono disponibili, la route non tenta `signUp`, OTP o reinvio e mantiene la risposta generica.
 - I vecchi link di registrazione con `next=/registrati?verified=1` vengono finalizzati dal callback. Chi si trova già sulla vecchia URL verificata può ancora riprendere tramite l’endpoint finalize compatibile.
 - Se un callback nuovo viene riaperto dopo il consumo del codice, una sessione Auth verificata già presente può ripetere la RPC. Le RPC sono idempotenti e protette da vincoli e lock transazionali.
+- Una registrazione già verificata rimasta in `signup/pending_verification` con `match_count=0` viene ripresa dalla sessione Auth corrente tramite `/api/auth/onboarding/resume`. Il server ricalcola il candidato senza eliminare l’identità Auth, senza modifiche manuali e senza inviare una seconda email.
 - La ripetizione del form non crea una seconda identità applicativa; Supabase oscura gli account già presenti e la preparazione/finalizzazione resta associata allo stesso `auth_user_id`.
 - Il reinvio non prepara né finalizza alcun profilo.
 
@@ -62,7 +63,9 @@ Non aggiungere OTP, link alternativi, riferimenti a migrazione, token, Supabase 
 
 ## Verifica locale
 
-Il contratto `movi_auth2_onboarding_hotfix_contract.test.mjs` prova che attivazione e registrazione normali contengono esattamente una operazione Auth che può inviare la conferma, e che callback/finalizer non ne contengono. Copre inoltre il reinvio isolato, la compatibilità dei vecchi link, la ripresa idempotente e il divieto di fusione automatica.
+I contratti `movi_auth2_onboarding_hotfix_contract.test.mjs` e `movi_auth2_unified_onboarding_contract.test.mjs` provano che attivazione e registrazione normali contengono esattamente una operazione Auth che può inviare la conferma, e che callback/finalizer/resume non ne contengono. Coprono inoltre il reinvio isolato, la compatibilità dei vecchi link, la ripresa idempotente, il matching email+telefono e il divieto di fusione automatica.
+
+L’accettazione `movi_auth2_unified_onboarding_http_acceptance.mjs` copre creazione singola, collegamento al profilo legacy esatto, recupero dello stato verificato bloccato, replay, mismatch, duplicati e conflitto con un altro Auth. Verifica anche che `/api/user/me` esponga lo stesso profilo e che MoviBack, Store, tornei, Monday League e comunicazioni continuino a riferirsi allo stesso identificativo.
 
 L’accettazione HTTP locale ha completato entrambi i percorsi reali con cookie PKCE e Mailpit: attivazione e registrazione hanno inviato una email ciascuna, il callback ha collegato o creato il profilo una sola volta, il replay è rimasto idempotente e la sessione Auth finale risultava attiva. Un controllo separato su GoTrue locale ha provato il comportamento delle identità OTP pre-hotfix e ha motivato il percorso di compatibilità descritto sopra.
 

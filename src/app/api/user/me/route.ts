@@ -20,6 +20,23 @@ export async function GET() {
       : state === "conflict"
         ? "Il tuo profilo resta invariato. Contatta MOVI e lo sistemiamo."
         : "Userai email e password senza perdere nulla del tuo profilo.",
-  } : identity.source === "auth" && identity.profile ? { status: "linked", activation_available: false } : null;
-  return NextResponse.json({ user: identity.profile, migration });
+  } : identity.source === "auth" && identity.profile
+    ? { status: "linked", activation_available: false }
+    : identity.source === "auth" && state === "review_required"
+      ? {
+          status: "review_required",
+          activation_available: false,
+          message: "Abbiamo trovato più profili associati ai tuoi dati. Li sistemiamo noi senza perdere punti, tornei o storico.",
+        }
+      : identity.source === "auth" && state === "conflict"
+        ? {
+            status: "conflict",
+            activation_available: false,
+            message: "Il tuo profilo resta invariato. Contatta MOVI e lo sistemiamo.",
+          }
+        : null;
+  const onboarding = identity.source === "auth" && !identity.profile
+    ? { resume_available: state === "pending_verification" }
+    : null;
+  return NextResponse.json({ user: identity.profile, migration, onboarding });
 }

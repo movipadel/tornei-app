@@ -11,6 +11,7 @@ const authLookup = read("../../src/lib/authUserLookup.ts");
 const callback = read("../../src/app/auth/callback/route.ts");
 const activationComplete = read("../../src/app/api/auth/activation/complete/route.ts");
 const signupFinalize = read("../../src/app/api/auth/signup/finalize/route.ts");
+const unifiedResolver = read("../../src/lib/resolveAuthOnboarding.ts");
 const form = read("../../src/components/MoviAuthForm.tsx");
 const migration = read("../migrations/20260930100000_movi_auth2_stage5a_progressive_migration.sql");
 
@@ -31,11 +32,11 @@ test("normal signup has one verification-email operation", () => {
 });
 
 test("callback and finalizers cannot trigger another confirmation", () => {
-  const completionCode = callback + activationComplete + signupFinalize;
+  const completionCode = callback + activationComplete + signupFinalize + unifiedResolver;
   assert.doesNotMatch(completionCode, /signUp|signInWithOtp|\.auth\.resend\(|resetPasswordForEmail/);
   assert.match(callback, /exchangeCodeForSession/);
-  assert.match(callback, /resolve_and_link_verified_auth_user/);
-  assert.match(callback, /finalize_verified_auth_signup/);
+  assert.match(completionCode, /resolve_and_link_verified_auth_user/);
+  assert.match(completionCode, /finalize_verified_auth_signup/);
 });
 
 test("resend is isolated and cannot create or link a business identity", () => {

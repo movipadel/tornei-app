@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createSupabaseAuthServerClient } from "@/lib/supabase/authServer";
-import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { resolveVerifiedAuthOnboarding } from "@/lib/resolveAuthOnboarding";
 import { USER_COOKIE_NAME, userCookieOptions } from "@/lib/userAuth";
 
 export const runtime = "nodejs";
@@ -11,12 +11,14 @@ export async function POST() {
   if (userError || !userData.user?.email_confirmed_at) {
     return NextResponse.json({ error: "Email verificata richiesta" }, { status: 403 });
   }
-  const { data, error } = await supabaseAdmin().rpc("finalize_verified_auth_signup", {
-    p_auth_user_id: userData.user.id,
-  });
-  if (error) return NextResponse.json({ error: "Impossibile creare il profilo" }, { status: 409 });
-  const response = NextResponse.json(data);
-  if ((data as { state?: string } | null)?.state === "linked") {
+  let result;
+  try {
+    result = await resolveVerifiedAuthOnboarding(userData.user, "signup");
+  } catch {
+    return NextResponse.json({ error: "Impossibile creare il profilo" }, { status: 409 });
+  }
+  const response = NextResponse.json(result.data);
+  if (result.state === "linked") {
     response.cookies.set(USER_COOKIE_NAME, "", { ...userCookieOptions(), maxAge: 0 });
   }
   return response;

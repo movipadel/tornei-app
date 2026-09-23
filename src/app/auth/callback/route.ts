@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createSupabaseAuthServerClient } from "@/lib/supabase/authServer";
 import { authRedirect } from "@/lib/authFlow";
-import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { resolveVerifiedAuthOnboarding } from "@/lib/resolveAuthOnboarding";
 import { USER_COOKIE_NAME, userCookieOptions } from "@/lib/userAuth";
 
 const legacyActivationNext = "/attiva-account?verified=1";
@@ -9,7 +9,7 @@ const legacySignupNext = "/registrati?verified=1";
 
 function resultRedirect(flow: "activation" | "signup", state: string) {
   if (state === "linked") return flow === "activation" ? "/?auth=activated" : "/?auth=registered";
-  if (state === "review_required") return "/attiva-account?result=review";
+  if (state === "review_required") return `/${flow === "signup" ? "registrati" : "attiva-account"}?result=review`;
   if (state === "no_profile") return "/attiva-account?result=no-profile";
   return `/${flow === "signup" ? "registrati" : "attiva-account"}?result=conflict`;
 }
@@ -39,21 +39,19 @@ export async function GET(request: Request) {
     return NextResponse.redirect(authRedirect("/reset-password"));
   }
 
-  if (flow) {
+  if (flow || exchanged) {
     // A valid session also makes an already-consumed callback resumable. Both RPCs
     // are transactionally idempotent, so replay cannot create another profile/link.
     const { data: userData, error: userError } = await supabase.auth.getUser();
     if (!userError && userData.user?.email_confirmed_at) {
-      const rpc = flow === "signup" ? "finalize_verified_auth_signup" : "resolve_and_link_verified_auth_user";
-      const { data, error } = await supabaseAdmin().rpc(rpc, { p_auth_user_id: userData.user.id });
-      if (!error) {
-        const state = String((data as { state?: string } | null)?.state ?? "conflict");
-        const response = NextResponse.redirect(authRedirect(resultRedirect(flow, state)));
-        if (state === "linked") {
+      try {
+        const result = await resolveVerifiedAuthOnboarding(userData.user, flow);
+        const response = NextResponse.redirect(authRedirect(resultRedirect(result.flow, result.state)));
+        if (result.state === "linked") {
           response.cookies.set(USER_COOKIE_NAME, "", { ...userCookieOptions(), maxAge: 0 });
         }
         return response;
-      }
+      } catch { /* fall through to the fixed link error */ }
     }
   }
   return NextResponse.redirect(authRedirect("/accedi?error=link"));

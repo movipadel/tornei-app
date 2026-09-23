@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type Migration = { status: string; activation_available: boolean; message?: string };
 
@@ -9,13 +9,43 @@ export default function ProgressiveAuthPrompt() {
   const pathname = usePathname();
   const [migration, setMigration] = useState<Migration | null>(null);
   const [busy, setBusy] = useState(false);
+  const resumeAttempted = useRef(false);
 
   useEffect(() => {
     if (pathname.startsWith("/admin") || pathname.startsWith("/staff") || pathname === "/attiva-account" || pathname === "/accedi") return;
     let active = true;
     const load = () => fetch("/api/user/me", { cache: "no-store" })
       .then(async (response) => response.ok ? response.json() : null)
-      .then((data) => { if (active) setMigration(data?.migration ?? null); })
+      .then(async (data) => {
+        if (!active) return;
+        if (data?.onboarding?.resume_available && !resumeAttempted.current) {
+          resumeAttempted.current = true;
+          const response = await fetch("/api/auth/onboarding/resume", { method: "POST" });
+          const result = await response.json().catch(() => ({}));
+          if (!active) return;
+          if (response.ok && result.state === "linked") {
+            window.location.reload();
+            return;
+          }
+          if (response.ok && result.state === "review_required") {
+            setMigration({
+              status: "review_required",
+              activation_available: false,
+              message: "Abbiamo trovato più profili associati ai tuoi dati. Li sistemiamo noi senza perdere punti, tornei o storico.",
+            });
+            return;
+          }
+          if (response.ok && result.state === "conflict") {
+            setMigration({
+              status: "conflict",
+              activation_available: false,
+              message: "Il tuo profilo resta invariato. Contatta MOVI e lo sistemiamo.",
+            });
+            return;
+          }
+        }
+        setMigration(data?.migration ?? null);
+      })
       .catch(() => undefined);
     void load();
     window.addEventListener("movi:user-session-changed", load);

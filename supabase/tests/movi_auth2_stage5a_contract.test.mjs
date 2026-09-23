@@ -13,6 +13,7 @@ const adminQueue = read("../../src/app/api/admin/users/duplicates/route.ts");
 const adminUi = read("../../src/app/admin/users/duplicates/page.tsx");
 const reset = read("../../src/app/api/auth/password-reset/request/route.ts");
 const signup = read("../../src/app/api/auth/signup/finalize/route.ts");
+const unifiedSignup = read("../../src/lib/resolveAuthOnboarding.ts");
 const proxy = read("../../proxy.ts");
 const staffSession = read("../../src/lib/staffSession.ts");
 
@@ -69,7 +70,7 @@ test("telemetry is private immutable and contains no sensitive values", () => {
 });
 
 test("signup and generic password reset remain independent", () => {
-  assert.match(signup, /finalize_verified_auth_signup/);
+  assert.match(signup + unifiedSignup, /finalize_verified_auth_signup/);
   assert.match(reset, /genericEmailMessage/);
   assert.doesNotMatch(reset, /createUser|admin\.createUser/);
 });
