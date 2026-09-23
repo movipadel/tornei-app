@@ -58,7 +58,8 @@ test("Auth precedence and dual-session mismatch remain fail closed", () => {
 test("admin view exposes safe states and counters without Auth ids", () => {
   assert.match(adminQueue, /auth_migration_state/);
   assert.match(adminQueue, /auth_linked: Boolean\(auth_user_id\)/);
-  assert.match(adminUi, /Filtra stato migrazione/);
+  assert.match(adminQueue, /user_migration_summary/);
+  assert.match(adminUi, /Accesso collegato/);
   assert.doesNotMatch(adminUi, /auth_user_id/);
 });
 

@@ -23,9 +23,15 @@ INSERT INTO public.store_orders(id,user_id,status,pickup_club,payment_mode,total
 
 DO $test$
 DECLARE v jsonb; before_profile jsonb; after_profile jsonb; before_users integer; summary jsonb;
+  before_success integer; before_not_found integer; before_auth integer; before_review integer; before_conflict integer;
 BEGIN
   SELECT to_jsonb(u) INTO before_profile FROM public.users u WHERE id='5b200000-0000-4000-8000-000000000001';
   SELECT count(*) INTO before_users FROM public.users;
+  SELECT count(*) INTO before_success FROM public.user_legacy_login_events WHERE event_type='legacy_login_success';
+  SELECT count(*) INTO before_not_found FROM public.user_legacy_login_events WHERE event_type='legacy_login_not_found';
+  SELECT count(*) INTO before_auth FROM public.user_legacy_login_events WHERE event_type='legacy_login_auth_required';
+  SELECT count(*) INTO before_review FROM public.user_legacy_login_events WHERE event_type='legacy_login_review_required';
+  SELECT count(*) INTO before_conflict FROM public.user_legacy_login_events WHERE event_type='legacy_login_conflict';
 
   v:=public.legacy_user_login_lookup('+39 347 960 0001',' ELIGIBLE.STAGE5B@EXAMPLE.INVALID ');
   IF v->>'state'<>'legacy_allowed' OR v->>'public_user_id'<>'5b200000-0000-4000-8000-000000000001' THEN
@@ -60,11 +66,11 @@ BEGIN
     OR (SELECT user_id FROM public.store_orders WHERE id='5b310000-0000-4000-8000-000000000001')<>'5b200000-0000-4000-8000-000000000001' THEN
     RAISE EXCEPTION 'business ownership changed';
   END IF;
-  IF (SELECT count(*) FROM public.user_legacy_login_events WHERE event_type='legacy_login_success')<>2
-    OR (SELECT count(*) FROM public.user_legacy_login_events WHERE event_type='legacy_login_not_found')<>3
-    OR (SELECT count(*) FROM public.user_legacy_login_events WHERE event_type='legacy_login_auth_required')<>2
-    OR (SELECT count(*) FROM public.user_legacy_login_events WHERE event_type='legacy_login_review_required')<>1
-    OR (SELECT count(*) FROM public.user_legacy_login_events WHERE event_type='legacy_login_conflict')<>1 THEN
+  IF (SELECT count(*) FROM public.user_legacy_login_events WHERE event_type='legacy_login_success')<>before_success+2
+    OR (SELECT count(*) FROM public.user_legacy_login_events WHERE event_type='legacy_login_not_found')<>before_not_found+3
+    OR (SELECT count(*) FROM public.user_legacy_login_events WHERE event_type='legacy_login_auth_required')<>before_auth+2
+    OR (SELECT count(*) FROM public.user_legacy_login_events WHERE event_type='legacy_login_review_required')<>before_review+1
+    OR (SELECT count(*) FROM public.user_legacy_login_events WHERE event_type='legacy_login_conflict')<>before_conflict+1 THEN
     RAISE EXCEPTION 'legacy telemetry counters are inaccurate';
   END IF;
   summary:=public.user_migration_summary();

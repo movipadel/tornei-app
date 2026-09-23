@@ -938,3 +938,9 @@ body:has([data-radix-portal])::before {
 .base44-star-f {
   color: #db2777; /* rosa elegante */
 }
+
+@media (max-width: 820px) {
+  .duplicate-review-grid {
+    grid-template-columns: 1fr !important;
+  }
+}

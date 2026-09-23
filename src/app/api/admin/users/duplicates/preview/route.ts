@@ -1,19 +1,23 @@
 import { NextResponse } from "next/server";
 import { guardAdmin } from "@/lib/adminGuard";
-import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { getStaffSessionFromCookie } from "@/lib/staffSession";
+import { previewDuplicateGroup } from "@/lib/adminDuplicateWorkflow";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   const denied = await guardAdmin();
   if (denied) return denied;
+  const session = await getStaffSessionFromCookie();
   const body = await request.json().catch(() => ({}));
-  const source = String(body.source_user_id ?? "");
-  const canonical = String(body.canonical_user_id ?? "");
   const group = String(body.group_id ?? "");
-  if (!source || !canonical || !group) return NextResponse.json({ error: "Gruppo o profili mancanti" }, { status: 400 });
-  const { data, error } = await supabaseAdmin().rpc("preview_reviewed_user_merge", {
-    p_group_id: group, p_source_user_id: source, p_canonical_user_id: canonical,
-  });
-  return error ? NextResponse.json({ error: error.message }, { status: 409 }) : NextResponse.json({ data });
+  const keep = String(body.keep_user_id ?? body.canonical_user_id ?? "");
+  const choices = body.field_choices && typeof body.field_choices === "object" ? body.field_choices : {};
+  if (!keep || !group) return NextResponse.json({ error: "Scegli il profilo da mantenere" }, { status: 400 });
+  try {
+    const data = await previewDuplicateGroup(group, keep, session!.sid, choices);
+    return NextResponse.json({ data });
+  } catch {
+    return NextResponse.json({ error: "Non è stato possibile verificare il gruppo" }, { status: 409 });
+  }
 }

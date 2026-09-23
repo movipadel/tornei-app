@@ -11,6 +11,7 @@ const dialog = read("../../src/components/UserLoginDialog.tsx");
 const authForm = read("../../src/components/MoviAuthForm.tsx");
 const legacyPage = read("../../src/app/accesso-precedente/page.tsx");
 const adminUi = read("../../src/app/admin/users/duplicates/page.tsx");
+const adminQueue = read("../../src/app/api/admin/users/duplicates/route.ts");
 const signup = read("../../src/app/api/auth/signup/route.ts");
 const reset = read("../../src/app/api/auth/password-reset/request/route.ts");
 const adminLogin = read("../../src/app/api/admin/login/route.ts");
@@ -76,7 +77,8 @@ test("telemetry and dashboard metrics are private and bounded", () => {
   assert.match(migration, /legacy_logins_30d/);
   assert.match(migration, /legacy_person_profiles/);
   assert.match(migration, /auth_linked_active_percent/);
-  assert.match(adminUi, /Auth-linked attivi %/);
+  assert.match(adminQueue, /user_migration_summary/);
+  assert.match(adminUi, /Accesso collegato/);
 });
 
 test("password reset remains generic and cannot fabricate a profile", () => {

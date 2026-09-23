@@ -8,6 +8,8 @@ const resolver = read("../../src/lib/currentMoviUser.ts");
 const queue = read("../../src/app/api/admin/users/duplicates/route.ts");
 const preview = read("../../src/app/api/admin/users/duplicates/preview/route.ts");
 const execute = read("../../src/app/api/admin/users/duplicates/execute/route.ts");
+const resolve = read("../../src/app/api/admin/users/duplicates/resolve/route.ts");
+const workflow = read("../../src/lib/adminDuplicateWorkflow.ts");
 const ui = read("../../src/app/admin/users/duplicates/page.tsx");
 const legacyLogin = read("../../src/app/api/user/login/route.ts");
 const captainSearch = read("../../src/app/api/admin/monday-league/users/search/route.ts");
@@ -63,12 +65,13 @@ test("duplicate APIs are admin-only and execution requires explicit confirmation
 });
 
 test("admin UI exposes review, exclusion, preview, conflicts and explicit merge", () => {
-  assert.match(ui, /Incluso/);
-  assert.match(ui, /Usa come canonico/);
-  assert.match(ui, /Aggiorna preflight/);
-  assert.match(ui, /Merge bloccato/);
-  assert.match(ui, /Digita MERGE/);
+  assert.match(ui, /Scegli il profilo da mantenere/);
+  assert.match(ui, /Questo è ciò che resterà/);
+  assert.match(ui, /Serve una scelta prima di continuare/);
+  assert.match(ui, /UNISCI PROFILI/);
   assert.match(ui, /reference_counts/);
+  assert.match(resolve, /guardAdmin\(\)/);
+  assert.match(workflow, /execute_reviewed_user_merge/);
 });
 
 test("Stage 3 never changes session precedence or implements automatic merge", () => {

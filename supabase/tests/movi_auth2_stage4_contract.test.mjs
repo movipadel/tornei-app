@@ -7,6 +7,8 @@ const migration = read("../migrations/20260929100000_movi_auth2_stage4_review_op
 const queue = read("../../src/app/api/admin/users/duplicates/route.ts");
 const preview = read("../../src/app/api/admin/users/duplicates/preview/route.ts");
 const execute = read("../../src/app/api/admin/users/duplicates/execute/route.ts");
+const resolve = read("../../src/app/api/admin/users/duplicates/resolve/route.ts");
+const workflow = read("../../src/lib/adminDuplicateWorkflow.ts");
 const report = read("../../src/app/api/admin/users/duplicates/report/route.ts");
 const ui = read("../../src/app/admin/users/duplicates/page.tsx");
 
@@ -23,7 +25,8 @@ test("recommendations are explained and Auth controls canonical selection", () =
   assert.match(migration, /possiede una membership MoviBack/);
   assert.match(migration, /ha %s registrazioni torneo/);
   assert.match(migration, /MOVI_AUTH_LINKED_PROFILE_MUST_BE_CANONICAL/);
-  assert.match(ui, /Profilo suggerito come canonico perché/);
+  assert.match(ui, /Consigliato/);
+  assert.match(ui, /storico principale/);
 });
 
 test("manual signals and shared or technical identities stay conservative", () => {
@@ -43,10 +46,12 @@ test("dual MoviBack reconciliation is ledger-based and preserves evidence", () =
 });
 
 test("review decisions and execution require explicit guarded workflow", () => {
-  for (const route of [queue, preview, execute, report]) assert.match(route, /guardAdmin\(\)/);
+  for (const route of [queue, preview, execute, resolve, report]) assert.match(route, /guardAdmin\(\)/);
   assert.match(execute, /confirmation !== "MERGE"/);
   assert.match(execute, /preview_reviewed_user_merge/);
   assert.match(execute, /execute_reviewed_user_merge/);
+  assert.match(workflow, /save_user_duplicate_review_decision/);
+  assert.match(workflow, /execute_reviewed_user_merge/);
   assert.match(migration, /user_duplicate_review_decisions_immutable/);
   assert.match(migration, /MOVI_AUTH_REVIEW_SOURCE_CHANGED/);
   assert.match(migration, /distinct_active_league_roles/);
@@ -68,10 +73,10 @@ test("dry-run export is read-only and excludes secret fields", () => {
 });
 
 test("admin UX provides filters, summary, reconciliation and verified merge result", () => {
-  for (const text of ["Pending review", "High confidence", "Manual only", "Conflict", "Approved", "Merged", "Rejected", "Riconciliazione MoviBack", "Digita MERGE", "Verifica post-merge"]) assert.match(ui, new RegExp(text));
-  assert.match(ui, /auth_linked_active_percent/);
-  assert.match(ui, /fieldWinners/);
-  assert.match(ui, /format=csv/);
+  for (const text of ["DA CONTROLLARE", "PRONTO", "RICHIEDE ATTENZIONE", "RISOLTO", "MoviBack", "Profili uniti correttamente", "Nessun dato perso"]) assert.match(ui, new RegExp(text));
+  assert.match(ui, /Dettagli tecnici/);
+  assert.match(ui, /field_choices/);
+  assert.match(workflow, /verification/);
 });
 
 test("Stage 4 introduces no automatic merge trigger or production call", () => {
