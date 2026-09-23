@@ -13,6 +13,7 @@ type Profile = {
 };
 type Group = {
   id: string; signal_type: string; state: string; is_stale: boolean;
+  active_member_count: number; active_queue: boolean;
   recommended_user_id: string | null; warning_flags: string[]; recommendation_reasons: string[];
   members: Array<{ included: boolean; profile?: Profile }>;
 };
@@ -59,7 +60,7 @@ export default function DuplicateUsersPage() {
     finally { setLoading(false); }
   }, []);
   useEffect(() => { void load(); }, [load]);
-  const visible = useMemo(() => groups.filter((group) => filter === "resolved" ? group.state === "merged" : group.state !== "merged"), [groups, filter]);
+  const visible = useMemo(() => groups.filter((group) => filter === "resolved" ? group.state === "merged" : group.active_queue && group.active_member_count >= 2), [groups, filter]);
   const selected = useMemo(() => groups.find((group) => group.id === selectedId) ?? null, [groups, selectedId]);
   const activeProfiles = useMemo(() => selected?.members.map((member) => member.profile).filter((profile): profile is Profile => Boolean(profile) && profile!.identity_status === "active") ?? [], [selected]);
 
@@ -101,7 +102,7 @@ export default function DuplicateUsersPage() {
     <nav style={S.tabs}><button style={tab(filter === "open")} onClick={() => setFilter("open")}>Da controllare</button><button style={tab(filter === "resolved")} onClick={() => setFilter("resolved")}>Risolti</button></nav>
     <div className="duplicate-review-grid" style={S.layout}>
       <section style={S.panel}><b>{loading ? "Caricamento…" : `${visible.length} gruppi`}</b><div style={{ display: "grid", gap: 10, marginTop: 12 }}>
-        {visible.map((group) => <button key={group.id} onClick={() => openGroup(group)} style={{ ...S.groupCard, borderColor: selectedId === group.id ? "#4f46e5" : "#e2e8f0" }}><span style={{ display: "flex", justifyContent: "space-between", gap: 8 }}><strong>{groupName(group)}</strong><Status value={statusLabel(group)} /></span><span>{group.members.filter((member) => member.profile?.identity_status === "active").length} profili</span><small style={S.muted}>{reasonLabel(group.signal_type)}</small>{group.warning_flags.includes("activation_review_required") && <small style={{ color: "#92400e", fontWeight: 800 }}>Nuovo accesso in attesa</small>}</button>)}
+        {visible.map((group) => <button key={group.id} onClick={() => openGroup(group)} style={{ ...S.groupCard, borderColor: selectedId === group.id ? "#4f46e5" : "#e2e8f0" }}><span style={{ display: "flex", justifyContent: "space-between", gap: 8 }}><strong>{groupName(group)}</strong><Status value={statusLabel(group)} /></span><span>{group.active_member_count} profili</span><small style={S.muted}>{reasonLabel(group.signal_type)}</small>{group.warning_flags.includes("activation_review_required") && <small style={{ color: "#92400e", fontWeight: 800 }}>Nuovo accesso in attesa</small>}</button>)}
         {!loading && !visible.length && <p style={S.muted}>Nessun gruppo in questa sezione.</p>}
       </div></section>
       <section style={S.panel}>

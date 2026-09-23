@@ -36,6 +36,7 @@ type UserRow = {
 };
 
 const fields = ["full_name", "phone", "email", "gender"] as const;
+const queueBatchSize = 100;
 
 const humanBlocker: Record<string, string> = {
   source_has_auth_identity: "Un profilo da unire possiede già un accesso Auth. Scegli quel profilo come principale.",
@@ -58,6 +59,90 @@ const humanBlocker: Record<string, string> = {
 };
 
 function unique<T>(values: T[]) { return [...new Set(values)]; }
+
+function chunks<T>(values: T[], size = queueBatchSize) {
+  const result: T[][] = [];
+  for (let index = 0; index < values.length; index += size) result.push(values.slice(index, index + size));
+  return result;
+}
+
+export async function reconcileDuplicateQueue(actorId: string | null, refreshCandidates = false) {
+  const sb = supabaseAdmin();
+  let refresh: unknown = null;
+  if (refreshCandidates) {
+    const scanned = await sb.rpc("run_user_duplicate_scan", { p_actor_staff_id: actorId });
+    if (scanned.error) throw scanned.error;
+    refresh = scanned.data;
+  }
+
+  const groupsResult = await sb.from("user_duplicate_review_groups")
+    .select("id,state,signal_type,signal_value,is_stale").order("updated_at", { ascending: false }).limit(500);
+  if (groupsResult.error) throw groupsResult.error;
+  const groups = groupsResult.data ?? [];
+  const groupIds = groups.map((group) => group.id);
+  const memberResults = await Promise.all(chunks(groupIds).map((ids) =>
+    sb.from("user_duplicate_review_members").select("group_id,user_id").in("group_id", ids),
+  ));
+  const memberError = memberResults.find((result) => result.error)?.error;
+  if (memberError) throw memberError;
+  const members = memberResults.flatMap((result) => result.data ?? []);
+  const memberUserIds = unique(members.map((member) => member.user_id));
+  const userResults = await Promise.all(chunks(memberUserIds).map((ids) =>
+    sb.from("users").select("id,identity_status,merged_into_user_id").in("id", ids),
+  ));
+  const userError = userResults.find((result) => result.error)?.error;
+  if (userError) throw userError;
+  const users = userResults.flatMap((result) => result.data ?? []);
+  const knownIds = new Set(users.map((user) => user.id));
+  const missingTargets = unique(users.map((user) => user.merged_into_user_id).filter((id): id is string => Boolean(id) && !knownIds.has(id)));
+  const targetResults = await Promise.all(chunks(missingTargets).map((ids) =>
+    sb.from("users").select("id,identity_status,merged_into_user_id").in("id", ids),
+  ));
+  const targetError = targetResults.find((result) => result.error)?.error;
+  if (targetError) throw targetError;
+  const userMap = new Map([...users, ...targetResults.flatMap((result) => result.data ?? [])].map((user) => [user.id, user]));
+  const resolveActiveId = (userId: string) => {
+    const seen = new Set<string>();
+    let current = userMap.get(userId);
+    while (current && current.identity_status !== "active" && current.merged_into_user_id && !seen.has(current.id)) {
+      seen.add(current.id);
+      current = userMap.get(current.merged_into_user_id);
+    }
+    return current?.identity_status === "active" ? current.id : null;
+  };
+  const activeIdsByGroup = Object.fromEntries(groupIds.map((groupId) => [
+    groupId,
+    unique(members.filter((member) => member.group_id === groupId).map((member) => resolveActiveId(member.user_id)).filter(Boolean) as string[]).sort(),
+  ]));
+  const activeMemberCounts = Object.fromEntries(groupIds.map((groupId) => [groupId, activeIdsByGroup[groupId].length]));
+  const familyKey = (group: typeof groups[number]) => `${group.signal_type}\u0000${group.signal_value ?? ""}\u0000${activeIdsByGroup[group.id].join(",")}`;
+  const currentFamilies = new Set(groups
+    .filter((group) => !group.is_stale && group.state !== "merged" && (activeMemberCounts[group.id] ?? 0) >= 2)
+    .map(familyKey));
+  const stalePredecessorIds = groups
+    .filter((group) => group.is_stale && group.state !== "merged" && currentFamilies.has(familyKey(group)))
+    .map((group) => group.id);
+  const stalePredecessorSet = new Set(stalePredecessorIds);
+  const newlyResolvedIds = groups
+    .filter((group) => group.state !== "merged" && ((activeMemberCounts[group.id] ?? 0) < 2 || stalePredecessorSet.has(group.id)))
+    .map((group) => group.id);
+  const updateResults = await Promise.all(chunks(newlyResolvedIds).map((ids) =>
+    sb.from("user_duplicate_review_groups").update({ state: "merged", updated_at: new Date().toISOString() }).in("id", ids),
+  ));
+  const updateError = updateResults.find((result) => result.error)?.error;
+  if (updateError) throw updateError;
+  const resolvedSet = new Set([...groups.filter((group) => group.state === "merged").map((group) => group.id), ...newlyResolvedIds]);
+  return {
+    refreshed: refreshCandidates,
+    refresh,
+    groups_scanned: groups.length,
+    active_group_ids: groups.filter((group) => !resolvedSet.has(group.id) && (activeMemberCounts[group.id] ?? 0) >= 2).map((group) => group.id),
+    resolved_group_ids: [...resolvedSet],
+    newly_resolved_group_ids: newlyResolvedIds,
+    stale_predecessor_ids: stalePredecessorIds,
+    active_member_counts: activeMemberCounts,
+  };
+}
 
 async function groupMembers(groupId: string) {
   const sb = supabaseAdmin();
@@ -230,7 +315,10 @@ export async function previewDuplicateGroup(groupId: string, keepId: string, act
 
 export async function resolveDuplicateGroup(groupId: string, keepId: string, actorId: string, choices: Record<string, string> = {}) {
   let preview = await buildPreview(groupId, keepId, actorId, choices);
-  if (preview.state === "resolved") return { ...preview, state: "completed", idempotent: true, completed: [] };
+  if (preview.state === "resolved") {
+    const queue_status = await reconcileDuplicateQueue(actorId, true);
+    return { ...preview, state: "completed", idempotent: true, completed: [], queue_status };
+  }
   if (preview.state !== "ready") return preview;
   const completed: Array<{ source_user_id: string; operation_id: string; verification: unknown }> = [];
   let currentGroupId = preview.group_id;
@@ -290,5 +378,6 @@ export async function resolveDuplicateGroup(groupId: string, keepId: string, act
       if (!resumed.error) auth_continuation = { state: String((resumed.data as { state?: string } | null)?.state ?? "pending") };
     }
   }
-  return { state: "completed", group_id: currentGroupId, keep_user_id: preview.keep_user_id, completed, auth_continuation };
+  const queue_status = await reconcileDuplicateQueue(actorId, true);
+  return { state: "completed", group_id: currentGroupId, keep_user_id: preview.keep_user_id, completed, auth_continuation, queue_status };
 }

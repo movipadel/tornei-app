@@ -53,6 +53,41 @@ test("stale partial groups are recovered from active aliases and a fresh scan", 
   assert.match(page, /profili già uniti sono stati esclusi automaticamente/);
 });
 
+test("active queue excludes groups with fewer than two resolved active identities", () => {
+  assert.match(workflow, /export async function reconcileDuplicateQueue/);
+  assert.match(workflow, /identity_status !== "active" && current\.merged_into_user_id/);
+  assert.match(workflow, /activeMemberCounts\[group\.id\].*< 2/s);
+  assert.match(workflow, /update\(\{ state: "merged"/);
+  assert.match(list, /reconcileDuplicateQueue\(null, false\)/);
+  assert.match(list, /active_member_count: queueStatus\.active_member_counts/);
+  assert.match(list, /active_queue: queueStatus\.active_group_ids\.includes/);
+  assert.match(page, /group\.active_queue && group\.active_member_count >= 2/);
+  assert.match(page, /filter === "resolved" \? group\.state === "merged"/);
+  assert.doesNotMatch(page, /members\.filter\(\(member\) => member\.profile\?\.identity_status === "active"\)\.length} profili/);
+});
+
+test("stale predecessors are archived only when an equivalent current successor exists", () => {
+  assert.match(workflow, /const currentFamilies = new Set/);
+  assert.match(workflow, /!group\.is_stale.*activeMemberCounts\[group\.id\].*>= 2/s);
+  assert.match(workflow, /group\.is_stale.*currentFamilies\.has\(familyKey\(group\)\)/s);
+  assert.match(workflow, /stale_predecessor_ids: stalePredecessorIds/);
+});
+
+test("resolve refreshes candidates, reconciles predecessors and returns queue status", () => {
+  assert.match(workflow, /reconcileDuplicateQueue\(actorId, true\)/g);
+  assert.match(workflow, /run_user_duplicate_scan/);
+  assert.match(workflow, /queue_status/);
+  assert.match(page, /if \(data\.state === "completed"\).*await load\(\)/s);
+});
+
+test("queue reconciliation remains bounded, set based and idempotent", () => {
+  assert.match(workflow, /\.limit\(500\)/);
+  assert.match(workflow, /Promise\.all\(chunks\(groupIds\)/);
+  assert.match(workflow, /Promise\.all\(chunks\(memberUserIds\)/);
+  assert.match(workflow, /Promise\.all\(chunks\(newlyResolvedIds\)/);
+  assert.doesNotMatch(workflow, /for \(const group of groups\)[\s\S]{0,300}await sb\./);
+});
+
 test("operator copy maps real conflicts and hides codes", () => {
   for (const code of ["multiple_auth_identities", "same_tournament", "same_league_roster", "membership_cardinality_unsupported"]) assert.match(workflow, new RegExp(code));
   assert.match(page, /Serve una scelta prima di continuare/);

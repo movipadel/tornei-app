@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { guardAdmin } from "@/lib/adminGuard";
 import { getStaffSessionFromCookie } from "@/lib/staffSession";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { reconcileDuplicateQueue } from "@/lib/adminDuplicateWorkflow";
 
 export const runtime = "nodejs";
 
@@ -24,6 +25,12 @@ export async function GET(request: Request) {
   const denied = await guardAdmin();
   if (denied) return denied;
   const sb = supabaseAdmin();
+  let queueStatus;
+  try {
+    queueStatus = await reconcileDuplicateQueue(null, false);
+  } catch {
+    return NextResponse.json({ error: "Non è stato possibile aggiornare la coda duplicati" }, { status: 500 });
+  }
   const params = new URL(request.url).searchParams;
   const stateFilter = params.get("state");
   const confidenceFilter = params.get("confidence");
@@ -151,11 +158,14 @@ export async function GET(request: Request) {
   }]));
 
   return NextResponse.json({
+    queue_status: queueStatus,
     summary: summaryResult.data ?? null,
     latest_scan: scanResult.data ?? null,
     migration_users: (migrationUsers ?? []).map(({ auth_user_id, ...user }) => ({ ...user, auth_linked: Boolean(auth_user_id) })),
     data: groups.map((group) => ({
       ...group,
+      active_member_count: queueStatus.active_member_counts[group.id] ?? 0,
+      active_queue: queueStatus.active_group_ids.includes(group.id),
       members: (members ?? []).filter((member) => member.group_id === group.id).map((member) => ({
         included: member.included,
         profile: profileMap.get(member.user_id),
