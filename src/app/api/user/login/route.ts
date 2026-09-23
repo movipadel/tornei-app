@@ -5,10 +5,12 @@ import {
   userCookieOptions,
   USER_COOKIE_NAME,
 } from "@/lib/userAuth";
+import { legacyLoginRateLimitKeys } from "@/lib/legacyLoginRateLimit";
 
 export const runtime = "nodejs";
 
 type LookupResult = { state?: string; public_user_id?: string | null };
+type RateLimitResult = { allowed?: boolean; retry_after_seconds?: number };
 
 export async function POST(req: Request) {
   // Stage 5B is fail-closed. An explicit false disables this endpoint; it never
@@ -23,11 +25,38 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
   const phone = String(body.phone ?? "").trim();
   const email = String(body.email ?? "").trim();
+  const sb = supabaseAdmin();
+  let rateKeys: ReturnType<typeof legacyLoginRateLimitKeys>;
+  try {
+    rateKeys = legacyLoginRateLimitKeys(req, phone, email);
+  } catch {
+    return NextResponse.json(
+      { error: "Accesso temporaneamente non disponibile", code: "LEGACY_RATE_LIMIT_UNAVAILABLE" },
+      { status: 503 },
+    );
+  }
+  const { data: rateData, error: rateError } = await sb.rpc("consume_legacy_login_rate_limit", {
+    p_client_key: rateKeys.clientKey,
+    p_identity_key: rateKeys.identityKey,
+  });
+  if (rateError) {
+    return NextResponse.json(
+      { error: "Accesso temporaneamente non disponibile", code: "LEGACY_RATE_LIMIT_UNAVAILABLE" },
+      { status: 503 },
+    );
+  }
+  const rate = (rateData ?? {}) as RateLimitResult;
+  if (!rate.allowed) {
+    const retryAfter = Math.max(1, Math.ceil(Number(rate.retry_after_seconds) || 900));
+    return NextResponse.json(
+      { error: "Troppi tentativi. Riprova più tardi.", code: "LEGACY_RATE_LIMITED" },
+      { status: 429, headers: { "Retry-After": String(retryAfter) } },
+    );
+  }
   if (!phone || !email) {
     return NextResponse.json({ error: "Telefono ed email sono obbligatori" }, { status: 400 });
   }
 
-  const sb = supabaseAdmin();
   const { data, error } = await sb.rpc("legacy_user_login_lookup", {
     p_phone: phone,
     p_email: email,
