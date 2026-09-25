@@ -51,7 +51,7 @@ test("unknown users receive Auth signup guidance", () => {
 test("Auth login and signup are primary in the UI", () => {
   assert.match(dialog, /Accedi con email e password/);
   assert.match(dialog, /accesso precedente/);
-  assert.match(authForm, /accesso-precedente/);
+  assert.match(authForm, /attiva-account/);
   assert.match(legacyPage, /Accesso precedente/);
   assert.match(signup, /prepare_user_auth_signup/);
 });

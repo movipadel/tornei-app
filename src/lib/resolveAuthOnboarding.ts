@@ -68,7 +68,21 @@ export async function resolveVerifiedAuthOnboarding(
   }
 
   if (!draft) return runResolutionRpc(flow, authUser.id);
-  if (flow === "activation") return runResolutionRpc("activation", authUser.id);
+  if (flow === "activation") {
+    // A verified email remains the ownership proof. The signed lookup context is
+    // persisted only as normalized name/phone in the private draft and must still
+    // resolve to the same email candidate before the certified linker runs.
+    if (!draft.normalized_phone) {
+      return runResolutionRpc("activation", authUser.id); // pre-redesign resumable row
+    }
+    const { data: contextData, error: contextError } = await admin.rpc("validate_legacy_activation_context", { p_auth_user_id: authUser.id });
+    if (contextError) throw contextError;
+    if ((contextData as { state?: string } | null)?.state === "valid") return runResolutionRpc("activation", authUser.id);
+    const { error } = await admin.from("user_auth_onboarding").update({ state: "conflict", updated_at: new Date().toISOString() })
+      .eq("auth_user_id", authUser.id).eq("state", "pending_verification");
+    if (error) throw error;
+    return { flow: "activation", state: "conflict", data: { state: "conflict" } };
+  }
 
   const verifiedEmail = normalizeEmail(authUser.email);
   if (!verifiedEmail || verifiedEmail !== normalizeEmail(draft.normalized_email)) {

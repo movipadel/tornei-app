@@ -1,2 +1,2 @@
-import MoviAuthForm from "@/components/MoviAuthForm";
-export default function Page() { return <MoviAuthForm mode="activate" />; }
+import LegacyProfileActivation from "@/components/LegacyProfileActivation";
+export default function Page() { return <LegacyProfileActivation />; }

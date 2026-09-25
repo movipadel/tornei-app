@@ -25,6 +25,17 @@ export async function POST(request: Request) {
   });
   if (!normalizedPhone) return NextResponse.json({ error: "Numero mobile non valido" }, { status: 400 });
 
+  // This service-only preflight runs before Auth signup, so a historical MOVI
+  // customer is sent to activation before a second identity can be created.
+  const { data: preflight, error: preflightError } = await admin.rpc("new_user_profile_preflight", {
+    p_phone: normalizedPhone,
+    p_email: email,
+  });
+  if (preflightError) return NextResponse.json({ error: "Controllo profilo non disponibile" }, { status: 500 });
+  if ((preflight as { state?: string } | null)?.state === "existing_profile") {
+    return NextResponse.json({ state: "existing_profile", redirect_to: "/attiva-account" });
+  }
+
   const supabase = await createSupabaseAuthServerClient();
   const { data, error } = await supabase.auth.signUp({
     email,

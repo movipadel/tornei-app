@@ -17,6 +17,7 @@ import {
   Loader2,
   CalendarDays,
   GitMerge,
+  ShieldAlert,
 } from "lucide-react";
 
 const cards = [
@@ -82,6 +83,13 @@ const cards = [
     href: "/admin/users/duplicates",
     icon: GitMerge,
     accent: "#8b5cf6",
+  },
+  {
+    title: "Problemi di accesso",
+    description: "Gestisci richieste di aiuto e onboarding da completare.",
+    href: "/admin/users/access-problems",
+    icon: ShieldAlert,
+    accent: "#f97316",
   },
   {
     title: "Comunicazioni",

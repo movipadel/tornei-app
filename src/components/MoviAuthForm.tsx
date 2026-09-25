@@ -91,7 +91,11 @@ export default function MoviAuthForm({ mode }: { mode: Mode }) {
         await post("/api/auth/activation/request", form);
         setSent(true);
       } else {
-        await post("/api/auth/signup", form);
+        const data = await post("/api/auth/signup", form);
+        if (data.state === "existing_profile") {
+          window.location.href = "/attiva-account?from=signup";
+          return;
+        }
         setSent(true);
       }
     } catch (error) {
@@ -197,8 +201,8 @@ function ResultCard({ result }: { result: Exclude<Result, null> }) {
 function AuthLinks({ mode }: { mode: Mode }) {
   if (mode === "login") return <nav style={navStyle}>
     <Link href="/password-dimenticata">Password dimenticata?</Link>
-    <Link href="/registrati">Crea un account</Link>
-    <Link href="/accesso-precedente">Usa l’accesso precedente</Link>
+    <Link href="/attiva-account"><strong>Attiva il mio profilo</strong><br />Hai già giocato o partecipato ad attività MOVI?</Link>
+    <Link href="/registrati"><strong>Crea nuovo profilo</strong><br />Non sei mai stato registrato su MOVI?</Link>
   </nav>;
   if (mode === "signup") return <nav style={navStyle}><Link href="/accedi">Hai già un account? Accedi</Link></nav>;
   if (mode === "forgot" || mode === "reset") return <nav style={navStyle}><Link href="/accedi">Torna all’accesso</Link></nav>;
@@ -217,11 +221,11 @@ function Check({ label, checked, onChange, name, optional = false }: { label: st
 }
 
 function title(mode: Mode) {
-  return mode === "login" ? "Accedi a MOVI" : mode === "activate" ? "Attiva il nuovo accesso" : mode === "signup" ? "Crea il tuo accesso MOVI" : mode === "forgot" ? "Password dimenticata" : "Imposta una nuova password";
+  return mode === "login" ? "Accedi" : mode === "activate" ? "Attiva il nuovo accesso" : mode === "signup" ? "Nuovo su MOVI?" : mode === "forgot" ? "Password dimenticata" : "Imposta una nuova password";
 }
 function subtitle(mode: Mode, legacyVerified: boolean) {
   if (mode === "activate") return legacyVerified ? "Scegli la password per completare il link che hai già aperto." : "Userai email e password senza perdere nulla del tuo profilo.";
-  if (mode === "login") return "Inserisci email e password.";
+  if (mode === "login") return "Hai già attivato la password MOVI?";
   if (mode === "signup") return "Ti servirà per ritrovare sempre punti, tornei e attività.";
   if (mode === "forgot") return "Inserisci la tua email e ti invieremo un link.";
   return "Scegli la nuova password.";
