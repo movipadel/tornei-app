@@ -42,7 +42,7 @@ export async function GET() {
     const profile = row.linked_public_user_id ? candidateMap.get(row.linked_public_user_id) : undefined;
     return { source: "onboarding", id: row.auth_user_id, status: "open",
       reason: row.state === "conflict" ? "Dati verificati in conflitto con il profilo"
-        : row.state === "review_required" ? "PiÃ¹ profili richiedono una verifica"
+        : row.state === "review_required" ? "Più profili richiedono una verifica"
           : "Email verificata, collegamento da completare",
       name: row.full_name ?? profile?.full_name ?? null, phone: row.normalized_phone ?? profile?.phone ?? null,
       auth_email: authMap.get(row.auth_user_id)?.email ?? row.normalized_email,
@@ -72,7 +72,7 @@ export async function POST(request: Request) {
     .select("state,linked_public_user_id").eq("auth_user_id", id).maybeSingle();
   if (draftError || !draft) return NextResponse.json({ error: "Onboarding non trovato" }, { status: 404 });
   const { count: linkedCount, error: linkedError } = await sb.from("users").select("id", { count: "exact", head: true }).eq("auth_user_id", id);
-  if (linkedError || linkedCount) return NextResponse.json({ error: "IdentitÃ  giÃ  collegata: operazione bloccata" }, { status: 409 });
+  if (linkedError || linkedCount) return NextResponse.json({ error: "Identità già collegata: operazione bloccata" }, { status: 409 });
   if (action === "retry_onboarding") {
     const { data, error } = await sb.rpc("resolve_and_link_verified_auth_user", { p_auth_user_id: id });
     return error ? NextResponse.json({ error: error.message }, { status: 409 }) : NextResponse.json({ data });
@@ -85,7 +85,7 @@ export async function POST(request: Request) {
 }
 
 function reason(kind: string) {
-  if (kind === "email_inaccessible") return "Email del profilo non piÃ¹ accessibile";
+  if (kind === "email_inaccessible") return "Email del profilo non più accessibile";
   if (kind === "name_mismatch") return "Nome diverso da quello del profilo";
-  return "PiÃ¹ profili associati agli stessi dati";
+  return "Più profili associati agli stessi dati";
 }

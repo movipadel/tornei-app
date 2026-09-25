@@ -13,5 +13,5 @@ export function maskEmail(email: string | null | undefined) {
 
 export function maskPhone(phone: string | null | undefined) {
   const digits = String(phone ?? "").replace(/\D/g, "");
-  return digits.length >= 4 ? `â€¢â€¢â€¢â€¢â€¢â€¢${digits.slice(-4)}` : "telefono non disponibile";
+  return digits.length >= 4 ? `••••••${digits.slice(-4)}` : "telefono non disponibile";
 }

@@ -18,7 +18,7 @@ export async function POST(request: Request) {
     p_client_key: client, p_identity_key: identity, p_now: new Date().toISOString(),
   });
   if ((limit as { allowed?: boolean } | null)?.allowed === false) {
-    return NextResponse.json({ error: "Troppi tentativi. Riprova piÃ¹ tardi." }, { status: 429 });
+    return NextResponse.json({ error: "Troppi tentativi. Riprova più tardi." }, { status: 429 });
   }
   const { data, error } = await sb.rpc("lookup_legacy_profile_for_activation", { p_full_name: fullName, p_phone: phone });
   if (error) return NextResponse.json({ error: "Ricerca non disponibile" }, { status: 500 });

@@ -19,6 +19,6 @@ export async function POST(request: Request) {
     p_submitted_name_normalized: context.publicUserId ? null : context.normalizedName ?? null,
     p_submitted_phone_normalized: context.publicUserId ? null : context.normalizedPhone ?? null,
   });
-  if (error) return NextResponse.json({ error: "Non Ã¨ stato possibile inviare la richiesta" }, { status: 500 });
+  if (error) return NextResponse.json({ error: "Non è stato possibile inviare la richiesta" }, { status: 500 });
   return NextResponse.json({ ok: true, status: (data as { status?: string } | null)?.status ?? "open" });
 }

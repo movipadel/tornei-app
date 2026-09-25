@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import ts from "typescript";
 
 const read = (path) => readFileSync(new URL(path, import.meta.url), "utf8");
 const migration = read("../migrations/20261004100000_movi_auth2_access_help_requests.sql");
@@ -12,6 +13,9 @@ const signup = read("../../src/app/api/auth/signup/route.ts");
 const resolver = read("../../src/lib/resolveAuthOnboarding.ts");
 const admin = read("../../src/app/api/admin/users/access-problems/route.ts");
 const ui = read("../../src/components/LegacyProfileActivation.tsx");
+const authForm = read("../../src/components/MoviAuthForm.tsx");
+const masking = read("../../src/lib/privacyMasking.ts");
+const accessAdmin = read("../../src/app/api/admin/users/access-problems/route.ts");
 
 test("pre-Auth help storage is additive, private, minimal and non-authorizing", () => {
   assert.match(migration, /create table public\.user_access_help_requests/i);
@@ -63,4 +67,27 @@ test("mobile UX exposes only human choices and masks lookup PII", () => {
   for (const copy of ["Nome e cognome", "Numero di telefono", "È il mio profilo", "Chiedi aiuto a MOVI", "Controlla la tua email"]) assert.match(ui, new RegExp(copy));
   assert.match(lookup, /maskEmail/); assert.match(lookup, /maskPhone/);
   assert.doesNotMatch(ui, /public_user_id|auth_user_id|migration state|profilo legacy/i);
+});
+
+test("Auth copy is valid UTF-8 text without known mojibake", () => {
+  const audited = ui + authForm + lookup + help + accessAdmin + masking;
+  assert.doesNotMatch(audited, /Ã|â|Â|ï¿½|�/);
+  for (const copy of [
+    "È il mio profilo", "Non è il mio profilo", "più", "già", "attività",
+    "all’accesso", "Cerca il mio profilo", "Crea la tua password",
+    "Invia", "Invia di nuovo", "Crea nuovo profilo",
+  ]) assert.match(audited, new RegExp(copy));
+});
+
+test("phone and email masks are readable and privacy safe", () => {
+  const compiled = ts.transpileModule(masking, {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+  }).outputText;
+  const cjs = { exports: {} };
+  Function("exports", "module", compiled)(cjs.exports, cjs);
+  const { maskEmail, maskPhone } = cjs.exports;
+  assert.equal(maskPhone("3929624858"), "••••••4858");
+  const masked = maskEmail("m.rinaudo.tn@gmail.com");
+  assert.equal(masked, "m***.r******.t***@gmail.com");
+  assert.notEqual(masked, "m.rinaudo.tn@gmail.com");
 });

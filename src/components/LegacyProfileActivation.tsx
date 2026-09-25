@@ -43,40 +43,40 @@ export default function LegacyProfileActivation() {
   function restart() { setState("lookup"); setProfile(null); setMessage(""); }
 
   return <main style={page}><section style={card}>
-    <Link href="/accedi" style={back}>â† Torna allâ€™accesso</Link>
+    <Link href="/accedi" style={back}>← Torna all’accesso</Link>
     {state === "lookup" && <>
       <h1 style={title}>Attiva il mio profilo</h1>
-      <p style={copy}>Hai giÃ  giocato o partecipato ad attivitÃ  MOVI?</p>
+      <p style={copy}>Hai già giocato o partecipato ad attività MOVI?</p>
       <form onSubmit={lookup} style={grid}>
         <Field label="Nome e cognome" value={form.full_name} autoComplete="name" onChange={(full_name) => setForm({ ...form, full_name })} />
         <Field label="Numero di telefono" value={form.phone} autoComplete="tel" inputMode="tel" onChange={(phone) => setForm({ ...form, phone })} />
-        <button disabled={busy} style={primary}>{busy ? "Cerchiamoâ€¦" : "Cerca il mio profilo"}</button>
+        <button disabled={busy} style={primary}>{busy ? "Cerchiamo…" : "Cerca il mio profilo"}</button>
       </form>
     </>}
     {state === "found" && profile && <>
       <h1 style={title}>Abbiamo trovato il tuo profilo</h1>
       <div style={summary}><strong style={{ fontSize: 20 }}>{profile.full_name}</strong><span>Telefono: {profile.phone}</span><span>Email: {profile.email}</span>
         {profile.moviback && <span>MoviBack: profilo presente</span>}{profile.tournaments && <span>Tornei: storico presente</span>}</div>
-      <button style={primary} onClick={() => setState("password")}>Ãˆ il mio profilo</button>
-      <button style={secondary} onClick={restart}>Non Ã¨ il mio profilo</button>
-      <p style={{ ...copy, marginTop: 20 }}>Non hai piÃ¹ accesso a questa email?</p>
+      <button style={primary} onClick={() => setState("password")}>È il mio profilo</button>
+      <button style={secondary} onClick={restart}>Non è il mio profilo</button>
+      <p style={{ ...copy, marginTop: 20 }}>Non hai più accesso a questa email?</p>
       <button disabled={busy} style={linkButton} onClick={() => help("email_inaccessible")}>Chiedi aiuto a MOVI</button>
     </>}
     {state === "password" && <>
-      <h1 style={title}>Crea la tua password</h1><p style={copy}>Invieremo una sola conferma allâ€™email del profilo.</p>
+      <h1 style={title}>Crea la tua password</h1><p style={copy}>Invieremo una sola conferma all’email del profilo.</p>
       <form onSubmit={activate} style={grid}>
         <Field label="Nuova password" type="password" autoComplete="new-password" value={form.password} onChange={(password) => setForm({ ...form, password })} />
         <Field label="Conferma password" type="password" autoComplete="new-password" value={form.password_confirm} onChange={(password_confirm) => setForm({ ...form, password_confirm })} />
-        <button disabled={busy} style={primary}>{busy ? "Invioâ€¦" : "Attiva il mio profilo"}</button>
+        <button disabled={busy} style={primary}>{busy ? "Invio…" : "Invia"}</button>
       </form>
     </>}
     {state === "sent" && <><h1 style={title}>Controlla la tua email</h1><p style={copy}>Ti abbiamo inviato un link per confermare il nuovo accesso MOVI.</p>
       <button disabled={busy} style={secondary} onClick={async () => { setBusy(true); await post("/api/auth/legacy-profile/resend").catch(() => undefined); setMessage("Email inviata di nuovo."); setBusy(false); }}>Invia di nuovo</button></>}
-    {state === "already_linked" && <><h1 style={title}>Il tuo nuovo accesso MOVI Ã¨ giÃ  attivo.</h1><Link style={linkPrimary} href="/accedi">Accedi</Link><Link style={linkSecondary} href="/password-dimenticata">Password dimenticata?</Link></>}
-    {state === "multiple_profiles" && <><h1 style={title}>Abbiamo trovato piÃ¹ profili associati ai tuoi dati.</h1><p style={copy}>Li sistemiamo noi senza perdere punti, tornei o storico.</p><button disabled={busy} style={primary} onClick={() => help()}>Avvisa MOVI</button></>}
+    {state === "already_linked" && <><h1 style={title}>Il tuo nuovo accesso MOVI è già attivo.</h1><Link style={linkPrimary} href="/accedi">Accedi</Link><Link style={linkSecondary} href="/password-dimenticata">Password dimenticata?</Link></>}
+    {state === "multiple_profiles" && <><h1 style={title}>Abbiamo trovato più profili associati ai tuoi dati.</h1><p style={copy}>Li sistemiamo noi senza perdere punti, tornei o storico.</p><button disabled={busy} style={primary} onClick={() => help()}>Avvisa MOVI</button></>}
     {(state === "name_mismatch" || state === "assistance_required") && <><h1 style={title}>Serve il nostro aiuto</h1><p style={copy}>Non possiamo mostrare o collegare automaticamente il profilo con questi dati.</p>{state === "name_mismatch" && <button disabled={busy} style={primary} onClick={() => help()}>Chiedi aiuto a MOVI</button>}<button style={secondary} onClick={restart}>Controlla i dati</button></>}
-    {state === "not_found" && <><h1 style={title}>Non abbiamo trovato un vecchio profilo con questi dati.</h1><button style={secondary} onClick={restart}>Controlla i dati</button><Link style={linkPrimary} href="/registrati">Non sono mai stato registrato â€” Crea nuovo profilo</Link></>}
-    {state === "help_sent" && <><h1 style={title}>Richiesta inviata</h1><p style={copy}>MOVI controllerÃ  il problema senza modificare il tuo profilo.</p><Link style={linkPrimary} href="/accedi">Torna allâ€™accesso</Link></>}
+    {state === "not_found" && <><h1 style={title}>Non abbiamo trovato un vecchio profilo con questi dati.</h1><button style={secondary} onClick={restart}>Controlla i dati</button><p style={copy}>Non sei mai stato registrato su MOVI?</p><Link style={linkPrimary} href="/registrati">Crea nuovo profilo</Link></>}
+    {state === "help_sent" && <><h1 style={title}>Richiesta inviata</h1><p style={copy}>MOVI controllerà il problema senza modificare il tuo profilo.</p><Link style={linkPrimary} href="/accedi">Torna all’accesso</Link></>}
     {message && <p role="status" style={notice}>{message}</p>}
   </section></main>;
 }
