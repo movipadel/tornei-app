@@ -22,6 +22,13 @@ import {
 
 const cards = [
   {
+    title: "Partner MOVI",
+    description: "Gestisci partner e vantaggi per la community MOVI.",
+    href: "/admin/partners",
+    icon: Store,
+    accent: "#6366f1",
+  },
+  {
     title: "Contenuti Padelleria",
     description: "Gestisci Succede ed È successo in Padelleria.",
     href: "/admin/padelleria",

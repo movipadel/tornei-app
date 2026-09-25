@@ -2,7 +2,7 @@ import { execFileSync, spawn } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync, readdirSync, unlinkSync } from 'node:fs';
 import { resolve } from 'node:path';
 const mode=process.argv[2];
-if(!['check','migrate','sql-test','fixtures','api-test','dev','build','start'].includes(mode))throw new Error('Mode: check|migrate|sql-test|fixtures|api-test|dev|build|start');
+if(!['partners-migrate','partners-sql-test','partners-fixtures','partners-api-test','check','migrate','sql-test','fixtures','api-test','dev','build','start'].includes(mode))throw new Error('Mode: check|migrate|sql-test|fixtures|api-test|partners-migrate|partners-sql-test|partners-fixtures|partners-api-test|dev|build|start');
 if(existsSync('supabase/.temp/project-ref'))throw new Error('STOP: linked project');
 const status=JSON.parse(execFileSync(process.execPath,['node_modules/supabase/dist/supabase.js','status','-o','json'],{encoding:'utf8'}));
 if(status.API_URL!=='http://127.0.0.1:55021'||status.DB_URL!=='postgresql://postgres:postgres@127.0.0.1:55022/postgres'||status.STUDIO_URL!=='http://127.0.0.1:55023'||status.MAILPIT_URL!=='http://127.0.0.1:55024'||status.linked_project)throw new Error('STOP: unexpected Supabase targets');
@@ -18,15 +18,16 @@ console.log('Verified LOCAL ONLY: API 55021 / DB 55022 / Studio 55023 / Mailpit 
 const psql='C:/Program Files/PostgreSQL/17/bin/psql.exe';
 const dbArgs=['-h','127.0.0.1','-p','55022','-U','postgres','-d','postgres','-v','ON_ERROR_STOP=1'];
 if(mode==='check')process.exit(0);
-if(mode==='migrate'){
-  const found=execFileSync(psql,[...dbArgs,'-At','-c',"select to_regclass('public.padelleria_contents') is not null"],{env,encoding:'utf8'}).trim();
+if(mode==='migrate'||mode==='partners-migrate'){
+  const partners=mode==='partners-migrate';
+  const found=execFileSync(psql,[...dbArgs,'-At','-c',`select to_regclass('public.${partners?"movi_partners":"padelleria_contents"}') is not null`],{env,encoding:'utf8'}).trim();
   if(found==='t')throw new Error('Editorial schema already exists; do not replay migration');
-  execFileSync(psql,[...dbArgs,'-f','supabase/migrations/20261005100000_padelleria_contents.sql'],{env,stdio:'inherit'});
+  execFileSync(psql,[...dbArgs,'-f',partners?'supabase/migrations/20261006100000_movi_partners.sql':'supabase/migrations/20261005100000_padelleria_contents.sql'],{env,stdio:'inherit'});
   console.log('Applied only editorial migration locally; no unrelated migrations replayed.');process.exit(0);
 }
-if(mode==='sql-test'){execFileSync(psql,[...dbArgs,'-f','supabase/tests/padelleria_contents.sql'],{env,stdio:'inherit'});process.exit(0);}
-if(mode==='fixtures'||mode==='api-test'){
-  const child=spawn(process.execPath,[mode==='fixtures'?'supabase/tests/fixtures/padelleria.local.mjs':'supabase/tests/padelleria_http_acceptance.mjs'],{env,stdio:'inherit'});child.on('exit',code=>process.exit(code??1));
+if(mode==='sql-test'||mode==='partners-sql-test'){execFileSync(psql,[...dbArgs,'-f',mode==='partners-sql-test'?'supabase/tests/partners.sql':'supabase/tests/padelleria_contents.sql'],{env,stdio:'inherit'});process.exit(0);}
+if(['fixtures','api-test','partners-fixtures','partners-api-test'].includes(mode)){
+  const child=spawn(process.execPath,[mode==='partners-fixtures'?'supabase/tests/fixtures/partners.local.mjs':mode==='partners-api-test'?'supabase/tests/partners_http_acceptance.mjs':mode==='fixtures'?'supabase/tests/fixtures/padelleria.local.mjs':'supabase/tests/padelleria_http_acceptance.mjs'],{env,stdio:'inherit'});child.on('exit',code=>process.exit(code??1));
 }else{
   // Build-generated PWA files are restored to their exact pre-build bytes, not to git HEAD.
   const generated=name=>/^(sw\.js|workbox-.*\.js(?:\.map)?|worker-.*\.js(?:\.map)?)$/.test(name);
