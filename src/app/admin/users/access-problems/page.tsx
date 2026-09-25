@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
 type Item = { source: string; id: string; status: string; reason: string; name?: string | null; phone?: string | null; auth_email?: string | null; profile_email?: string | null; created_at: string; can_resolve: boolean; can_cancel: boolean; can_retry: boolean; technical?: Record<string, string> };
@@ -10,7 +9,7 @@ export default function AccessProblemsPage() {
   const load = useCallback(async () => { const response = await fetch("/api/admin/users/access-problems", { cache: "no-store" }); const json = await response.json(); if (!response.ok) throw new Error(json.error); setItems(json.data ?? []); }, []);
   useEffect(() => { load().catch((e) => setError(e.message)); }, [load]);
   async function act(item: Item, action: string) { setBusy(item.id); setError(""); try { const response = await fetch("/api/admin/users/access-problems", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: item.id, action }) }); const json = await response.json(); if (!response.ok) throw new Error(json.error); await load(); } catch (e) { setError(e instanceof Error ? e.message : "Operazione non riuscita"); } finally { setBusy(""); } }
-  return <main style={{ maxWidth: 980, margin: "0 auto", padding: 20 }}><Link href="/admin">← Dashboard admin</Link><h1>Problemi di accesso</h1><p>Richieste di assistenza e accessi verificati che richiedono un intervento.</p>{error && <p role="alert" style={{ color: "#b91c1c" }}>{error}</p>}
+  return <main style={{ maxWidth: 980, margin: "0 auto", padding: 20 }}><h1>Problemi di accesso</h1><p>Richieste di assistenza e accessi verificati che richiedono un intervento.</p>{error && <p role="alert" style={{ color: "#b91c1c" }}>{error}</p>}
     <div style={{ display: "grid", gap: 14 }}>{items.map((item) => <article key={`${item.source}:${item.id}`} style={{ border: "1px solid #e2e8f0", borderRadius: 16, padding: 16, background: "white" }}>
       <strong style={{ fontSize: 18 }}>{item.name || "Profilo da identificare"}</strong><p><b>Problema:</b> {item.reason}</p>
       {item.phone && <p><b>Telefono:</b> {item.phone}</p>}{item.auth_email && <p><b>Email usata:</b> {item.auth_email}</p>}{item.profile_email && <p><b>Email profilo MOVI:</b> {item.profile_email}</p>}

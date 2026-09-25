@@ -1,9 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import {
-  ArrowLeft,
   AlertTriangle,
   BarChart3,
   CheckCircle2,
@@ -225,12 +223,7 @@ async function saveSupplierPayment(order: any, paid: boolean) {
       <div style={shellStyle}>
         <header style={headerStyle}>
           <div>
-            <Link href="/admin/store-orders" style={backLink}>
-              <ArrowLeft className="w-4 h-4" />
-              Torna a Ordini
-            </Link>
-
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 12 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <BarChart3 className="w-7 h-7" style={{ color: "#34d399" }} />
               <h1 style={{ fontSize: 30, fontWeight: 950, letterSpacing: -0.9 }}>
                 Economica Store
@@ -843,16 +836,6 @@ const shellStyle: React.CSSProperties = {
 
 const headerStyle: React.CSSProperties = {
   marginBottom: 18,
-};
-
-const backLink: React.CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  gap: 8,
-  color: "rgba(255,255,255,0.68)",
-  textDecoration: "none",
-  fontSize: 13,
-  fontWeight: 850,
 };
 
 const cardStyle: React.CSSProperties = {

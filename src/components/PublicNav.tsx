@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Settings } from "lucide-react";
+import { Settings, UserRound } from "lucide-react";
 
 export default function PublicNav() {
   const [adminAuthed, setAdminAuthed] = useState(false);
@@ -85,6 +85,10 @@ export default function PublicNav() {
           </span>
         </Link>
 
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+        <Link href="/profilo" title="Il mio profilo" style={{width:40,height:40,borderRadius:999,display:"inline-flex",alignItems:"center",justifyContent:"center",color:"rgba(255,255,255,0.82)",background:"rgba(255,255,255,0.055)",border:"1px solid rgba(255,255,255,0.095)"}}>
+          <UserRound className="w-5 h-5" strokeWidth={1.7}/>
+        </Link>
         <button
           type="button"
           onClick={goAdmin}
@@ -127,6 +131,7 @@ export default function PublicNav() {
             />
           ) : null}
         </button>
+        </div>
       </div>
 
     </nav>

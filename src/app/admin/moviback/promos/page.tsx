@@ -1,10 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import { toast } from "sonner";
 import {
-  ArrowLeft,
   BadgePercent,
   Ban,
   CalendarDays,
@@ -256,12 +254,7 @@ export default function AdminMoviBackPromosPage() {
   return (
     <div style={pageStyle}>
       <div style={{ maxWidth: 1120, margin: "0 auto", color: "white" }}>
-        <Link href="/admin/moviback" style={backLink}>
-          <ArrowLeft className="w-4 h-4" />
-          Torna a MoviBack
-        </Link>
-
-        <header style={{ marginTop: 16, marginBottom: 20 }}>
+        <header style={{ marginBottom: 20 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <BadgePercent className="w-7 h-7" style={{ color: "#f59e0b" }} />
             <h1 style={{ fontSize: 30, fontWeight: 950, letterSpacing: -0.9 }}>
@@ -790,16 +783,6 @@ const dangerBtn: React.CSSProperties = {
   color: "#fca5a5",
   border: "1px solid rgba(239,68,68,0.24)",
   background: "rgba(239,68,68,0.12)",
-};
-
-const backLink: React.CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  gap: 8,
-  color: "rgba(255,255,255,0.68)",
-  textDecoration: "none",
-  fontWeight: 800,
-  fontSize: 13,
 };
 
 const pillStyle: React.CSSProperties = {

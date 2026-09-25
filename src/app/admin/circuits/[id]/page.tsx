@@ -1,10 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import { toast } from "sonner";
 import {
-  ArrowLeft,
   ChevronDown,
   ChevronRight,
   GitBranch,
@@ -66,7 +64,6 @@ export default function AdminCircuitDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const [circuitId, setCircuitId] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [circuit, setCircuit] = useState<CircuitInfo | null>(null);
   const [groups, setGroups] = useState<RankingGroup[]>([]);
@@ -80,8 +77,6 @@ export default function AdminCircuitDetailPage({
     async function init() {
       const { id } = await params;
       if (cancelled) return;
-      setCircuitId(id);
-
       try {
         setLoading(true);
 
@@ -220,22 +215,6 @@ export default function AdminCircuitDetailPage({
         }}
       >
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <Link
-            href="/admin/circuits"
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 8,
-              color: "#475569",
-              textDecoration: "none",
-              fontWeight: 700,
-              width: "fit-content",
-            }}
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Torna ai circuiti
-          </Link>
-
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <GitBranch className="w-6 h-6" style={{ color: "#4f46e5" }} />
             <h1
@@ -256,16 +235,6 @@ export default function AdminCircuitDetailPage({
             </div>
           ) : null}
         </div>
-
-        {!loading && circuitId ? (
-          <Link
-            href="/admin/circuits"
-            className="base44-csv-btn"
-            style={{ textDecoration: "none" }}
-          >
-            Lista circuiti
-          </Link>
-        ) : null}
       </div>
 
       {loading ? (

@@ -1,11 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { useParams } from "next/navigation";
 import { toast } from "sonner";
 import {
-  ArrowLeft,
   BadgePercent,
   Ban,
   CheckCircle2,
@@ -254,12 +252,7 @@ await load();
   return (
     <div style={pageStyle}>
       <div style={{ maxWidth: 1180, margin: "0 auto", color: "white" }}>
-        <Link href="/admin/moviback/users" style={backLink}>
-          <ArrowLeft className="w-4 h-4" />
-          Torna agli utenti
-        </Link>
-
-        <header style={{ marginTop: 16, marginBottom: 18 }}>
+        <header style={{ marginBottom: 18 }}>
           <h1 style={{ fontSize: 30, fontWeight: 950 }}>
             {m.users?.full_name || "Utente MoviBack"}
           </h1>
@@ -911,16 +904,6 @@ const dangerSmallBtn: React.CSSProperties = {
   alignItems: "center",
   justifyContent: "center",
   gap: 8,
-};
-
-const backLink: React.CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  gap: 8,
-  color: "rgba(255,255,255,0.68)",
-  textDecoration: "none",
-  fontWeight: 800,
-  fontSize: 13,
 };
 
 const checkRow: React.CSSProperties = {

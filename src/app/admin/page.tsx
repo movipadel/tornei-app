@@ -92,6 +92,13 @@ const cards = [
     accent: "#fbbf24",
   },
   {
+    title: "Giocatori",
+    description: "Anagrafica, livello e preferenze di gioco.",
+    href: "/admin/players",
+    icon: UsersRound,
+    accent: "#14b8a6",
+  },
+  {
     title: "Gestione staff",
     description: "Crea e gestisci accessi admin e staff.",
     href: "/admin/users",
@@ -99,8 +106,8 @@ const cards = [
     accent: "#38bdf8",
   },
   {
-    title: "Duplicati utenti",
-    description: "Rivedi e unisci profili duplicati con preview transazionale.",
+    title: "Duplicati e identità da verificare",
+    description: "Risolvi duplicati, conflitti e collegamenti incerti.",
     href: "/admin/users/duplicates",
     icon: GitMerge,
     accent: "#8b5cf6",

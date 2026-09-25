@@ -19,9 +19,11 @@ const publicBefore=(await req('/api/circuits/circuito-identita-demo')).json;
 const adminBefore=(await req('/api/admin/circuits/efee3000-0000-4000-8000-000000000001/rankings')).json;
 const pid='efee2000-0000-4000-8000-000000000001',uid='eded6000-0000-4000-8000-000000000001';
 const existing=(await db.from('player_identities').select('*').eq('id',pid).single()).data;
+const profilePlayer=(await db.from('player_identities').select('id').eq('account_user_id',uid).maybeSingle()).data;
 const snapshot=(await db.from('circuit_results').select('*').eq('source_tournament_id','efee4000-0000-4000-8000-000000000001')).data;
 let ambiguousRow;
 try{
+ if(profilePlayer&&profilePlayer.id!==pid)assert.ifError((await db.from('player_identities').update({account_user_id:null}).eq('id',profilePlayer.id)).error);
  assert.ifError((await db.from('player_identities').update({account_user_id:uid}).eq('id',pid)).error);
  const data=(await req('/api/user/activities?limit=50',undefined,user)).json.data;
  assert.equal(data.filter(a=>a.title==='Circuito Identità Demo').length,2);ok();
@@ -39,7 +41,7 @@ try{
  assert.deepEqual(adminAfter.data.ranking_groups.map(g=>g.ranking),adminBefore.data.ranking_groups.map(g=>g.ranking));ok();
  const inserted=await db.from('circuit_results').insert({circuit_id:'efee3000-0000-4000-8000-000000000001',ranking_group_id:'efee3100-0000-4000-8000-000000000001',tournament_name:'HTTP ambiguity',tournament_type:'Coppie fisse',player_key:'3470005199',player_name:existing.full_name,points:1,player_identity_id:'efee2000-0000-4000-8000-000000000002'}).select('id').single();assert.ifError(inserted.error);ambiguousRow=inserted.data.id;
  const ambiguous=(await req('/api/user/activities?limit=50',undefined,user)).json.data.find(a=>a.classification_id==='efee3100-0000-4000-8000-000000000001');assert.equal(ambiguous.primary_meta,'Classifica personale da verificare');ok();
-}finally{if(ambiguousRow)assert.ifError((await db.from('circuit_results').delete().eq('id',ambiguousRow)).error);assert.ifError((await db.from('player_identities').update({account_user_id:existing.account_user_id}).eq('id',pid)).error);}
+}finally{if(ambiguousRow)assert.ifError((await db.from('circuit_results').delete().eq('id',ambiguousRow)).error);assert.ifError((await db.from('player_identities').update({account_user_id:existing.account_user_id}).eq('id',pid)).error);if(profilePlayer&&profilePlayer.id!==pid)assert.ifError((await db.from('player_identities').update({account_user_id:uid}).eq('id',profilePlayer.id)).error);}
 // A stale command may not mutate an identity. No permanent fixture change here.
 assert.equal((await req('/api/admin/player-identities',{action:'archive',data:{player_id:pid,updated_at:'2000-01-01T00:00:00Z'}})).status,409);ok();
 for(const path of ['/api/tournaments','/api/monday-league','/api/user/me','/api/moviback/me','/api/store/products','/api/user/communications']){assert.equal((await req(path,undefined,user)).status,200);ok();}

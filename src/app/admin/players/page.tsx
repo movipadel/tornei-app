@@ -1,0 +1,18 @@
+'use client';
+import {FormEvent,useState} from 'react';
+import Link from 'next/link';
+import s from './players.module.css';
+type Player={id:string;full_name:string;normalized_phone:string;gender:string|null;account_user_id:string|null;status:string;merged_into_player_id:string|null;descriptive_level:string|null;movi_level:number|null;movi_level_label:string|null};
+const levels:Record<string,string>={principiante:'Principiante',intermedio:'Intermedio',avanzato:'Avanzato'};
+const states:Record<string,string>={active:'Attivo',archived:'Archiviato',merged:'Fuso'};
+export default function PlayersPage(){
+ const [q,setQ]=useState(''),[status,setStatus]=useState('active'),[account,setAccount]=useState('all'),[items,setItems]=useState<Player[]>([]),[searched,setSearched]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState('');
+ async function search(event?:FormEvent){event?.preventDefault();if(!q.trim())return;setBusy(true);setError('');try{const params=new URLSearchParams({q:q.trim(),status,account});const response=await fetch(`/api/admin/players?${params}`,{cache:'no-store'});const json=await response.json();if(!response.ok)throw Error(json.error);setItems(json.data);setSearched(true);}catch(e){setError((e as Error).message);}finally{setBusy(false);}}
+ return <main className={s.page}><header className={s.header}><div><h1>Giocatori</h1><p className={s.muted}>Cerca e aggiorna i dati dei giocatori MOVI.</p></div><Link className={s.secondary} href="/admin/users/duplicates">Duplicati e identità da verificare</Link></header>
+  <form className={s.search} onSubmit={search}><label className={s.field}>Nome o telefono<input autoFocus value={q} onChange={e=>setQ(e.target.value)} maxLength={100} placeholder="Es. Mario Rossi o +39…"/></label><label className={s.field}>Stato<select value={status} onChange={e=>setStatus(e.target.value)}><option value="active">Attivi</option><option value="archived">Archiviati</option><option value="merged">Fusi</option><option value="all">Tutti</option></select></label><label className={s.field}>Account<select value={account} onChange={e=>setAccount(e.target.value)}><option value="all">Tutti</option><option value="linked">Con account</option><option value="unlinked">Senza account</option></select></label><button className={s.primary} disabled={busy||!q.trim()}>{busy?'Ricerca…':'Cerca'}</button></form>
+  {error&&<div className={s.error} role="alert">{error}</div>}
+  {!searched&&!error&&<div className={s.empty}>Inserisci un nome o un telefono. Il registro non viene caricato automaticamente.</div>}
+  {searched&&!items.length&&!error&&<div className={s.empty}>Nessun giocatore trovato con questi filtri.</div>}
+  <div className={s.results}>{items.map(player=><article className={s.card} key={player.id}><div><h2>{player.full_name}</h2><p>{player.normalized_phone} · {player.gender==='M'?'Uomo':player.gender==='F'?'Donna':'Genere non indicato'}</p><div className={s.facts}><span className={`${s.badge} ${s[player.status]}`}>{states[player.status]}</span><span className={s.badge}>{player.account_user_id?'Account collegato':'Senza account'}</span><span className={s.badge}>Livello dichiarato: {player.descriptive_level?levels[player.descriptive_level]:'Non indicato'}</span>{player.movi_level!==null&&<span className={s.badge}>MOVI {player.movi_level.toFixed(1)} · {player.movi_level_label}</span>}</div></div><Link className={s.primary} href={`/admin/players/${player.status==='merged'&&player.merged_into_player_id?player.merged_into_player_id:player.id}`}>{player.status==='merged'?'Apri identità mantenuta':'Apri giocatore'}</Link></article>)}</div>
+ </main>;
+}

@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 import {
-  ArrowLeft,
   BadgeCheck,
   Loader2,
   Search,
@@ -110,12 +109,7 @@ export default function AdminMoviBackUsersPage() {
   return (
     <div style={pageStyle}>
       <div style={{ maxWidth: 1180, margin: "0 auto", color: "white" }}>
-        <Link href="/admin/moviback" style={backLink}>
-          <ArrowLeft className="w-4 h-4" />
-          Torna a MoviBack
-        </Link>
-
-        <header style={{ marginTop: 16, marginBottom: 20 }}>
+        <header style={{ marginBottom: 20 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <Users className="w-7 h-7" style={{ color: "#f59e0b" }} />
             <h1 style={{ fontSize: 30, fontWeight: 950, letterSpacing: -0.9 }}>
@@ -306,16 +300,6 @@ const muted: React.CSSProperties = {
   color: "rgba(255,255,255,0.58)",
   fontSize: 13,
   fontWeight: 650,
-};
-
-const backLink: React.CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  gap: 8,
-  color: "rgba(255,255,255,0.68)",
-  textDecoration: "none",
-  fontWeight: 800,
-  fontSize: 13,
 };
 
 const searchBox: React.CSSProperties = {

@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import PlayerIdentityAdmin from "@/components/PlayerIdentityAdmin";
 import { CheckCircle2, ChevronDown, RefreshCw, ShieldAlert, UserCheck } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -49,7 +48,7 @@ export default function DuplicateUsersPage() {
   const [accountFocus, setAccountFocus] = useState<AccountFocus | null>(null);
   const [sportingResumeToken, setSportingResumeToken] = useState(0);
   const reviewAccounts = useCallback((accountIds: string[], keepId: string) => setAccountFocus({accountIds, keepId, token: Date.now()}), []);
-  return <main style={S.shell}><header><Link href="/admin/users" style={{fontWeight:800}}>← Utenti</Link><h1>Duplicati e identità da verificare</h1><p style={S.lead}>Controlla i casi in attesa, confronta le persone e scegli come procedere.</p></header><PlayerIdentityAdmin accountCount={accountCount} resumeToken={sportingResumeToken} onReviewAccounts={reviewAccounts} accountQueue={<AccountDuplicates filter="open" focus={accountFocus} onResolved={()=>setSportingResumeToken(value=>value+1)} onCount={setAccountCount}/>} accountHistory={<AccountDuplicates filter="resolved"/>}/></main>;
+  return <main style={S.shell}><header><h1>Duplicati e identità da verificare</h1><p style={S.lead}>Controlla i casi in attesa, confronta le persone e scegli come procedere.</p></header><PlayerIdentityAdmin accountCount={accountCount} resumeToken={sportingResumeToken} onReviewAccounts={reviewAccounts} accountQueue={<AccountDuplicates filter="open" focus={accountFocus} onResolved={()=>setSportingResumeToken(value=>value+1)} onCount={setAccountCount}/>} accountHistory={<AccountDuplicates filter="resolved"/>}/></main>;
 }
 function AccountDuplicates({filter,onCount,focus,onResolved}:{filter:"open"|"resolved";onCount?:(count:number)=>void;focus?:AccountFocus|null;onResolved?:()=>void}) {
   const [groups, setGroups] = useState<Group[]>([]);
