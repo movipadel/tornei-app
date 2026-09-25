@@ -22,6 +22,13 @@ import {
 
 const cards = [
   {
+    title: "Richieste Gioca / Allenati",
+    description: "Gestisci richieste di partite e allenamenti.",
+    href: "/admin/requests",
+    icon: CalendarDays,
+    accent: "#6366f1",
+  },
+  {
     title: "Partner MOVI",
     description: "Gestisci partner e vantaggi per la community MOVI.",
     href: "/admin/partners",

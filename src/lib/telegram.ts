@@ -1,5 +1,5 @@
 // src/lib/telegram.ts
-export async function sendTelegramMessage(text: string) {
+export async function sendTelegramMessage(text: string, options?: { safe?: boolean }) {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   const chatId = process.env.TELEGRAM_CHAT_ID;
 
@@ -11,6 +11,7 @@ export async function sendTelegramMessage(text: string) {
   const url = `https://api.telegram.org/bot${token}/sendMessage`;
 
   const res = await fetch(url, {
+    ...(options?.safe ? { signal: AbortSignal.timeout(8000) } : {}),
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -23,7 +24,7 @@ export async function sendTelegramMessage(text: string) {
   const json = await res.json().catch(() => ({}));
 
   if (!res.ok || !json?.ok) {
-    console.warn("Telegram sendMessage failed:", json);
+    console.warn("Telegram sendMessage failed:", options?.safe ? "provider_error" : json);
     return { ok: false, error: json };
   }
 

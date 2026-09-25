@@ -1,0 +1,31 @@
+export const requestClubs=['Revello','Saluzzo','Manta','Costigliole','Centallo'] as const;
+export const statusLabels={received:'Richiesta ricevuta',searching:'MOVI sta cercando',found:'Trovato',completed:'Conclusa',cancelled:'Annullata'};
+export type RequestStatus=keyof typeof statusLabels;
+export const transitions:Record<RequestStatus,RequestStatus[]>={received:['searching','cancelled'],searching:['found','cancelled'],found:['completed','cancelled'],completed:[],cancelled:[]};
+export const windows={morning:'Mattina',lunch:'Pausa pranzo',afternoon:'Pomeriggio',evening:'Sera 18:30–23:00',any:'Indifferente'};
+export const levels={principiante:'Principiante',intermedio:'Intermedio',avanzato:'Avanzato',unknown:'Non saprei'};
+export const matchTypes={male:'Maschile',female:'Femminile',mixed:'Misto',any:'Indifferente'};
+export const trainingTypes={individual:'Lezione individuale',pair:'Lezione di coppia',group:'Gruppo di allenamento',advice:'Non so, consigliatemi voi'};
+export const goals={learn:'Imparare',technique:'Migliorare tecnica',match:'Preparazione partita/torneo',regular:'Fare attività con continuità',other:'Altro'};
+export type RequestInput={request_type:'gioca'|'allenati';clubs:string[];date_mode:'today'|'tomorrow'|'specific'|'flexible';requested_date:string|null;time_window:keyof typeof windows;preferred_time_text:string;level:keyof typeof levels;match_type:keyof typeof matchTypes|null;has_partner:boolean|null;training_type:keyof typeof trainingTypes|null;training_goal:keyof typeof goals|null;notes:string;client_request_id:string};
+export type RequestRow=RequestInput&{id:string;user_id:string;status:RequestStatus;created_at:string;updated_at:string;cancelled_at:string|null;found_at:string|null;completed_at:string|null;admin_notes?:string;telegram_state?:string;telegram_notified_at?:string|null;telegram_attempted_at?:string|null;telegram_error?:string|null;user?:{full_name:string;phone:string}|null};
+export const romeDay=(now=new Date())=>new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Rome',year:'numeric',month:'2-digit',day:'2-digit'}).format(now);
+export function parseRequest(value:unknown,now=new Date()):RequestInput{
+ if(!value||typeof value!=='object'||Array.isArray(value))throw new Error('Dati non validi');const b=value as Record<string,unknown>;
+ if('user_id' in b||'status' in b||'admin_notes' in b)throw new Error('Campi riservati non consentiti');
+ const pick=(k:string,allowed:string[])=>{if(typeof b[k]!=='string'||!allowed.includes(b[k] as string))throw new Error(`Campo ${k} non valido`);return b[k] as string;};
+ const text=(k:string,max:number)=>{if(typeof b[k]!=='string'||(b[k] as string).length>max)throw new Error(`Campo ${k} non valido`);return (b[k] as string).trim();};
+ const request_type=pick('request_type',['gioca','allenati']) as RequestInput['request_type'];
+ if(!Array.isArray(b.clubs)||b.clubs.length>5||b.clubs.some(c=>!requestClubs.includes(c))||new Set(b.clubs).size!==b.clubs.length)throw new Error('Selezione club non valida');
+ const date_mode=pick('date_mode',['today','tomorrow','specific','flexible']) as RequestInput['date_mode'];let requested_date:string|null=null;
+ const today=romeDay(now);
+ if(date_mode==='today')requested_date=today;
+ if(date_mode==='tomorrow'){const d=new Date(`${today}T12:00:00Z`);d.setUTCDate(d.getUTCDate()+1);requested_date=d.toISOString().slice(0,10);}
+ if(date_mode==='specific'){const d=b.requested_date;if(typeof d!=='string'||!/^\d{4}-\d\d-\d\d$/.test(d)||!Number.isFinite(Date.parse(`${d}T12:00:00Z`))||new Date(`${d}T12:00:00Z`).toISOString().slice(0,10)!==d||d<today)throw new Error('Scegli una data valida, da oggi in poi');requested_date=d;}
+ if(typeof b.client_request_id!=='string'||! /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(b.client_request_id))throw new Error('Identificativo invio richiesto');
+ if(request_type==='gioca'&&typeof b.has_partner!=='boolean')throw new Error('Indica se hai un compagno');
+ return {request_type,clubs:b.clubs,date_mode,requested_date,time_window:pick('time_window',Object.keys(windows)) as RequestInput['time_window'],preferred_time_text:text('preferred_time_text',100),level:pick('level',Object.keys(levels)) as RequestInput['level'],match_type:request_type==='gioca'?pick('match_type',Object.keys(matchTypes)) as RequestInput['match_type']:null,has_partner:request_type==='gioca'?b.has_partner as boolean:null,training_type:request_type==='allenati'?pick('training_type',Object.keys(trainingTypes)) as RequestInput['training_type']:null,training_goal:request_type==='allenati'?pick('training_goal',Object.keys(goals)) as RequestInput['training_goal']:null,notes:text('notes',1000),client_request_id:b.client_request_id};
+}
+export function requestSummary(r:RequestInput){return `${r.request_type==='gioca'?'Gioca':'Allenati'} · ${r.clubs.join(', ')||'Club indifferente'} · ${r.requested_date??'Sono flessibile'} · ${windows[r.time_window]}`;}
+export function userRequestDTO(r:RequestRow){return {id:r.id,activity_type:r.request_type,status:r.status,status_label:statusLabels[r.status],created_at:r.created_at,updated_at:r.updated_at,summary:requestSummary(r),can_cancel:['received','searching'].includes(r.status),section:['completed','cancelled'].includes(r.status)?'history':r.status==='found'?'upcoming':'pending',clubs:r.clubs,date_mode:r.date_mode,requested_date:r.requested_date,time_window:r.time_window,preferred_time_text:r.preferred_time_text,level:r.level,match_type:r.match_type,has_partner:r.has_partner,training_type:r.training_type,training_goal:r.training_goal,notes:r.notes};}
+export function requestTelegramText(r:RequestRow,name:string,phone:string){return [`MOVI — ${r.request_type==='gioca'?'Gioca':'Allenati'}`,`Utente: ${name}`,`Telefono: ${phone||'—'}`,`Club: ${r.clubs.join(', ')||'Indifferente'}`,`Data: ${r.requested_date??'Sono flessibile'} (${r.date_mode})`,`Fascia: ${windows[r.time_window]}`,`Orario preferito: ${r.preferred_time_text||'—'}`,`Livello: ${levels[r.level]}`,r.request_type==='gioca'?`Partita: ${matchTypes[r.match_type!]} · ${r.has_partner?'Ha un compagno':'Cerca anche il compagno'}`:`Allenamento: ${trainingTypes[r.training_type!]} · Obiettivo: ${goals[r.training_goal!]}`,`Note: ${r.notes||'—'}`,`ID: ${r.id}`,'Coda autorevole: Richieste Gioca / Allenati'].join('\n').slice(0,3800);}
