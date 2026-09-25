@@ -50,6 +50,19 @@ export default function TorneiPage() {
 
   const listTimerRef = useRef<number | null>(null);
   const listAbortRef = useRef<AbortController | null>(null);
+  const activityLinkHandled = useRef(false);
+
+  useEffect(() => {
+    if (activityLinkHandled.current || loading) return;
+    const requestedId = new URLSearchParams(window.location.search).get('tournament');
+    if (!requestedId || !tournaments.some(t => t.id === requestedId)) return;
+    const card = document.getElementById(`tournament-${requestedId}`);
+    if (card) {
+      card.scrollIntoView({ block: 'center' });
+      card.focus({ preventScroll: true });
+      activityLinkHandled.current = true;
+    }
+  }, [tournaments, loading]);
 
   async function loadAll(opts?: { silent?: boolean }) {
     const silent = Boolean(opts?.silent);
@@ -337,8 +350,8 @@ export default function TorneiPage() {
               const allowed = canUserJoinTournament(t);
 
               return (
+                <div key={t.id} id={`tournament-${t.id}`} tabIndex={-1}>
                 <TournamentCard
-                  key={t.id}
                   tournament={t}
                   hasLive={!!t.hasLive}
                   status={status}
@@ -358,6 +371,7 @@ export default function TorneiPage() {
                   }}
                   onCancel={() => cancelRegistrationByTournament(t.id)}
                 />
+                </div>
               );
             })}
           </div>

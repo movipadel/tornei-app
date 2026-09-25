@@ -1,3 +1,4 @@
+import { buildPublicCircuitRanking } from '@/lib/circuitPublicRanking';
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { createRuntimePerf } from "@/lib/runtimePerf";
 
@@ -153,42 +154,7 @@ export async function GET(
     for (const group of groups ?? []) {
       const results = resultsByGroupId.get(group.id) ?? [];
 
-      const byPlayer = new Map<
-        string,
-        {
-          player_name: string;
-          total_points: number;
-          events_played: number;
-        }
-      >();
-
-      for (const row of results ?? []) {
-        const playerName = String(row.player_name ?? "").trim();
-        if (!playerName) continue;
-
-        const current = byPlayer.get(playerName) ?? {
-          player_name: playerName,
-          total_points: 0,
-          events_played: 0,
-        };
-
-        current.total_points += Number(row.points ?? 0);
-        current.events_played += 1;
-
-        byPlayer.set(playerName, current);
-      }
-
-      const ranking: PublicRankingRow[] = Array.from(byPlayer.values())
-        .sort((a, b) => {
-          if (b.total_points !== a.total_points) return b.total_points - a.total_points;
-          return a.player_name.localeCompare(b.player_name, "it");
-        })
-        .map((row, index) => ({
-          position: index + 1,
-          player_name: row.player_name,
-          total_points: row.total_points,
-          events_played: row.events_played,
-        }));
+      const ranking: PublicRankingRow[] = buildPublicCircuitRanking(results);
 
       const stageMap = new Map<string, PublicStage>();
 

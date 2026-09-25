@@ -2,7 +2,7 @@ import { execFileSync, spawn } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync, readdirSync, unlinkSync } from 'node:fs';
 import { resolve } from 'node:path';
 const mode=process.argv[2];
-if(!['requests-migrate','requests-sql-test','requests-fixtures','requests-api-test','partners-migrate','partners-sql-test','partners-fixtures','partners-api-test','check','migrate','sql-test','fixtures','api-test','dev','build','start'].includes(mode))throw new Error('Mode: requests-migrate|requests-sql-test|requests-fixtures|requests-api-test|check|migrate|sql-test|fixtures|api-test|partners-migrate|partners-sql-test|partners-fixtures|partners-api-test|dev|build|start');
+if(!['activities-migrate','activities-fixtures','activities-api-test','activities-sql-test','requests-migrate','requests-sql-test','requests-fixtures','requests-api-test','partners-migrate','partners-sql-test','partners-fixtures','partners-api-test','check','migrate','sql-test','fixtures','api-test','dev','build','start'].includes(mode))throw new Error('Mode: requests-migrate|requests-sql-test|requests-fixtures|requests-api-test|check|migrate|sql-test|fixtures|api-test|partners-migrate|partners-sql-test|partners-fixtures|partners-api-test|dev|build|start');
 if(existsSync('supabase/.temp/project-ref'))throw new Error('STOP: linked project');
 const status=JSON.parse(execFileSync(process.execPath,['node_modules/supabase/dist/supabase.js','status','-o','json'],{encoding:'utf8'}));
 if(status.API_URL!=='http://127.0.0.1:55021'||status.DB_URL!=='postgresql://postgres:postgres@127.0.0.1:55022/postgres'||status.STUDIO_URL!=='http://127.0.0.1:55023'||status.MAILPIT_URL!=='http://127.0.0.1:55024'||status.linked_project)throw new Error('STOP: unexpected Supabase targets');
@@ -18,6 +18,8 @@ console.log('Verified LOCAL ONLY: API 55021 / DB 55022 / Studio 55023 / Mailpit 
 const psql='C:/Program Files/PostgreSQL/17/bin/psql.exe';
 const dbArgs=['-h','127.0.0.1','-p','55022','-U','postgres','-d','postgres','-v','ON_ERROR_STOP=1'];
 if(mode==='check')process.exit(0);
+if(mode==='activities-migrate'||mode==='activities-sql-test'){execFileSync(psql,[...dbArgs,'-f',mode==='activities-migrate'?'supabase/migrations/20261008100000_movi_activity_read_scope.sql':'supabase/tests/activities.sql'],{env,stdio:'inherit'});process.exit(0);}
+if(mode==='activities-fixtures'||mode==='activities-api-test'){execFileSync(process.execPath,[mode==='activities-fixtures'?'supabase/tests/fixtures/activities.local.mjs':'supabase/tests/activities_http_acceptance.mjs'],{env,stdio:'inherit'});process.exit(0);}
 if(mode==='requests-migrate'){
  const found=execFileSync(psql,[...dbArgs,'-At','-c',"select to_regclass('public.movi_requests') is not null"],{env,encoding:'utf8'}).trim();if(found==='t')throw new Error('Requests schema already exists');
  execFileSync(psql,[...dbArgs,'-f','supabase/migrations/20261007100000_movi_requests.sql'],{env,stdio:'inherit'});process.exit(0);

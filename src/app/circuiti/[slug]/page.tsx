@@ -405,7 +405,8 @@ export default function CircuitPage() {
         });
 
         if (groups.length > 0) {
-          setSelectedGroupId(groups[0].id);
+          const requestedGroup = new URLSearchParams(window.location.search).get('group');
+          setSelectedGroupId(groups.find((g: { id: string }) => g.id === requestedGroup)?.id ?? groups[0].id);
         } else {
           setSelectedGroupId(null);
         }
