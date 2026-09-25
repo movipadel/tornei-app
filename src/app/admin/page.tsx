@@ -22,6 +22,13 @@ import {
 
 const cards = [
   {
+    title: "Contenuti Padelleria",
+    description: "Gestisci Succede ed È successo in Padelleria.",
+    href: "/admin/padelleria",
+    icon: CalendarDays,
+    accent: "#6366f1",
+  },
+  {
     title: "Tornei",
     description: "Crea, modifica, genera e gestisci tornei.",
     href: "/admin/tournaments",
