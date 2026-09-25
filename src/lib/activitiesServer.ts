@@ -1,4 +1,5 @@
 import 'server-only';
+import {ownsCircuitResult} from '@/lib/playerIdentity';
 import {supabaseAdmin} from '@/lib/supabaseAdmin';
 import {buildPublicCircuitRanking} from '@/lib/circuitPublicRanking';
 import {getPublicLeagueSnapshot} from '@/lib/monday-league/public-read-model';
@@ -15,11 +16,14 @@ export async function composeActivities(userId:string):Promise<Activity[]>{
  const sb=supabaseAdmin(),today=romeDay(),now=new Date().toISOString();
  const scope=await sb.rpc('movi_activity_identity_scope',{p_user_id:userId});if(scope.error)throw new Error('Identity unavailable');
  const ids=scope.data.user_ids as string[],keys=scope.data.player_keys as string[];
+ const linked=checked(await sb.from('player_identities').select('id').in('account_user_id',ids).neq('status','merged').limit(CAP+1));
+ const playerIds=linked.map(p=>p.id);
+ const filters=[keys.length?`and(player_identity_id.is.null,player_key.in.(${keys.join(',')}))`:null,playerIds.length?`player_identity_id.in.(${playerIds.join(',')})`:null].filter(Boolean).join(',');
  const [rq,regs,rosters,ownResults]=await Promise.all([
   sb.from('movi_requests').select('*').in('user_id',ids).order('created_at',{ascending:false}).limit(CAP+1),
   sb.rpc('movi_activity_registrations',{p_user_id:userId}),
   sb.from('league_team_players').select('team_id,is_active,joined_at,left_at').in('user_id',ids).limit(CAP+1),
-  keys.length?sb.from('circuit_results').select('ranking_group_id,player_key,player_name').in('player_key',keys).limit(CAP+1):Promise.resolve({data:[],error:null}),
+  filters?sb.from('circuit_results').select('ranking_group_id,player_key,player_name,player_identity_id').or(filters).limit(CAP+1):Promise.resolve({data:[],error:null}),
  ]);
  const requests=checked(rq) as RequestRow[],registrations=checked(regs) as Registration[],members=checked(rosters),personalResults=checked(ownResults);
  const items:Activity[]=requests.map(r=>{const dto=userRequestDTO(r);return {...base(r.request_type,r.id),tab:['completed','cancelled'].includes(r.status)?'history':'upcoming',title:r.request_type==='gioca'?'Cerco una partita':trainingTypes[r.training_type!],subtitle:dto.summary,status:r.status,status_label:dto.status_label,date:r.requested_date,club:r.clubs.join(', ')||'Indifferente',level:r.level,primary_meta:r.request_type==='gioca'?`${matchTypes[r.match_type!]} · ${r.has_partner?'Hai già un compagno':'Cerchi anche il compagno'}`:goals[r.training_goal!],secondary_meta:r.preferred_time_text,cta_label:'Vedi richiesta',cta_href:`/le-mie-attivita/richiesta/${r.id}`,can_cancel:r.user_id===userId&&dto.can_cancel,sort_at:['completed','cancelled'].includes(r.status)?r.completed_at??r.cancelled_at??r.updated_at:r.requested_date??'9999'};});
@@ -62,14 +66,14 @@ export async function composeActivities(userId:string):Promise<Activity[]>{
   const cids=[...new Set(groups.map(g=>g.circuit_id))];
   const [cs,rs,ts]=await Promise.all([
    sb.from('circuits').select('id,name,slug,status').in('id',cids).in('status',['active','closed']).limit(CAP+1),
-   sb.from('circuit_results').select('ranking_group_id,player_key,player_name,points').in('ranking_group_id',gids).limit(901),
+   sb.from('circuit_results').select('ranking_group_id,player_key,player_name,points,player_identity_id').in('ranking_group_id',gids).limit(901),
    sb.from('tournaments').select('id,circuit_id,category,level,date,time,closed_at').in('circuit_id',cids).gte('date',today).is('closed_at',null).order('date').order('time').limit(CAP+1),
   ]);
   const circuits=checked(cs),results=checked(rs,900),stages=checked(ts);
   for(const g of groups){const c=circuits.find(c=>c.id===g.circuit_id);if(!c)continue;
-   const rows=results.filter(r=>r.ranking_group_id===g.id),own=rows.filter(r=>keys.includes(r.player_key)),names=[...new Set(own.map(r=>r.player_name.trim()))];
+   const rows=results.filter(r=>r.ranking_group_id===g.id),own=rows.filter(r=>ownsCircuitResult(r,playerIds,keys)),names=[...new Set(own.map(r=>r.player_name.trim()))];
    // A name-only public ranking can conflate homonyms. Never present others' points as personal.
-   const unambiguous=names.length===1&&!rows.some(r=>r.player_name.trim()===names[0]&&!keys.includes(r.player_key));
+   const unambiguous=names.length===1&&!rows.some(r=>r.player_name.trim()===names[0]&&!ownsCircuitResult(r,playerIds,keys));
    const rank=unambiguous?buildPublicCircuitRanking(rows).find(r=>r.player_name===names[0]):undefined;
    const stage=c.status==='active'?stages.find(t=>t.circuit_id===c.id&&norm(t.category)===norm(g.category)&&norm(t.level)===norm(g.level)):undefined;
    items.push({...base('circuit',g.id),tab:c.status==='closed'?'history':'upcoming',title:c.name,subtitle:`${g.category} · ${g.level}`,status:c.status,status_label:c.status==='active'?'Circuito in corso':'Circuito concluso',category:g.category,level:g.level,date:stage?.date??null,primary_meta:rank?`${rank.position}° posto · ${rank.total_points} pt`:'Classifica personale da verificare',secondary_meta:[rank?`${rank.events_played} ${rank.events_played===1?'tappa conteggiata':'tappe conteggiate'}`:'',stage?`Prossima tappa: ${stage.date}`:''].filter(Boolean).join(' · '),position:rank?.position??null,points:rank?.total_points??null,events_played:rank?.events_played??null,classification_id:g.id,sort_at:c.status==='closed'?'0000':stage?.date??'9999',cta_label:'Vedi classifica',cta_href:`/circuiti/${encodeURIComponent(c.slug)}?group=${g.id}`});

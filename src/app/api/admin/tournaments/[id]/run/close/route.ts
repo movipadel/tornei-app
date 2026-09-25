@@ -648,24 +648,10 @@ if (finalMatch && finalMatch.completed_at) {
 
     // 5) scrittura circuito idempotente
     if (tournament.circuit_id && rankingGroupId) {
-      const { error: derr } = await sb
-        .from("circuit_results")
-        .delete()
-        .eq("source_tournament_id", tournamentId);
-
-      if (derr) {
-        return NextResponse.json({ error: derr.message }, { status: 500 });
-      }
-
-      if (circuitRows.length > 0) {
-        const { error: ierr } = await sb
-          .from("circuit_results")
-          .insert(circuitRows);
-
-        if (ierr) {
-          return NextResponse.json({ error: ierr.message }, { status: 500 });
-        }
-      }
+      const { error } = await sb.rpc('player_identity_materialize_circuit', {
+        p_tournament: tournamentId, p_run: runId, p_rows: circuitRows,
+      });
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
     // 6) chiusura run SOLO alla fine

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import PlayerIdentityAdmin from "@/components/PlayerIdentityAdmin";
 import { CheckCircle2, ChevronDown, RefreshCw, ShieldAlert, UserCheck } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -31,6 +32,7 @@ type ResolveResult = {
   blockers?: Array<{ code: string; message: string }>;
   auth_continuation?: { state: string } | null;
 };
+type AccountFocus = { accountIds: string[]; keepId: string; token: number };
 
 async function api(path: string, body?: Record<string, unknown>) {
   const response = await fetch(path, body ? { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) } : { cache: "no-store" });
@@ -43,13 +45,20 @@ const statusLabel = (group: Group) => group.state === "merged" ? "RISOLTO" : gro
 const groupName = (group: Group) => group.members.find((member) => member.profile?.id === group.recommended_user_id)?.profile?.full_name ?? group.members.find((member) => member.profile?.identity_status === "active")?.profile?.full_name ?? "Persona da verificare";
 
 export default function DuplicateUsersPage() {
+  const [accountCount, setAccountCount] = useState(0);
+  const [accountFocus, setAccountFocus] = useState<AccountFocus | null>(null);
+  const [sportingResumeToken, setSportingResumeToken] = useState(0);
+  const reviewAccounts = useCallback((accountIds: string[], keepId: string) => setAccountFocus({accountIds, keepId, token: Date.now()}), []);
+  return <main style={S.shell}><header><Link href="/admin/users" style={{fontWeight:800}}>← Utenti</Link><h1>Duplicati e identità da verificare</h1><p style={S.lead}>Controlla i casi in attesa, confronta le persone e scegli come procedere.</p></header><PlayerIdentityAdmin accountCount={accountCount} resumeToken={sportingResumeToken} onReviewAccounts={reviewAccounts} accountQueue={<AccountDuplicates filter="open" focus={accountFocus} onResolved={()=>setSportingResumeToken(value=>value+1)} onCount={setAccountCount}/>} accountHistory={<AccountDuplicates filter="resolved"/>}/></main>;
+}
+function AccountDuplicates({filter,onCount,focus,onResolved}:{filter:"open"|"resolved";onCount?:(count:number)=>void;focus?:AccountFocus|null;onResolved?:()=>void}) {
   const [groups, setGroups] = useState<Group[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [keepId, setKeepId] = useState("");
   const [preview, setPreview] = useState<Preview | null>(null);
   const [result, setResult] = useState<ResolveResult | null>(null);
   const [choices, setChoices] = useState<Record<string, string>>({});
-  const [filter, setFilter] = useState<"open" | "resolved">("open");
+
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [confirming, setConfirming] = useState(false);
@@ -61,14 +70,25 @@ export default function DuplicateUsersPage() {
   }, []);
   useEffect(() => { void load(); }, [load]);
   const visible = useMemo(() => groups.filter((group) => filter === "resolved" ? group.state === "merged" : group.active_queue && group.active_member_count >= 2), [groups, filter]);
+  useEffect(() => { onCount?.(groups.filter(group => group.active_queue && group.active_member_count >= 2).length); }, [groups, onCount]);
   const selected = useMemo(() => groups.find((group) => group.id === selectedId) ?? null, [groups, selectedId]);
   const activeProfiles = useMemo(() => selected?.members.map((member) => member.profile).filter((profile): profile is Profile => Boolean(profile) && profile!.identity_status === "active") ?? [], [selected]);
 
-  function openGroup(group: Group) {
+  function openGroup(group: Group, preferredKeepId = "") {
     const active = group.members.map((member) => member.profile).filter((profile): profile is Profile => Boolean(profile) && profile!.identity_status === "active");
-    const recommended = active.find((profile) => profile.id === group.recommended_user_id) ?? active.find((profile) => profile.auth_linked) ?? active[0];
+    const recommended = active.find((profile) => profile.id === preferredKeepId) ?? active.find((profile) => profile.id === group.recommended_user_id) ?? active.find((profile) => profile.auth_linked) ?? active[0];
     setSelectedId(group.id); setKeepId(recommended?.id ?? ""); setPreview(null); setResult(null); setChoices({}); setConfirming(false);
   }
+  useEffect(() => {
+    if(filter!=="open"||!focus?.accountIds.length)return;
+    void (async()=>{
+      const fresh=(await api("/api/admin/users/duplicates")).data as Group[] ?? [];
+      setGroups(fresh);
+      const match=fresh.find(group=>focus.accountIds.every(id=>group.members.some(member=>member.profile?.id===id)));
+      if(match){openGroup(match,focus.keepId);requestAnimationFrame(()=>document.getElementById("account-duplicates")?.scrollIntoView({behavior:"smooth",block:"start"}));}
+      else toast.error("I due account non sono ancora disponibili nella coda duplicati.");
+    })();
+  },[focus,filter]);
   async function scan() {
     setBusy(true);
     try { await api("/api/admin/users/duplicates", { action: "scan" }); await load(); toast.success("Elenco aggiornato"); }
@@ -91,21 +111,20 @@ export default function DuplicateUsersPage() {
     try {
       const data = (await api("/api/admin/users/duplicates/resolve", { group_id: selected.id, keep_user_id: keepId, field_choices: choices })).data as ResolveResult;
       setResult(data);
-      if (data.state === "completed") { toast.success("Profili uniti correttamente"); await load(); }
+      if (data.state === "completed") { toast.success("Profili uniti correttamente"); await load(); onResolved?.(); }
       else toast.error(data.blockers?.[0]?.message ?? "Serve una verifica");
     } catch (error) { toast.error(error instanceof Error ? error.message : "Errore"); }
     finally { setBusy(false); }
   }
 
-  return <main style={S.shell}>
-    <header style={S.header}><div><Link href="/admin/users" style={{ fontWeight: 800 }}>← Utenti</Link><h1 style={{ margin: "8px 0 4px", fontSize: 32 }}>Profili duplicati</h1><p style={S.lead}>Qui trovi persone che potrebbero avere più profili MOVI. Scegli quello da mantenere: MOVI conserverà automaticamente punti, tornei, ordini e storico quando è sicuro farlo.</p></div><button className="base44-primary-btn" onClick={scan} disabled={busy}><RefreshCw size={17} /> Aggiorna elenco</button></header>
-    <nav style={S.tabs}><button style={tab(filter === "open")} onClick={() => setFilter("open")}>Da controllare</button><button style={tab(filter === "resolved")} onClick={() => setFilter("resolved")}>Risolti</button></nav>
-    <div className="duplicate-review-grid" style={S.layout}>
-      <section style={S.panel}><b>{loading ? "Caricamento…" : `${visible.length} gruppi`}</b><div style={{ display: "grid", gap: 10, marginTop: 12 }}>
-        {visible.map((group) => <button key={group.id} onClick={() => openGroup(group)} style={{ ...S.groupCard, borderColor: selectedId === group.id ? "#4f46e5" : "#e2e8f0" }}><span style={{ display: "flex", justifyContent: "space-between", gap: 8 }}><strong>{groupName(group)}</strong><Status value={statusLabel(group)} /></span><span>{group.active_member_count} profili</span><small style={S.muted}>{reasonLabel(group.signal_type)}</small>{group.warning_flags.includes("activation_review_required") && <small style={{ color: "#92400e", fontWeight: 800 }}>Nuovo accesso in attesa</small>}</button>)}
+  return <section id={filter === "open" ? "account-duplicates" : undefined} aria-label={filter === "open" ? "Duplicati account" : "Storico account"}>
+    <header style={S.header}><h3>Profili duplicati — account MOVI</h3>{filter === "open" && <button className="base44-primary-btn" onClick={scan} disabled={busy}><RefreshCw size={17}/> Aggiorna duplicati account</button>}</header>
+    <div className="duplicate-review-grid" style={selected ? S.layout : {display:"block"}}>
+      <section style={S.panel}><b>{loading ? "Caricamento…" : `${visible.length} gruppi`}</b><div style={{ display: "grid", gap: 10, marginTop: 12, gridTemplateColumns:selected?"1fr":"repeat(auto-fit,minmax(min(100%,260px),1fr))", ...(selected?{maxHeight:650,overflowY:"auto" as const}:{}) }}>
+        {visible.map((group) => <button key={group.id} onClick={() => openGroup(group)} style={{ ...S.groupCard, borderColor: selectedId === group.id ? "#4f46e5" : "#e2e8f0" }}><span style={{ display: "flex", justifyContent: "space-between", gap: 8 }}><strong>{groupName(group)}</strong><Status value={statusLabel(group)} /></span><span>{group.active_member_count} profili · Esamina</span><small style={S.muted}>{reasonLabel(group.signal_type)}</small>{group.warning_flags.includes("activation_review_required") && <small style={{ color: "#92400e", fontWeight: 800 }}>Nuovo accesso in attesa</small>}</button>)}
         {!loading && !visible.length && <p style={S.muted}>Nessun gruppo in questa sezione.</p>}
       </div></section>
-      <section style={S.panel}>
+      {selected && <section style={S.panel}>
         {!selected && <p style={S.muted}>Seleziona una persona per iniziare.</p>}
         {selected && !result && <div style={{ display: "grid", gap: 20 }}><Step number="1" title="Scegli il profilo da mantenere" /><div style={S.profileGrid}>{activeProfiles.map((profile) => <ProfileCard key={profile.id} profile={profile} recommended={selected.recommended_user_id === profile.id} selected={keepId === profile.id} busy={busy} onChoose={() => void review(profile.id)} />)}</div>
           {selected.members.some((member) => member.profile?.identity_status === "merged") && <div style={S.info}><CheckCircle2 size={18} /> I profili già uniti sono stati esclusi automaticamente. Puoi completare quelli rimasti.</div>}
@@ -117,12 +136,12 @@ export default function DuplicateUsersPage() {
             <details style={S.advanced}><summary><ChevronDown size={16} /> Dettagli tecnici</summary><pre style={S.technical}>{JSON.stringify({ group_id: preview.group_id, requested_group_id: preview.requested_group_id, technical: preview.technical, blockers: preview.blockers }, null, 2)}</pre></details>
           </>}
         </div>}
-        {result?.state === "completed" && <div style={{ display: "grid", gap: 16 }}><div style={S.success}><CheckCircle2 size={22} /><div><h2 style={{ margin: 0 }}>Profili uniti correttamente</h2><div>L’unione è stata verificata.</div></div></div><ul style={S.checks}><li>✓ Profilo principale conservato</li><li>✓ MoviBack conservato</li><li>✓ Tornei conservati</li><li>✓ Ordini conservati</li><li>✓ Nessun dato perso</li></ul>{result.auth_continuation && <div style={S.info}><UserCheck size={18} /> {result.auth_continuation.state === "linked" ? "Nuovo accesso completato" : "Nuovo accesso ancora in attesa di verifica"}</div>}<button className="base44-primary-btn" onClick={() => { setSelectedId(null); setPreview(null); setResult(null); setFilter("open"); }}>TORNA AI DUPLICATI</button><details style={S.advanced}><summary><ChevronDown size={16} /> Dettagli tecnici</summary><pre style={S.technical}>{JSON.stringify(result, null, 2)}</pre></details></div>}
+        {result?.state === "completed" && <div style={{ display: "grid", gap: 16 }}><div style={S.success}><CheckCircle2 size={22} /><div><h2 style={{ margin: 0 }}>Profili uniti correttamente</h2><div>L’unione è stata verificata.</div></div></div><ul style={S.checks}><li>✓ Profilo principale conservato</li><li>✓ MoviBack conservato</li><li>✓ Tornei conservati</li><li>✓ Ordini conservati</li><li>✓ Nessun dato perso</li></ul>{result.auth_continuation && <div style={S.info}><UserCheck size={18} /> {result.auth_continuation.state === "linked" ? "Nuovo accesso completato" : "Nuovo accesso ancora in attesa di verifica"}</div>}<button className="base44-primary-btn" onClick={() => { setSelectedId(null); setPreview(null); setResult(null);  }}>TORNA AI DUPLICATI</button><details style={S.advanced}><summary><ChevronDown size={16} /> Dettagli tecnici</summary><pre style={S.technical}>{JSON.stringify(result, null, 2)}</pre></details></div>}
         {result?.state === "attention" && <div style={S.warning}><ShieldAlert size={20} /><div><b>L’unione si è fermata in sicurezza</b>{result.blockers?.map((blocker) => <p key={blocker.code}>{blocker.message}</p>)}<button className="base44-primary-btn" onClick={() => void review()}>Riapri il riepilogo</button></div></div>}
-      </section>
+      </section>}
     </div>
     {confirming && preview?.keep_profile && <div role="dialog" aria-modal="true" aria-label="Conferma unione" style={S.modalBackdrop}><div style={S.modal}><h2 style={{ marginTop: 0 }}>Confermi l’unione di {preview.profile_count} profili?</h2><p>Il profilo che resterà è <b>{preview.keep_profile.full_name}</b>.</p><div style={{ display: "flex", justifyContent: "flex-end", gap: 9 }}><button style={S.secondary} onClick={() => setConfirming(false)}>Annulla</button><button className="base44-primary-btn" onClick={() => void resolve()} disabled={busy}>{busy ? "Attendi…" : "Conferma unione"}</button></div></div></div>}
-  </main>;
+  </section>;
 }
 
 function Step({ number, title }: { number: string; title: string }) { return <div style={{ display: "flex", alignItems: "center", gap: 10 }}><span style={S.stepNumber}>{number}</span><h2 style={{ margin: 0, fontSize: 21 }}>{title}</h2></div>; }
@@ -138,7 +157,6 @@ function ProfileCard({ profile, recommended, selected, busy, onChoose }: { profi
 function ReviewCard({ preview }: { preview: Preview }) { const totals = preview.totals ?? {}; return <div style={S.reviewCard}><h3 style={{ marginTop: 0 }}>Questo è ciò che resterà</h3><div style={S.reviewGrid}><Info label="Profilo principale" value={preview.keep_profile?.full_name ?? ""} /><Info label="MoviBack" value={`${totals.moviback_points ?? 0} punti conservati`} /><Info label="Tornei" value={`${(totals.tournament_registrations ?? 0) + (totals.tournament_participants ?? 0)} partecipazioni conservate`} /><Info label="Store" value={`${totals.store_orders ?? 0} ordini conservati`} /><Info label="Certificato medico" value={totals.medical_certificates ? "Conservato" : "Non presente"} /><Info label="Monday League" value={preview.blockers?.some((blocker) => blocker.code.includes("league")) ? "Richiede attenzione" : "Nessun conflitto"} /></div>{preview.final_fields && <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid #dbeafe" }}><b>Dati finali</b><div style={{ marginTop: 5 }}>Nome: {preview.final_fields.full_name}<br />Telefono: {preview.final_fields.phone}<br />Email: {preview.final_fields.email}<br />Genere: {preview.final_fields.gender}</div></div>}</div>; }
 function Info({ label, value }: { label: string; value: string }) { return <div style={{ display: "grid", gap: 3 }}><small>{label}</small><b>{value}</b></div>; }
 
-const tab = (active: boolean): React.CSSProperties => ({ border: "1px solid #cbd5e1", borderRadius: 999, padding: "9px 15px", fontWeight: 800, cursor: "pointer", background: active ? "#312e81" : "white", color: active ? "white" : "#334155" });
 const S: Record<string, React.CSSProperties> = {
   shell: { maxWidth: 1240, margin: "0 auto", display: "grid", gap: 18, paddingBottom: 40 }, header: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, flexWrap: "wrap" }, lead: { color: "#475569", margin: 0, maxWidth: 760, lineHeight: 1.55 }, tabs: { display: "flex", gap: 8, flexWrap: "wrap" }, layout: { display: "grid", gridTemplateColumns: "minmax(260px,.75fr) minmax(0,1.65fr)", gap: 16 }, panel: { background: "white", border: "1px solid #e2e8f0", borderRadius: 16, padding: 16, minWidth: 0 }, groupCard: { display: "grid", gap: 5, width: "100%", textAlign: "left", background: "white", border: "2px solid", borderRadius: 13, padding: 12, cursor: "pointer" }, profileGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(245px,1fr))", gap: 12 }, profileCard: { border: "1px solid", borderRadius: 15, padding: 14, display: "grid", gap: 6, minWidth: 0 }, evidence: { display: "grid", gap: 4, padding: "10px 0", fontSize: 13, borderTop: "1px solid #e2e8f0", marginTop: 6 }, recommendedBadge: { background: "#e0e7ff", color: "#3730a3", padding: "4px 8px", borderRadius: 999, fontSize: 12, fontWeight: 900 }, authBadge: { background: "#ecfdf5", color: "#047857", padding: "4px 8px", borderRadius: 999, fontSize: 11, fontWeight: 800 }, status: { borderRadius: 999, padding: "4px 7px", fontSize: 10, fontWeight: 900, whiteSpace: "nowrap" }, stepNumber: { display: "grid", placeItems: "center", width: 32, height: 32, borderRadius: "50%", color: "white", background: "#4f46e5", fontWeight: 900 }, reviewCard: { padding: 16, borderRadius: 15, background: "#eff6ff", border: "1px solid #bfdbfe" }, reviewGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(170px,1fr))", gap: 12 }, success: { display: "flex", gap: 10, alignItems: "flex-start", padding: 14, borderRadius: 13, background: "#ecfdf5", color: "#065f46", border: "1px solid #a7f3d0" }, warning: { display: "flex", gap: 10, alignItems: "flex-start", padding: 14, borderRadius: 13, background: "#fff7ed", color: "#9a3412", border: "1px solid #fed7aa" }, info: { display: "flex", gap: 9, alignItems: "flex-start", padding: 12, borderRadius: 12, background: "#eef2ff", color: "#3730a3" }, choiceBox: { border: "1px solid #fdba74", borderRadius: 12, padding: 12 }, advanced: { borderTop: "1px solid #e2e8f0", paddingTop: 10, color: "#475569" }, technical: { overflow: "auto", maxHeight: 320, padding: 10, background: "#0f172a", color: "#e2e8f0", borderRadius: 10, fontSize: 11 }, checks: { listStyle: "none", display: "grid", gap: 7, padding: 0, margin: 0, fontWeight: 700 }, modalBackdrop: { position: "fixed", inset: 0, zIndex: 100, background: "rgba(15,23,42,.55)", display: "grid", placeItems: "center", padding: 16 }, modal: { width: "min(480px,100%)", background: "white", borderRadius: 18, padding: 22, boxShadow: "0 24px 70px rgba(15,23,42,.3)" }, secondary: { minHeight: 44, border: "1px solid #cbd5e1", borderRadius: 10, background: "white", padding: "0 15px", fontWeight: 800, cursor: "pointer" }, muted: { color: "#64748b" },
 };
