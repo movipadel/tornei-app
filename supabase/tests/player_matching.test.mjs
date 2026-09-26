@@ -13,7 +13,7 @@ const {
 }=await import('../../src/lib/playerMatching.ts');
 
 const criteria=(overrides={})=>({
-  club:'Manta',targetLevelNumeric:3.5,targetLevelDescriptive:null,weekday:5,timeWindow:'evening',matchType:'male',lastMinute:false,excludePlayerId:null,...overrides,
+  clubs:['Manta'],targetLevelNumeric:3.5,targetLevelDescriptive:null,weekday:5,timeWindow:'evening',matchType:'male',lastMinute:false,excludePlayerId:null,...overrides,
 });
 const candidate=(overrides={})=>({
   id:'10000000-0000-4000-8000-000000000001',fullName:'Mario Rossi',normalizedPhone:'+393330000001',gender:'M',accountLinked:false,status:'active',moviLevel:3.5,identityWarning:false,
@@ -97,8 +97,26 @@ test('parser supports numeric or descriptive targets and rejects arbitrary field
   const numeric=parsePlayerMatchCriteria({club:'Manta',target_level_numeric:3.5,target_level_descriptive:null,weekday:5,time_window:'evening',match_type:'male',last_minute:false});
   const descriptive=parsePlayerMatchCriteria({club:'Manta',target_level_numeric:null,target_level_descriptive:'intermedio',weekday:5,time_window:'evening',match_type:'male',last_minute:false});
   assert.equal(numeric.targetLevelNumeric,3.5);
+  assert.deepEqual(numeric.clubs,['Manta']);
   assert.equal(descriptive.targetLevelDescriptive,'intermedio');
   assert.throws(()=>parsePlayerMatchCriteria({club:'Manta',target_level_numeric:3.5,target_level_descriptive:null,weekday:5,time_window:'evening',match_type:'male',last_minute:false,tax_code:'NO'}));
+});
+
+test('canonical criteria support multiple or flexible clubs without changing manual scoring',()=>{
+  const multi=scorePlayerMatch(candidate({profile:{...candidate().profile,preferred_clubs:['Costigliole'],available_other_clubs:false}}),criteria({clubs:['Manta','Costigliole']}));
+  assert.equal(multi.scoreParts.club.score,20);
+  assert.equal(multi.matchedClub,'Costigliole');
+  const flexible=scorePlayerMatch(candidate({profile:{...candidate().profile,preferred_clubs:['Saluzzo'],available_other_clubs:false}}),criteria({clubs:[]}));
+  assert.deepEqual(flexible.scoreParts.club,{score:0,max:0,detail:'Club indifferente'});
+  assert.equal(flexible.matchedClub,null);
+});
+
+test('unknown request criteria are neutral and do not create hard exclusions',()=>{
+  const result=scorePlayerMatch(candidate({profile:{...candidate().profile,preferred_match_types:['female'],availability:[{weekday:2,time_window:'morning'}]}}),criteria({targetLevelNumeric:null,targetLevelDescriptive:null,weekday:null,timeWindow:null,matchType:null}));
+  assert.equal(result.scoreParts.level.max,0);
+  assert.equal(result.scoreParts.availability.max,0);
+  assert.equal(result.scoreParts.matchType.max,0);
+  assert.equal(result.score,100);
 });
 
 test('matching route is admin-only, same-origin and DTO excludes sensitive domains',()=>{
@@ -115,13 +133,14 @@ test('matching route is admin-only, same-origin and DTO excludes sensitive domai
 test('one reusable domain helper is consumed by the server and UI does not score candidates',()=>{
   const server=readFileSync('src/lib/playerMatchingServer.ts','utf8');
   const ui=readFileSync('src/app/admin/players/PlayerMatchingPanel.tsx','utf8');
+  const results=readFileSync('src/app/admin/players/PlayerMatchResults.tsx','utf8');
   const page=readFileSync('src/app/admin/players/page.tsx','utf8');
   const css=readFileSync('src/app/admin/players/players.module.css','utf8');
   const dashboard=readFileSync('src/app/admin/page.tsx','utf8');
   assert.match(server,/rankPlayerMatches/);
   assert.match(server,/COARSE_CANDIDATE_LIMIT = 500/);
   assert.match(ui,/\/api\/admin\/players\/match/);
-  assert.match(ui,/Apri giocatore/);
+  assert.match(results,/Apri giocatore/);
   assert.match(page,/Elenco giocatori/);
   assert.match(page,/Trova giocatori compatibili/);
   assert.match(css,/@media\(max-width:760px\)/);

@@ -21,6 +21,7 @@ export default function PlayersPage(){
   const [page,setPage]=useState(1),[items,setItems]=useState<Player[]>([]),[total,setTotal]=useState(0),[hasMore,setHasMore]=useState(false);
   const [busy,setBusy]=useState(false),[error,setError]=useState('');
 
+  useEffect(()=>{if(new URLSearchParams(window.location.search).get('mode')==='matching')setMode('matching');},[]);
   const load=useCallback(async(requestedPage=1)=>{
     setBusy(true);setError('');
     try{

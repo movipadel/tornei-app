@@ -26,12 +26,12 @@ export type MatchType = typeof playerMatchingRequestedTypes[number];
 export type TimeWindow = typeof playerProfileWindows[number];
 
 export type PlayerMatchCriteria = {
-  club: typeof playerProfileClubs[number];
+  clubs: (typeof playerProfileClubs[number])[];
   targetLevelNumeric: typeof moviLevels[number] | null;
   targetLevelDescriptive: DescriptiveLevel | null;
-  weekday: number;
-  timeWindow: TimeWindow;
-  matchType: MatchType;
+  weekday: number | null;
+  timeWindow: TimeWindow | null;
+  matchType: MatchType | null;
   lastMinute: boolean;
   excludePlayerId: string | null;
 };
@@ -67,6 +67,7 @@ export type PlayerMatchResult = {
   preferredMatchTypes: string[];
   availableLastMinute: boolean | null;
   identityWarning: boolean;
+  matchedClub: string | null;
   score: number;
   scoreParts: {
     level: PlayerMatchScorePart;
@@ -118,7 +119,7 @@ export function parsePlayerMatchCriteria(value: unknown): PlayerMatchCriteria {
   if (typeof body.match_type !== "string" || !playerMatchingRequestedTypes.includes(body.match_type as never)) throw new Error("Tipo partita non valido");
   if (typeof body.last_minute !== "boolean") throw new Error("Indicazione last minute non valida");
   return {
-    club: body.club as PlayerMatchCriteria["club"],
+    clubs: [body.club as PlayerMatchCriteria["clubs"][number]],
     targetLevelNumeric: numeric as PlayerMatchCriteria["targetLevelNumeric"],
     targetLevelDescriptive: descriptive as PlayerMatchCriteria["targetLevelDescriptive"],
     weekday: body.weekday as number,
@@ -130,6 +131,9 @@ export function parsePlayerMatchCriteria(value: unknown): PlayerMatchCriteria {
 }
 
 function scoreLevel(candidate: PlayerMatchCandidate, criteria: PlayerMatchCriteria) {
+  if (criteria.targetLevelNumeric === null && criteria.targetLevelDescriptive === null) {
+    return { part: { score: 0, max: 0, detail: "Livello obiettivo non indicato" }, distance: Number.POSITIVE_INFINITY };
+  }
   if (criteria.targetLevelNumeric !== null && candidate.moviLevel !== null) {
     const distance = Math.abs(candidate.moviLevel - criteria.targetLevelNumeric);
     if (distance > 1) return null;
@@ -152,28 +156,33 @@ function scoreLevel(candidate: PlayerMatchCandidate, criteria: PlayerMatchCriter
 }
 
 function scoreClub(candidate: PlayerMatchCandidate, criteria: PlayerMatchCriteria) {
+  if (criteria.clubs.length === 0) return { part: { score: 0, max: 0, detail: "Club indifferente" }, matchedClub: null };
   const clubs = candidate.profile.preferred_clubs;
-  if (clubs.includes(criteria.club)) return { score: 20, max: 20, detail: "Club preferito" };
-  if (clubs.length === 0) return { score: 10, max: 20, detail: "Nessuna restrizione club" };
-  if (candidate.profile.available_other_clubs === true) return { score: 12, max: 20, detail: "Disponibile anche in altri club" };
+  const exact = criteria.clubs.find((club) => clubs.includes(club));
+  if (exact) return { part: { score: 20, max: 20, detail: criteria.clubs.length > 1 ? `Club preferito: ${exact}` : "Club preferito" }, matchedClub: criteria.clubs.length > 1 ? exact : null };
+  if (clubs.length === 0) return { part: { score: 10, max: 20, detail: "Nessuna restrizione club" }, matchedClub: null };
+  if (candidate.profile.available_other_clubs === true) return { part: { score: 12, max: 20, detail: criteria.clubs.length > 1 ? `Disponibile anche a ${criteria.clubs[0]}` : "Disponibile anche in altri club" }, matchedClub: criteria.clubs.length > 1 ? criteria.clubs[0] : null };
   if (candidate.profile.available_other_clubs === false) return null;
-  return { score: 10, max: 20, detail: "Disponibilità club non indicata" };
+  return { part: { score: 10, max: 20, detail: "Disponibilità club non indicata" }, matchedClub: null };
 }
 
 function scoreAvailability(candidate: PlayerMatchCandidate, criteria: PlayerMatchCriteria) {
+  const max = (criteria.weekday === null ? 0 : 10) + (criteria.timeWindow === null ? 0 : 15);
+  if (max === 0) return { part: { score: 0, max: 0, detail: "Giorno e fascia non definiti" }, confidence: 0 };
   const availability = candidate.profile.availability;
   if (availability.length === 0) {
-    return { part: { score: 12, max: 25, detail: "Disponibilità non indicata · punteggio neutro" }, confidence: 0 };
+    return { part: { score: Math.round(max * 0.48), max, detail: "Disponibilità non indicata · punteggio neutro" }, confidence: 0 };
   }
-  const day = availability.some((slot) => slot.weekday === criteria.weekday);
-  const time = availability.some((slot) => slot.time_window === criteria.timeWindow);
-  const exact = availability.some((slot) => slot.weekday === criteria.weekday && slot.time_window === criteria.timeWindow);
+  const day = criteria.weekday !== null && availability.some((slot) => slot.weekday === criteria.weekday);
+  const time = criteria.timeWindow !== null && availability.some((slot) => slot.time_window === criteria.timeWindow);
+  const exact = criteria.weekday !== null && criteria.timeWindow !== null && availability.some((slot) => slot.weekday === criteria.weekday && slot.time_window === criteria.timeWindow);
   const score = (day ? 10 : 0) + (time ? 15 : 0);
-  const detail = exact ? "Giorno e fascia confermati" : day || time ? "Compatibilità parziale esplicita" : "Disponibilità esplicita non coincidente";
-  return { part: { score, max: 25, detail }, confidence: exact ? 2 : day || time ? 1 : 0 };
+  const detail = exact ? "Giorno e fascia confermati" : day || time ? (criteria.weekday !== null && criteria.timeWindow !== null ? "Compatibilità parziale esplicita" : day ? "Giorno confermato" : "Fascia confermata") : "Disponibilità esplicita non coincidente";
+  return { part: { score, max, detail }, confidence: exact ? 2 : day || time ? 1 : 0 };
 }
 
 function scoreMatchType(candidate: PlayerMatchCandidate, criteria: PlayerMatchCriteria) {
+  if (criteria.matchType === null) return { score: 0, max: 0, detail: "Tipo partita indifferente" };
   const types = candidate.profile.preferred_match_types;
   if (types.includes(criteria.matchType)) return { score: 15, max: 15, detail: "Tipo partita preferito" };
   if (types.includes("any")) return { score: 12, max: 15, detail: "Qualsiasi tipo di partita" };
@@ -196,8 +205,9 @@ export function scorePlayerMatch(candidate: PlayerMatchCandidate, criteria: Play
   if (!level || !club || !matchType) return null;
   const availability = scoreAvailability(candidate, criteria);
   const lastMinute = scoreLastMinute(candidate, criteria);
-  const raw = level.part.score + availability.part.score + club.score + matchType.score + lastMinute.score;
-  const score = criteria.lastMinute ? raw : Math.round((raw / 90) * 100);
+  const raw = level.part.score + availability.part.score + club.part.score + matchType.score + lastMinute.score;
+  const max = level.part.max + availability.part.max + club.part.max + matchType.max + lastMinute.max;
+  const score = max === 0 ? 0 : Math.round((raw / max) * 100);
   return {
     id: candidate.id,
     fullName: candidate.fullName,
@@ -211,8 +221,9 @@ export function scorePlayerMatch(candidate: PlayerMatchCandidate, criteria: Play
     preferredMatchTypes: candidate.profile.preferred_match_types,
     availableLastMinute: candidate.profile.available_last_minute,
     identityWarning: candidate.identityWarning,
+    matchedClub: club.matchedClub,
     score,
-    scoreParts: { level: level.part, availability: availability.part, club, matchType, lastMinute },
+    scoreParts: { level: level.part, availability: availability.part, club: club.part, matchType, lastMinute },
     numericDistance: level.distance,
     availabilityConfidence: availability.confidence,
   };
@@ -243,6 +254,7 @@ export function rankPlayerMatches(candidates: PlayerMatchCandidate[], criteria: 
     preferredMatchTypes: candidate.preferredMatchTypes,
     availableLastMinute: candidate.availableLastMinute,
     identityWarning: candidate.identityWarning,
+    matchedClub: candidate.matchedClub,
     score: candidate.score,
     scoreParts: candidate.scoreParts,
   }));

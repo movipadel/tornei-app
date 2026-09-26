@@ -15,7 +15,9 @@ const identities=[
   {...active(12,'L Archived'),status:'archived',archived_at:now},
 ];
 await check(await db.from('player_identities').upsert(identities,{onConflict:'id'}));
-await check(await db.from('player_identities').upsert({...active(13,'M Merged'),status:'merged',merged_into_player_id:id(1),merged_at:now},{onConflict:'id'}));
+const merged=await db.from('player_identities').select('id').eq('id',id(13)).maybeSingle();
+await check(merged);
+if(!merged.data)await check(await db.from('player_identities').insert({...active(13,'M Merged'),status:'merged',merged_into_player_id:id(1),merged_at:now}));
 
 const profile=(n,descriptive_level,preferred_clubs,available_other_clubs,preferred_match_types,available_last_minute)=>({
   player_identity_id:id(n),descriptive_level,preferred_clubs,available_other_clubs,preferred_match_types,available_last_minute,version:1,updated_at:now,updated_by_user_id:null,updated_by_admin_id:null,
