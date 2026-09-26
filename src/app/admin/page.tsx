@@ -1,428 +1,104 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import Image from "next/image";
+import { useEffect, useState, type ComponentType } from "react";
 import { toast } from "sonner";
-import {
-  Trophy,
-  Network,
-  Gift,
-  UsersRound,
-  ScanLine,
-  Settings,
-  Home,
-  Store,
-  ShoppingBag,
-  BellRing,
-  Loader2,
-  CalendarDays,
-  GitMerge,
-  ShieldAlert,
-} from "lucide-react";
+import { BellRing, CalendarDays, Gift, GitMerge, Home, Loader2, Network, ScanLine, Settings, ShieldAlert, ShoppingBag, Store, Trophy, UsersRound } from "lucide-react";
+import s from "./dashboard.module.css";
 
-const cards = [
-  {
-    title: "Richieste Gioca / Allenati",
-    description: "Gestisci richieste di partite e allenamenti.",
-    href: "/admin/requests",
-    icon: CalendarDays,
-    accent: "#6366f1",
-  },
-  {
-    title: "Partner MOVI",
-    description: "Gestisci partner e vantaggi per la community MOVI.",
-    href: "/admin/partners",
-    icon: Store,
-    accent: "#6366f1",
-  },
-  {
-    title: "Contenuti Padelleria",
-    description: "Gestisci Succede ed È successo in Padelleria.",
-    href: "/admin/padelleria",
-    icon: CalendarDays,
-    accent: "#6366f1",
-  },
-  {
-    title: "Tornei",
-    description: "Crea, modifica, genera e gestisci tornei.",
-    href: "/admin/tournaments",
-    icon: Trophy,
-    accent: "#6366f1",
-  },
-  {
-    title: "Monday League",
-    description: "Configura il nuovo campionato a squadre.",
-    href: "/admin/monday-league",
-    icon: CalendarDays,
-    accent: "#14b8a6",
-  },
-  {
-    title: "Scanner QR Code",
-    description: "Accredita punti o scansiona codici premio.",
-    href: "/staff",
-    icon: ScanLine,
-    accent: "#a855f7",
-  },
-  {
-    title: "Circuiti",
-    description: "Gestisci circuiti e classifiche giocatori.",
-    href: "/admin/circuits",
-    icon: Network,
-    accent: "#22c55e",
-  },
-  {
-    title: "MoviBack",
-    description: "Gestione utenti, punti e premi.",
-    href: "/admin/moviback",
-    icon: Gift,
-    accent: "#f59e0b",
-  },
-  {
-    title: "Store MOVI",
-    description: "Gestisci prodotti, categorie, linee, varianti e stock.",
-    href: "/admin/store/products",
-    icon: Store,
-    accent: "#fb923c",
-  },
-  {
-    title: "Ordini Store",
-    description: "Gestisci ordini, incassi, stati e riepiloghi fornitore.",
-    href: "/admin/store-orders",
-    icon: ShoppingBag,
-    accent: "#fbbf24",
-  },
-  {
-    title: "Giocatori",
-    description: "Anagrafica, livello e preferenze di gioco.",
-    href: "/admin/players",
-    icon: UsersRound,
-    accent: "#14b8a6",
-  },
-  {
-    title: "Gestione staff",
-    description: "Crea e gestisci accessi admin e staff.",
-    href: "/admin/users",
-    icon: UsersRound,
-    accent: "#38bdf8",
-  },
-  {
-    title: "Duplicati e identità da verificare",
-    description: "Risolvi duplicati, conflitti e collegamenti incerti.",
-    href: "/admin/users/duplicates",
-    icon: GitMerge,
-    accent: "#8b5cf6",
-  },
-  {
-    title: "Problemi di accesso",
-    description: "Gestisci richieste di aiuto e onboarding da completare.",
-    href: "/admin/users/access-problems",
-    icon: ShieldAlert,
-    accent: "#f97316",
-  },
-  {
-    title: "Comunicazioni",
-    description: "Notifiche e comunicazioni agli utenti.",
-    href: "/admin/comunicazioni",
-    icon: Settings,
-    accent: "#64748b",
-  },
+type DashboardCard = { title: string; description: string; href: string; icon: ComponentType<{ size?: number; strokeWidth?: number }> };
+type DashboardArea = { id: string; title: string; description: string; tone: "daily" | "competition" | "community" | "loyalty" | "control"; featured?: boolean; cards: DashboardCard[] };
+
+const areas: DashboardArea[] = [
+  { id: "daily", title: "Operatività quotidiana", description: "Le attività da presidiare ogni giorno, dalle richieste al contatto con i giocatori.", tone: "daily", featured: true, cards: [
+    { title: "Richieste Gioca / Allenati", description: "Gestisci richieste di partite e allenamenti.", href: "/admin/requests", icon: CalendarDays },
+    { title: "Giocatori", description: "Anagrafica, livello e preferenze di gioco.", href: "/admin/players", icon: UsersRound },
+    { title: "Scanner QR Code", description: "Accredita punti o scansiona codici premio.", href: "/staff", icon: ScanLine },
+    { title: "Comunicazioni", description: "Notifiche e comunicazioni agli utenti.", href: "/admin/comunicazioni", icon: BellRing },
+  ] },
+  { id: "competitions", title: "Competizioni", description: "Tornei, circuiti e campionati nello stesso spazio operativo.", tone: "competition", cards: [
+    { title: "Tornei", description: "Crea, modifica, genera e gestisci tornei.", href: "/admin/tournaments", icon: Trophy },
+    { title: "Circuiti", description: "Gestisci circuiti e classifiche giocatori.", href: "/admin/circuits", icon: Network },
+    { title: "Monday League", description: "Configura il campionato a squadre.", href: "/admin/monday-league", icon: CalendarDays },
+  ] },
+  { id: "community", title: "Community e contenuti", description: "Racconta il mondo MOVI e cura la rete dei partner.", tone: "community", cards: [
+    { title: "Contenuti Padelleria", description: "Gestisci Succede ed È successo in Padelleria.", href: "/admin/padelleria", icon: CalendarDays },
+    { title: "Partner MOVI", description: "Gestisci partner e vantaggi per la community MOVI.", href: "/admin/partners", icon: Store },
+  ] },
+  { id: "loyalty", title: "Loyalty e commerciale", description: "Fidelizzazione, catalogo e operatività degli ordini.", tone: "loyalty", cards: [
+    { title: "MoviBack", description: "Gestione utenti, punti e premi.", href: "/admin/moviback", icon: Gift },
+    { title: "Store MOVI", description: "Gestisci prodotti, categorie, linee, varianti e stock.", href: "/admin/store/products", icon: Store },
+    { title: "Ordini Store", description: "Gestisci ordini, incassi, stati e riepiloghi fornitore.", href: "/admin/store-orders", icon: ShoppingBag },
+  ] },
+  { id: "control", title: "Controllo e amministrazione", description: "Verifiche, correzioni e accessi tecnici meno frequenti.", tone: "control", cards: [
+    { title: "Duplicati e identità da verificare", description: "Risolvi duplicati, conflitti e collegamenti incerti.", href: "/admin/users/duplicates", icon: GitMerge },
+    { title: "Problemi di accesso", description: "Gestisci richieste di aiuto e onboarding da completare.", href: "/admin/users/access-problems", icon: ShieldAlert },
+    { title: "Gestione staff", description: "Crea e gestisci accessi admin e staff.", href: "/admin/users", icon: Settings },
+  ] },
 ];
 
 function urlBase64ToUint8Array(base64String: string) {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = `${base64String}${padding}`
-    .replace(/-/g, "+")
-    .replace(/_/g, "/");
-
+  const base64 = `${base64String}${padding}`.replace(/-/g, "+").replace(/_/g, "/");
   const rawData = window.atob(base64);
   const outputArray = new Uint8Array(rawData.length);
-
-  for (let i = 0; i < rawData.length; i += 1) {
-    outputArray[i] = rawData.charCodeAt(i);
-  }
-
+  for (let index = 0; index < rawData.length; index += 1) outputArray[index] = rawData.charCodeAt(index);
   return outputArray;
 }
 
 export default function AdminHomePage() {
   const [pushLoading, setPushLoading] = useState(false);
-  const [pushPermission, setPushPermission] =
-  useState<NotificationPermission | "unsupported">("default");
+  const [pushPermission, setPushPermission] = useState<NotificationPermission | "unsupported">("default");
 
-useEffect(() => {
-  if (!("Notification" in window)) {
-    setPushPermission("unsupported");
-    return;
-  }
-
-  setPushPermission(Notification.permission);
-}, []);
+  useEffect(() => {
+    if (!("Notification" in window)) { setPushPermission("unsupported"); return; }
+    setPushPermission(Notification.permission);
+  }, []);
 
   async function enableAdminPush() {
     if (pushLoading) return;
-
     try {
       setPushLoading(true);
-
-      if (!("serviceWorker" in navigator)) {
-        throw new Error("Il browser non supporta i service worker.");
-      }
-
-      if (!("PushManager" in window)) {
-        throw new Error("Il browser non supporta le notifiche push.");
-      }
-
-      if (!("Notification" in window)) {
-        throw new Error("Il browser non supporta le notifiche.");
-      }
-
+      if (!("serviceWorker" in navigator)) throw new Error("Il browser non supporta i service worker.");
+      if (!("PushManager" in window)) throw new Error("Il browser non supporta le notifiche push.");
+      if (!("Notification" in window)) throw new Error("Il browser non supporta le notifiche.");
       const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-
-      if (!vapidPublicKey) {
-        throw new Error("VAPID public key mancante.");
-      }
-
+      if (!vapidPublicKey) throw new Error("VAPID public key mancante.");
       const permission = await Notification.requestPermission();
-
-      if (permission !== "granted") {
-        throw new Error("Permesso notifiche non concesso.");
-      }
-
-      const registration = await navigator.serviceWorker.register(
-        "/admin-push-sw.js"
-      );
-
-      const existingSubscription =
-        await registration.pushManager.getSubscription();
-
-      const subscription =
-        existingSubscription ||
-        (await registration.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
-        }));
-
-      const res = await fetch("/api/admin/push/subscribe", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(subscription),
-      });
-
-      const json = await res.json().catch(() => ({}));
-
-      if (!res.ok) {
-        throw new Error(json.error || "Errore registrazione notifiche.");
-      }
-
+      if (permission !== "granted") throw new Error("Permesso notifiche non concesso.");
+      const registration = await navigator.serviceWorker.register("/admin-push-sw.js");
+      const existingSubscription = await registration.pushManager.getSubscription();
+      const subscription = existingSubscription || await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(vapidPublicKey) });
+      const response = await fetch("/api/admin/push/subscribe", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(subscription) });
+      const json = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(json.error || "Errore registrazione notifiche.");
       toast.success("Notifiche admin attivate su questo dispositivo.");
       setPushPermission(Notification.permission);
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : "Errore attivazione notifiche.");
-    } finally {
-      setPushLoading(false);
-    }
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Errore attivazione notifiche.");
+    } finally { setPushLoading(false); }
   }
 
-  return (
-    <div
-      style={{
-        minHeight: "calc(100vh - 65px)",
-        margin: "-24px -16px -40px",
-        padding: "28px 16px 44px",
-        color: "white",
-        background:
-          "linear-gradient(180deg, #030712 0%, #07111f 42%, #0f172a 100%)",
-      }}
-    >
-      <div style={{ maxWidth: 1120, margin: "0 auto" }}>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            gap: 16,
-            alignItems: "flex-start",
-            marginBottom: 18,
-          }}
-        >
-          <div>
-            <img
-              src="/home/movi-logo.png"
-              alt="Movi"
-              style={{
-                height: 44,
-                width: "auto",
-                objectFit: "contain",
-                display: "block",
-                opacity: 0.96,
-                marginBottom: 18,
-              }}
-            />
+  return <div className={s.page}><div className={s.shell}>
+    <header className={s.header}><div>
+      <Image className={s.logo} src="/home/movi-logo.png" alt="Movi" width={134} height={44} priority/>
+      <p className={s.kicker}>Centro operativo MOVI</p>
+      <h1>Dashboard Admin</h1>
+      <p className={s.intro}>Parti dalle attività quotidiane, poi passa alla gestione sportiva, editoriale e commerciale.</p>
+    </div><Link href="/" className={s.homeLink} aria-label="Home pubblica"><Home size={20} strokeWidth={1.6}/></Link></header>
 
-            <h1
-              style={{
-                fontSize: "clamp(28px, 8vw, 48px)",
-                lineHeight: 1,
-                letterSpacing: "-0.05em",
-                fontWeight: 950,
-                margin: 0,
-              }}
-            >
-              Dashboard Admin
-            </h1>
-          </div>
+    {pushPermission !== "granted" && pushPermission !== "unsupported" && <button type="button" onClick={enableAdminPush} disabled={pushLoading} className={s.pushButton}>
+      {pushLoading ? <Loader2 size={18} className="animate-spin"/> : <BellRing size={18} strokeWidth={1.8}/>} {pushLoading ? "Attivazione notifiche..." : "Attiva notifiche admin su questo dispositivo"}
+    </button>}
 
-          <Link
-            href="/"
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: 999,
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              background: "rgba(255,255,255,0.075)",
-              border: "1px solid rgba(255,255,255,0.09)",
-              color: "white",
-              flex: "0 0 auto",
-            }}
-            aria-label="Home pubblica"
-          >
-            <Home size={20} strokeWidth={1.6} />
-          </Link>
-        </div>
-
-        {pushPermission !== "granted" && pushPermission !== "unsupported" ? (
-  <button
-    type="button"
-    onClick={enableAdminPush}
-    disabled={pushLoading}
-    style={{
-      width: "100%",
-      marginBottom: 18,
-      minHeight: 52,
-      borderRadius: 20,
-      border: "1px solid rgba(45,212,191,0.28)",
-      background:
-        "linear-gradient(135deg, rgba(20,184,166,0.18), rgba(14,165,233,0.12))",
-      color: "white",
-      fontWeight: 900,
-      fontSize: 14,
-      display: "inline-flex",
-      alignItems: "center",
-      justifyContent: "center",
-      gap: 9,
-      cursor: pushLoading ? "not-allowed" : "pointer",
-      opacity: pushLoading ? 0.7 : 1,
-      boxShadow: "0 16px 34px rgba(20,184,166,0.12)",
-    }}
-  >
-    {pushLoading ? (
-      <Loader2 size={18} className="animate-spin" />
-    ) : (
-      <BellRing size={18} strokeWidth={1.8} />
-    )}
-    {pushLoading
-      ? "Attivazione notifiche..."
-      : "Attiva notifiche admin su questo dispositivo"}
-  </button>
-) : null}
-
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(245px, 1fr))",
-            gap: 14,
-          }}
-        >
-          {cards.map((card) => {
-            const Icon = card.icon;
-
-            return (
-              <Link
-                key={card.title}
-                href={card.href}
-                style={{
-                  position: "relative",
-                  overflow: "hidden",
-                  minHeight: 104,
-                  padding: 16,
-                  borderRadius: 24,
-                  textDecoration: "none",
-                  color: "white",
-                  background: "rgba(255,255,255,0.055)",
-                  border: "1px solid rgba(255,255,255,0.09)",
-                  backdropFilter: "blur(14px)",
-                  boxShadow: "0 18px 44px rgba(0,0,0,0.24)",
-                }}
-              >
-                <div
-                  style={{
-                    position: "absolute",
-                    right: -36,
-                    top: -36,
-                    width: 110,
-                    height: 110,
-                    borderRadius: 999,
-                    background: card.accent,
-                    opacity: 0.14,
-                    filter: "blur(2px)",
-                  }}
-                />
-
-                <div
-                  style={{
-                    position: "relative",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 14,
-                  }}
-                >
-                  <div
-                    style={{
-                      width: 50,
-                      height: 50,
-                      borderRadius: 18,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      background: "rgba(255,255,255,0.08)",
-                      border: "1px solid rgba(255,255,255,0.1)",
-                      flex: "0 0 auto",
-                    }}
-                  >
-                    <Icon size={24} strokeWidth={1.6} color={card.accent} />
-                  </div>
-
-                  <div style={{ minWidth: 0 }}>
-                    <div
-                      style={{
-                        fontSize: 18,
-                        fontWeight: 900,
-                        letterSpacing: "-0.02em",
-                        marginBottom: 4,
-                      }}
-                    >
-                      {card.title}
-                    </div>
-
-                    <div
-                      style={{
-                        color: "rgba(255,255,255,0.58)",
-                        fontSize: 13,
-                        lineHeight: 1.35,
-                      }}
-                    >
-                      {card.description}
-                    </div>
-                  </div>
-                </div>
-              </Link>
-            );
-          })}
-        </div>
-      </div>
-    </div>
-  );
+    <div className={s.areas}>{areas.map((area, areaIndex) => <section key={area.id} className={`${s.area} ${s[area.tone]} ${area.featured ? s.featured : ""}`} aria-labelledby={`${area.id}-title`}>
+      <div className={s.areaHeader}><span className={s.areaIndex}>{String(areaIndex + 1).padStart(2, "0")}</span><div><h2 id={`${area.id}-title`}>{area.title}</h2><p>{area.description}</p></div></div>
+      <div className={s.cardGrid}>{area.cards.map(card => { const Icon = card.icon; return <Link key={card.title} href={card.href} className={s.card}>
+        <span className={s.icon}><Icon size={area.featured ? 26 : 23} strokeWidth={1.65}/></span>
+        <span className={s.cardCopy}><strong>{card.title}</strong><small>{card.description}</small></span>
+        <span className={s.arrow} aria-hidden="true">→</span>
+      </Link>; })}</div>
+    </section>)}</div>
+  </div></div>;
 }

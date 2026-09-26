@@ -1050,7 +1050,7 @@ const pastHiddenCount = useMemo(() => {
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
                               <button
-                                className="base44-primary-btn"
+                                className={`base44-primary-btn${!hasRun ? " admin-tournament-generate-button" : ""}`}
                                 disabled={!canGenerateBaraonda || isStarting}
                                 style={{
                                  padding: "8px 14px",
@@ -1275,7 +1275,7 @@ const selectedFormula = formulaOptions.some((o) => o.value === rawSelectedFormul
 
  <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 14 }}>
   <button
-    className="base44-primary-btn"
+    className={`base44-primary-btn${!hasRun ? " admin-tournament-generate-button" : ""}`}
     style={{
       width: "100%",
       padding: "12px 14px",
@@ -1356,7 +1356,7 @@ const selectedFormula = formulaOptions.some((o) => o.value === rawSelectedFormul
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
                               <button
-                                className="base44-primary-btn"
+                                className={`base44-primary-btn${!hasRun ? " admin-tournament-generate-button" : ""}`}
                                 disabled={!canGenerateFixedPairs || fixedWizardLoading || isStarting}
                                 style={{
                                   padding: "8px 14px",

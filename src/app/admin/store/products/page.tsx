@@ -627,7 +627,7 @@ function handleSortEnd(event: DragEndEvent) {
 }
 
   return (
-  <div style={pageStyle} className="admin-store-page">
+  <div style={pageStyle} className="admin-store-page admin-specialist-page">
     <div style={{ maxWidth: 1180, margin: "0 auto", color: "white" }} className="admin-store-shell">
       <header style={{ marginBottom: 22 }}>
         <div

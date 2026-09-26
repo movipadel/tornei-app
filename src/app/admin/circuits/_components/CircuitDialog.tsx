@@ -97,8 +97,20 @@ export default function CircuitDialog({
   const [points, setPoints] = useState<Rule[]>([]);
   const [saving, setSaving] = useState(false);
   const [loadingDetail, setLoadingDetail] = useState(false);
+  const [adminTheme, setAdminTheme] = useState<"light" | "dark">("light");
 
   const isEdit = !!circuit?.id;
+
+  useEffect(() => {
+    if (!open) return;
+    const root = document.querySelector<HTMLElement>(".admin-ui");
+    if (!root) return;
+    const syncTheme = () => setAdminTheme(root.dataset.adminTheme === "dark" ? "dark" : "light");
+    syncTheme();
+    const observer = new MutationObserver(syncTheme);
+    observer.observe(root, { attributes: true, attributeFilter: ["data-admin-theme"] });
+    return () => observer.disconnect();
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -328,7 +340,8 @@ export default function CircuitDialog({
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
       <DialogContent
-        className="max-w-4xl"
+        className="max-w-4xl admin-circuit-dialog admin-specialist-page"
+        data-admin-theme={adminTheme}
         style={{
           maxHeight: "90dvh",
           overflowY: "auto",

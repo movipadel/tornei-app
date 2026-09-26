@@ -299,7 +299,7 @@ export default function AdminStoreOrdersPage() {
   }
 
   return (
-    <div style={pageStyle} className="admin-orders-page">
+    <div style={pageStyle} className="admin-orders-page admin-specialist-page">
       <div style={{ maxWidth: 1080, margin: "0 auto", color: "white" }}>
         <header style={{ marginBottom: 18 }}>
           <div className="admin-orders-heading">

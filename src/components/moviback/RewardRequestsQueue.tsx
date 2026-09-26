@@ -206,7 +206,7 @@ export function RewardRequestsQueue() {
   }
 
   return (
-    <main style={pageStyle}>
+    <main style={pageStyle} className="admin-moviback-page admin-specialist-page">
       <div style={{ maxWidth: 1080, margin: "0 auto", color: "white" }}>
         <header style={headerStyle}>
           <div>
@@ -460,7 +460,7 @@ function statusPill(status: string): React.CSSProperties {
 
 const pageStyle: React.CSSProperties = {
   minHeight: "100dvh",
-  background: "linear-gradient(180deg, #030712 0%, #07111f 42%, #0f172a 100%)",
+  background: "var(--admin-section-canvas)",
   padding: "24px 16px 44px",
 };
 const headerStyle: React.CSSProperties = {

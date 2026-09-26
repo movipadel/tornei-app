@@ -237,7 +237,7 @@ await load();
 
   if (loading) {
     return (
-      <div style={pageStyle}>
+      <div style={pageStyle} className="admin-moviback-page admin-specialist-page">
         <div style={{ color: "white", textAlign: "center", padding: 60 }}>
           <Loader2 className="w-8 h-8 animate-spin mx-auto" />
         </div>
@@ -250,7 +250,7 @@ await load();
   const m = data.membership;
 
   return (
-    <div style={pageStyle}>
+    <div style={pageStyle} className="admin-moviback-page admin-specialist-page">
       <div style={{ maxWidth: 1180, margin: "0 auto", color: "white" }}>
         <header style={{ marginBottom: 18 }}>
           <h1 style={{ fontSize: 30, fontWeight: 950 }}>
@@ -805,7 +805,7 @@ function Info({ label, value }: { label: string; value: string }) {
 
 const pageStyle: React.CSSProperties = {
   minHeight: "100dvh",
-  background: "linear-gradient(180deg, #030712 0%, #07111f 42%, #0f172a 100%)",
+  background: "var(--admin-section-canvas)",
   padding: "24px 16px 44px",
 };
 

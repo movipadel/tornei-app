@@ -152,7 +152,7 @@ export default function StoreEconomicsPage() {
   const kpis = data?.kpis;
 
   return (
-    <div style={pageStyle}>
+    <div style={pageStyle} className="admin-store-page admin-specialist-page">
       <div style={{ maxWidth: 1180, margin: "0 auto", color: "white" }}>
         <header style={{ marginBottom: 18 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>

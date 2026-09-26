@@ -9,6 +9,7 @@ export function AdminLogoutButton() {
   return (
     <button
       type="button"
+      className="admin-logout-button"
       onClick={async () => {
         await fetch("/api/admin/logout", {
           method: "POST",
@@ -16,17 +17,6 @@ export function AdminLogoutButton() {
         });
         router.replace("/admin/login");
         router.refresh();
-      }}
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 8,
-        fontWeight: 700,
-        color: "#64748b",
-        background: "transparent",
-        border: "none",
-        cursor: "pointer",
-        padding: 0,
       }}
       title="Esci"
     >

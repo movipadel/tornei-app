@@ -246,7 +246,7 @@ export default function CircuitsPage() {
   }
 
   return (
-    <div style={pageStyle}>
+    <div style={pageStyle} className="admin-circuits-page admin-specialist-page">
       <div style={{ maxWidth: 1180, margin: "0 auto", color: "white" }}>
         <header style={headerStyle}>
           <div>
@@ -479,7 +479,7 @@ function Kpi({
 
 const pageStyle: React.CSSProperties = {
   minHeight: "100dvh",
-  background: "linear-gradient(180deg, #030712 0%, #07111f 42%, #0f172a 100%)",
+  background: "var(--admin-section-canvas)",
   padding: "24px 16px 44px",
 };
 

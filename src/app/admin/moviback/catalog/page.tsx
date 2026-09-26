@@ -456,7 +456,7 @@ export default function AdminMoviBackCatalogPage() {
   }
 
   return (
-    <div style={pageStyle}>
+    <div style={pageStyle} className="admin-moviback-page admin-specialist-page">
       <div style={{ maxWidth: 1120, margin: "0 auto", color: "white" }}>
         <div style={{ marginBottom: 22 }}>
           <div style={titleRow}>
@@ -910,7 +910,7 @@ function MiniRow({
 
 const pageStyle: React.CSSProperties = {
   minHeight: "100dvh",
-  background: "linear-gradient(180deg, #030712 0%, #07111f 42%, #0f172a 100%)",
+  background: "var(--admin-section-canvas)",
   padding: "24px 16px",
 };
 

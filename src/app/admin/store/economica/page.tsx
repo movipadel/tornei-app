@@ -219,7 +219,7 @@ async function saveSupplierPayment(order: any, paid: boolean) {
   const kpis = data?.kpis || {};
 
   return (
-    <main style={pageStyle}>
+    <main style={pageStyle} className="admin-store-page admin-specialist-page">
       <div style={shellStyle}>
         <header style={headerStyle}>
           <div>

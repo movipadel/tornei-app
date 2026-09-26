@@ -46,7 +46,7 @@ export default function LeagueTeamsPage() {
     if (!response.ok) toast.error(json.error || "Eliminazione non riuscita"); else { toast.success("Squadra eliminata"); await load(); }
   }
 
-  return <main style={{ display: "grid", gap: 18, color: "#0f172a" }}>
+  return <main className="admin-monday-page admin-specialist-page" style={{ display: "grid", gap: 18, color: "#0f172a" }}>
     <h1 style={{ margin: 0 }}>Squadre Monday League</h1><LeagueAdminNav />
     <div><button style={button} disabled={!seasonId || phaseStatus !== "draft"} onClick={() => setEditing(null)}><Plus size={17} />Nuova squadra</button></div>
     {phaseStatus !== "draft" && <div style={notice}>La rosa è bloccata per il capitano. L&apos;admin può ancora correggere squadra, capitano e rosa; per conservare lo storico usa Disattiva.</div>}
@@ -76,7 +76,7 @@ function TeamForm({ seasonId, team, onClose, onSaved }: { seasonId: string; team
     if (!response.ok) toast.error(json.error || "Errore salvataggio"); else { toast.success("Squadra salvata"); onSaved(); }
     setSaving(false);
   }
-  return <div style={overlay}><section style={{ ...panel, width: "min(680px,94vw)", maxHeight: "90vh", overflow: "auto" }}>
+  return <div className="admin-monday-modal" style={overlay}><section style={{ ...panel, width: "min(680px,94vw)", maxHeight: "90vh", overflow: "auto" }}>
     <div style={{ display: "flex", justifyContent: "space-between" }}><h2 style={{ marginTop: 0 }}>{team ? "Modifica squadra" : "Nuova squadra"}</h2><button style={iconButton} onClick={onClose}><X /></button></div>
     <label>Nome squadra<input style={input} value={name} onChange={(event) => setName(event.target.value)} /></label>
     <h3>Rosa ({roster.length}/4)</h3>

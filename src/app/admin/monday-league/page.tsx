@@ -68,8 +68,8 @@ export default function MondayLeagueAdminPage() {
     setManaging(false);
   }
 
-  return <main style={{ display: "grid", gap: 18, color: "#0f172a" }}>
-    <section style={{ padding: 24, borderRadius: 24, background: "linear-gradient(135deg,rgba(20,184,166,.22),rgba(15,23,42,.92))", border: "1px solid rgba(94,234,212,.2)" }}>
+  return <main className="admin-monday-page admin-specialist-page" style={{ display: "grid", gap: 18, color: "#0f172a" }}>
+    <section className="admin-competition-hero" style={{ padding: 24, borderRadius: 24, background: "linear-gradient(135deg,rgba(20,184,166,.22),rgba(15,23,42,.92))", border: "1px solid rgba(94,234,212,.2)" }}>
       <CalendarDays size={30} /><h1 style={{ margin: "12px 0 6px", fontSize: 28, fontWeight: 900 }}>Monday League</h1>
       <p style={{ margin: 0, color: "rgba(255,255,255,.7)" }}>Squadre e generazione deterministica della Fase 1.</p>
     </section>

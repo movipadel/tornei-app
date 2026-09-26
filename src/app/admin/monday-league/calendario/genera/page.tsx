@@ -58,7 +58,7 @@ export default function GenerateCalendarPage() {
   }
 
   if (loading) return <Loader2 className="animate-spin" />;
-  return <main style={{ display: "grid", gap: 18, color: "#0f172a" }}><h1 style={{ margin: 0 }}>Genera calendario Fase 1</h1><LeagueAdminNav />
+  return <main className="admin-monday-page admin-specialist-page" style={{ display: "grid", gap: 18, color: "#0f172a" }}><h1 style={{ margin: 0 }}>Genera calendario Fase 1</h1><LeagueAdminNav />
     {!phase ? <div style={panel}>Crea prima una stagione.</div> : phase.status === "generated" ? <GeneratedPanel phase={phase} schedule={generatedSchedule} names={names} /> : <>
       <section style={panel}><h2 style={{ marginTop: 0 }}>Ordine seed ({teams.length} squadre)</h2><p style={muted}>L’ordine è esplicito e determina il circle method. Il tie-break persistente viene assegnato separatamente.</p><div style={{ display: "grid", gap: 7 }}>{teams.map((team, index) => <div key={team.id} style={teamRow}><strong>{index + 1}. {team.name}</strong><span><button style={iconButton} onClick={() => move(index, -1)} disabled={index === 0}><ArrowUp size={16} /></button><button style={iconButton} onClick={() => move(index, 1)} disabled={index === teams.length - 1}><ArrowDown size={16} /></button></span></div>)}</div><button style={button} disabled={working || teams.length < 2} onClick={runPreview}><Eye size={17} />{working ? "Calcolo…" : "Anteprima calendario"}</button></section>
       {preview && <PreviewPanel preview={preview} names={names} onGenerate={generate} working={working} />}

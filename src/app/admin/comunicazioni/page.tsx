@@ -378,7 +378,7 @@ function AdminComunicazioniPageContent() {
   }
 
     return (
-    <div style={pageStyle} className="admin-comunicazioni-page">
+    <div style={pageStyle} className="admin-comunicazioni-page admin-specialist-page">
       <div
         style={{ maxWidth: 1120, margin: "0 auto", color: "white" }}
         className="admin-comunicazioni-shell"

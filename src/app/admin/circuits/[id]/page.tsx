@@ -205,7 +205,7 @@ export default function AdminCircuitDetailPage({
   const visibleStages = filteredPlayedStages.length;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+    <div className="admin-circuits-page admin-specialist-page" style={{ display: "flex", flexDirection: "column", gap: 18 }}>
       <div
         style={{
           display: "flex",
