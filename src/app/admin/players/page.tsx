@@ -2,6 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
+import PlayerMatchingPanel from './PlayerMatchingPanel';
 import s from './players.module.css';
 
 type GameProfile = { score:number; total:5; status:'complete'|'partial'|'incomplete'; label:string; missing:string[] };
@@ -15,6 +16,7 @@ const movibackLabels:Record<string,string>={none:'Assente',active:'Attivo',grace
 const complianceLabels:Record<string,string>={none:'Assente',valid:'Valida',approved:'Approvata',expired_grace:'Tolleranza',expired:'Scaduta',pending_review:'Da verificare',rejected:'Rifiutata'};
 
 export default function PlayersPage(){
+  const [mode,setMode]=useState<'list'|'matching'>('list');
   const [q,setQ]=useState(''),[status,setStatus]=useState('active'),[account,setAccount]=useState('all'),[moviback,setMoviback]=useState('all'),[profile,setProfile]=useState('all');
   const [page,setPage]=useState(1),[items,setItems]=useState<Player[]>([]),[total,setTotal]=useState(0),[hasMore,setHasMore]=useState(false);
   const [busy,setBusy]=useState(false),[error,setError]=useState('');
@@ -37,6 +39,8 @@ export default function PlayersPage(){
 
   return <main className={s.page}>
     <header className={s.header}><div><h1>Customer Hub</h1><p className={s.muted}>Giocatori, account e stato MoviBack in un unico punto operativo.</p></div><Link className={s.secondary} href="/admin/users/duplicates">Duplicati e identità da verificare</Link></header>
+    <div className={s.modeTabs} role="tablist" aria-label="Modalità Customer Hub"><button type="button" role="tab" aria-selected={mode==='list'} className={mode==='list'?s.modeActive:s.modeTab} onClick={()=>setMode('list')}>Elenco giocatori</button><button type="button" role="tab" aria-selected={mode==='matching'} className={mode==='matching'?s.modeActive:s.modeTab} onClick={()=>setMode('matching')}>Trova giocatori compatibili</button></div>
+    {mode==='list'?<>
     <form className={s.search} onSubmit={search}>
       <label className={s.field}>Nome o telefono<input value={q} onChange={event=>setQ(event.target.value)} maxLength={100} placeholder="Cerca nome o telefono"/></label>
       <label className={s.field}>Stato<select value={status} onChange={event=>setStatus(event.target.value)}><option value="active">Attivi</option><option value="archived">Archiviati</option><option value="merged">Fusi</option><option value="all">Tutti</option></select></label>
@@ -64,6 +68,6 @@ export default function PlayersPage(){
         </tr>;
       })}</tbody>
     </table></div>}
-    <div className={s.pagination}><button className={s.secondary} disabled={busy||page<=1} onClick={()=>void load(page-1)}>Precedente</button><button className={s.secondary} disabled={busy||!hasMore} onClick={()=>void load(page+1)}>Successiva</button></div>
+    <div className={s.pagination}><button className={s.secondary} disabled={busy||page<=1} onClick={()=>void load(page-1)}>Precedente</button><button className={s.secondary} disabled={busy||!hasMore} onClick={()=>void load(page+1)}>Successiva</button></div></>:<PlayerMatchingPanel/>}
   </main>;
 }

@@ -1,0 +1,35 @@
+import assert from 'node:assert/strict';
+
+if(process.env.PLAYER_MATCHING_LOCAL_VERIFIED!=='1'||process.env.SUPABASE_URL!=='http://127.0.0.1:55021')throw new Error('Verified local player matching runner required');
+const base='http://localhost:3100';
+const cookies=(response)=>response.headers.getSetCookie().map(value=>value.split(';')[0]).join('; ');
+const form=new FormData();
+form.set('email','padelleria-admin@example.invalid');
+form.set('password','Padelleria-Local-2026!');
+const login=await fetch(base+'/api/admin/login',{method:'POST',body:form});
+assert.equal(login.status,200);
+const session=cookies(login);
+const call=async(body,cookie=session,origin=base)=>{
+  const response=await fetch(base+'/api/admin/players/match',{method:'POST',headers:{Cookie:cookie,Origin:origin,'Content-Type':'application/json'},body:JSON.stringify(body)});
+  return {status:response.status,json:await response.json()};
+};
+const scenarioA={club:'Manta',target_level_numeric:3.5,target_level_descriptive:null,weekday:5,time_window:'evening',match_type:'male',last_minute:false,exclude_player_id:null};
+const scenarioB={club:'Costigliole',target_level_numeric:3,target_level_descriptive:null,weekday:3,time_window:'evening',match_type:'mixed',last_minute:true,exclude_player_id:null};
+assert.equal((await call(scenarioA,'')).status,403);
+assert.equal((await call(scenarioA,session,'http://evil.invalid')).status,403);
+let result=await call(scenarioA);
+assert.equal(result.status,200);
+assert.ok(result.json.data.length<=20);
+assert.ok(result.json.data.every(item=>item.score>=50));
+assert.equal(result.json.data[0].fullName,'Matching Demo A Exact 3.5');
+assert.ok(result.json.data.some(item=>item.fullName==='Matching Demo E No club 4.5'),'empty club preference remains eligible');
+assert.ok(result.json.data.some(item=>item.fullName==='Matching Demo H Unknown availability'),'unknown availability remains eligible');
+assert.ok(!result.json.data.some(item=>item.fullName==='Matching Demo G Club incompatible'),'explicit club mismatch excluded');
+assert.ok(!result.json.data.some(item=>['Matching Demo L Archived','Matching Demo M Merged'].includes(item.fullName)),'archived and merged excluded');
+assert.ok(result.json.data.some(item=>item.accountState==='unlinked'),'no-account identity included');
+assert.ok(result.json.data.some(item=>item.identityWarning),'open identity case exposed as warning only');
+for(const item of result.json.data)for(const forbidden of ['tax_code','certificate','moviback','points_balance','internal_notes','auth_user_id'])assert.equal(forbidden in item,false);
+result=await call(scenarioB);
+assert.equal(result.status,200);
+assert.equal(result.json.data[0].fullName,'Matching Demo B Exact 3.0');
+console.log('Player matching HTTP acceptance passed: scenarios A-F, privacy, auth, origin, threshold and top 20.');
