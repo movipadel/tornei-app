@@ -6,6 +6,7 @@ import {
   publicQrToken,
 } from "@/lib/movibackContracts";
 import { createRuntimePerf } from "@/lib/runtimePerf";
+import { computeMovibackEligibility } from "@/lib/movibackEligibility";
 
 export const runtime = "nodejs";
 
@@ -22,6 +23,7 @@ export async function GET() {
       points: 0,
       transactions: [],
       redemptions: [],
+      eligibility: null,
     });
   }
 
@@ -47,11 +49,10 @@ export async function GET() {
     perf.db(() =>
       sb
         .from("medical_certificates")
-        .select("id,file_path,status,uploaded_at,reviewed_at,expiry_date,notes")
+        .select("id,status,uploaded_at,reviewed_at,expiry_date,notes")
         .eq("user_id", uid)
         .order("uploaded_at", { ascending: false })
-        .limit(1)
-        .maybeSingle()
+        .limit(20)
     ),
   ]);
 
@@ -67,7 +68,8 @@ export async function GET() {
     return perf.json({ error: membershipErr.message }, { status: 500 });
   }
 
-  const { data: certificate, error: certErr } = certificateResult;
+  const { data: certificates, error: certErr } = certificateResult;
+  const certificate = certificates?.[0] ?? null;
 
   let points = 0;
   let transactions: any[] = [];
@@ -159,6 +161,10 @@ export async function GET() {
     points,
     transactions,
     redemptions,
+    eligibility: computeMovibackEligibility({
+      memberships: membership ? [membership] : [],
+      certificates: certificates ?? [],
+    }),
   });
   } finally {
     perf.finish();

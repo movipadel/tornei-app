@@ -125,10 +125,10 @@ export default function AdminMoviBackPage() {
                     text={`${data.kpi.pending_requests} richieste in attesa`}
                   />
                   <QuickLink
-  href="/admin/moviback/users"
+  href="/admin/players"
   icon={<Users />}
-  title="Utenti MoviBack"
-  text="Consulta utenti, tessere, stati e saldo punti"
+  title="Customer Hub"
+  text="Apri clienti, identità e stato MoviBack"
 />
                   <QuickLink
                     href="/admin/moviback/catalog"

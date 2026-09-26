@@ -8,7 +8,6 @@ import {
   Clock,
   FileText,
   Loader2,
-  ShieldCheck,
   Sparkles,
   Upload,
   WalletCards,
@@ -48,12 +47,21 @@ rejected_at?: string | null;
 
 type Certificate = {
   id: string;
-  file_path: string;
   status: "uploaded" | "pending_review" | "approved" | "rejected" | "expired";
   uploaded_at: string;
   reviewed_at?: string | null;
   expiry_date?: string | null;
   notes?: string | null;
+};
+
+type Eligibility = {
+  eligibility_state: "active" | "grace_period" | "standby" | "pending_review" | "blocked";
+  human_message: string;
+  grace_days_remaining: number | null;
+  can_earn_points: boolean;
+  can_redeem: boolean;
+  can_use_card: boolean;
+  needs_certificate_review: boolean;
 };
 
 type MoviBackMe = {
@@ -63,6 +71,7 @@ type MoviBackMe = {
   points: number;
   transactions: any[];
   redemptions: any[];
+  eligibility: Eligibility | null;
 };
 
 const pageBg =
@@ -148,6 +157,7 @@ export default function MoviBackPage() {
     points: 0,
     transactions: [],
     redemptions: [],
+    eligibility: null,
   });
 
   const [loginOpen, setLoginOpen] = useState(false);
@@ -166,6 +176,7 @@ export default function MoviBackPage() {
   const [replaceCertOpen, setReplaceCertOpen] = useState(false);
   const [replaceExpiryDate, setReplaceExpiryDate] = useState("");
   const [replaceCertificateFile, setReplaceCertificateFile] = useState<File | null>(null);
+  const [graceNoticeOpen, setGraceNoticeOpen] = useState(true);
 
   async function loadMe() {
     try {
@@ -551,6 +562,13 @@ return (
           </div>
         ) : (
           <>
+            {data.eligibility?.eligibility_state === "standby" ? (
+              <section style={{ ...glassCard, padding: 18, marginBottom: 16, color: "white", borderColor: "rgba(248,113,113,.45)", background: "rgba(127,29,29,.34)" }} role="status">
+                <div style={{ display: "flex", gap: 10, alignItems: "center", fontSize: 19, fontWeight: 950 }}><AlertTriangle /> MoviBack in stand-by</div>
+                <p style={{ color: "rgba(255,255,255,.78)", lineHeight: 1.45 }}>Il certificato medico è scaduto da oltre 60 giorni. L’accumulo punti è sospeso; saldo, QR, premi e storico restano disponibili.</p>
+                <button type="button" onClick={() => setReplaceCertOpen(true)} style={{ minHeight: 44, border: 0, borderRadius: 999, padding: "0 18px", background: "#fff", color: "#991b1b", fontWeight: 900 }}>Aggiorna certificato</button>
+              </section>
+            ) : null}
             <section
               style={{
                 position: "relative",
@@ -1930,6 +1948,17 @@ return (
       >
         Chiudi
       </button>
+    </div>
+  </div>
+) : null}
+
+{data.eligibility?.eligibility_state === "grace_period" && graceNoticeOpen ? (
+  <div style={{ position: "fixed", inset: 0, zIndex: 120, background: "rgba(3,7,18,.78)", backdropFilter: "blur(10px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+    <div role="dialog" aria-modal="true" aria-labelledby="certificate-grace-title" style={{ width: "100%", maxWidth: 500, borderRadius: 28, padding: 20, color: "white", background: "linear-gradient(180deg, #111827, #030712)", border: "1px solid rgba(251,191,36,.35)" }}>
+      <AlertTriangle style={{ color: "#fbbf24" }} />
+      <h2 id="certificate-grace-title" style={{ marginTop: 12, fontSize: 23, fontWeight: 950 }}>Certificato medico scaduto</h2>
+      <p style={{ color: "rgba(255,255,255,.7)", lineHeight: 1.5 }}>MoviBack resta pienamente attivo durante i 60 giorni di tolleranza. Aggiorna il certificato prima della scadenza del periodo{data.eligibility.grace_days_remaining !== null ? `: restano ${data.eligibility.grace_days_remaining} giorni` : ""}.</p>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 18 }}><button type="button" onClick={() => { setGraceNoticeOpen(false); setReplaceCertOpen(true); }} style={{ minHeight: 46, border: 0, borderRadius: 16, background: "#fbbf24", color: "#111827", fontWeight: 950 }}>Aggiorna certificato</button><button type="button" onClick={() => setGraceNoticeOpen(false)} style={{ minHeight: 46, borderRadius: 16, border: "1px solid rgba(255,255,255,.14)", background: "rgba(255,255,255,.07)", color: "white", fontWeight: 900 }}>Continua su MoviBack</button></div>
     </div>
   </div>
 ) : null}

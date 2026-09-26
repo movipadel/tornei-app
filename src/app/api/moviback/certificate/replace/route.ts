@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getUserIdFromCookie } from "@/lib/userAuth";
+import { calendarDaysAfter } from "@/lib/movibackEligibility";
 
 export const runtime = "nodejs";
 
@@ -15,6 +16,8 @@ function safeFileName(name: string) {
 }
 
 export async function POST(req: Request) {
+  const origin = req.headers.get("origin");
+  if (origin && origin !== new URL(req.url).origin) return NextResponse.json({ error: "Origine non consentita" }, { status: 403 });
   const uid = await getUserIdFromCookie();
 
   if (!uid) {
@@ -30,7 +33,7 @@ export async function POST(req: Request) {
   const expiryDate = String(form.get("expiry_date") ?? "").trim();
   const file = form.get("certificate");
 
-  if (!expiryDate) {
+  if (!expiryDate || calendarDaysAfter(expiryDate, expiryDate) !== 0) {
     return NextResponse.json({ error: "Scadenza certificato obbligatoria" }, { status: 400 });
   }
 

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getStaffSessionOrNull } from "@/lib/staffGuard";
+import { readMovibackEligibility } from "@/lib/movibackEligibilityServer";
 
 export const runtime = "nodejs";
 
@@ -202,6 +203,8 @@ function promoTargetMatches(promo: any, membership: any, nowParts: ReturnType<ty
 }
 
 export async function POST(req: Request) {
+  const origin = req.headers.get("origin");
+  if (origin && origin !== new URL(req.url).origin) return NextResponse.json({ error: "Origine non consentita" }, { status: 403 });
   const session = await getStaffSessionOrNull();
 
   if (
@@ -258,6 +261,14 @@ export async function POST(req: Request) {
           "MoviBack non attivo: puoi accreditare punti solo a tessere approvate",
       },
       { status: 400 }
+    );
+  }
+
+  const eligibility = await readMovibackEligibility({ membershipId: membership.id });
+  if (!eligibility.can_earn_points) {
+    return NextResponse.json(
+      { error: eligibility.human_message, code: eligibility.reason_code, eligibility },
+      { status: 400 },
     );
   }
 

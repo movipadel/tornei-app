@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { guardAdmin } from "@/lib/adminGuard";
+import { isSupportedTaxCode, normalizeTaxCode } from "@/lib/movibackEligibility";
+import { readMovibackEligibility } from "@/lib/movibackEligibilityServer";
 
 export const runtime = "nodejs";
 
@@ -161,6 +163,8 @@ export async function GET(_req: Request, { params }: Params) {
 export async function PATCH(req: Request, { params }: Params) {
   const denied = await guardAdmin();
   if (denied) return denied;
+  const origin = req.headers.get("origin");
+  if (origin && origin !== new URL(req.url).origin) return NextResponse.json({ error: "Origine non consentita" }, { status: 403 });
 
   const { id } = await params;
 
@@ -189,7 +193,7 @@ export async function PATCH(req: Request, { params }: Params) {
   const email = String(body.email ?? "").trim();
   const gender = String(body.gender ?? "").trim();
 
-  const taxCode = String(body.tax_code ?? "").trim().toUpperCase();
+  const taxCode = normalizeTaxCode(body.tax_code);
   const membershipType = String(body.membership_type ?? "").trim();
   const status = String(body.status ?? "").trim();
   const feePoints = Number(body.fee_points ?? 0);
@@ -209,6 +213,10 @@ export async function PATCH(req: Request, { params }: Params) {
     return NextResponse.json({ error: "Telefono obbligatorio" }, { status: 400 });
   }
 
+  if (!isSupportedTaxCode(taxCode)) {
+    return NextResponse.json({ error: "Codice fiscale non valido: usa da 11 a 16 caratteri senza spazi" }, { status: 400 });
+  }
+
   if (gender && !["M", "F"].includes(gender)) {
     return NextResponse.json({ error: "Genere non valido" }, { status: 400 });
   }
@@ -223,6 +231,13 @@ export async function PATCH(req: Request, { params }: Params) {
 
   if (!Number.isFinite(feePoints) || feePoints < 0) {
     return NextResponse.json({ error: "Quota punti non valida" }, { status: 400 });
+  }
+
+  if (status === "approved") {
+    const eligibility = await readMovibackEligibility({ membershipId: id, membershipStatusOverride: "approved" });
+    if (!["active", "grace_period"].includes(eligibility.eligibility_state)) {
+      return NextResponse.json({ error: eligibility.human_message, code: eligibility.reason_code }, { status: 400 });
+    }
   }
 
   if (
@@ -257,7 +272,7 @@ export async function PATCH(req: Request, { params }: Params) {
     .from("loyalty_memberships")
     .update({
       status,
-      tax_code: taxCode || null,
+      tax_code: taxCode,
       membership_type: membershipType,
       fee_points: feePoints,
       fee_paid: feePaid,

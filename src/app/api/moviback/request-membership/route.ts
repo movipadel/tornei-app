@@ -8,6 +8,7 @@ import {
   measureNotificationRequest,
   schedulePostCommitNotifications,
 } from "@/lib/postCommitNotifications";
+import { calendarDaysAfter } from "@/lib/movibackEligibility";
 
 export const runtime = "nodejs";
 
@@ -22,7 +23,7 @@ function isValidMembershipType(value: string): value is "ASC" | "FITP" {
 }
 
 function isValidISODate(value: string) {
-  return /^\d{4}-\d{2}-\d{2}$/.test(value);
+  return calendarDaysAfter(value, value) === 0;
 }
 
 function safeFileName(name: string) {
@@ -44,6 +45,8 @@ export async function POST(req: Request) {
 }
 
 async function handlePost(req: Request) {
+  const origin = req.headers.get("origin");
+  if (origin && origin !== new URL(req.url).origin) return NextResponse.json({ error: "Origine non consentita" }, { status: 403 });
   const uid = await getUserIdFromCookie();
 
   if (!uid) {
@@ -134,15 +137,20 @@ async function handlePost(req: Request) {
     );
   }
 
-  const { data: existingMembership, error: existingErr } = await sb
+  const { data: existingMembershipRows, error: existingErr } = await sb
     .from("loyalty_memberships")
     .select("id,status,membership_code,membership_type")
     .eq("user_id", uid)
-    .maybeSingle();
+    .limit(2);
 
   if (existingErr) {
     return NextResponse.json({ error: existingErr.message }, { status: 500 });
   }
+
+  if ((existingMembershipRows ?? []).length > 1) {
+    return NextResponse.json({ error: "Più membership MoviBack richiedono una verifica Admin", code: "MEMBERSHIP_CARDINALITY" }, { status: 409 });
+  }
+  const existingMembership = existingMembershipRows?.[0] ?? null;
 
   if (existingMembership && existingMembership.status !== "rejected") {
   return NextResponse.json(

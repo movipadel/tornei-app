@@ -19,6 +19,7 @@ import {
   shouldScheduleStaffNotification,
   type MovibackRpcResult,
 } from "@/lib/movibackContracts";
+import { readMovibackEligibility } from "@/lib/movibackEligibilityServer";
 
 export const runtime = "nodejs";
 
@@ -27,6 +28,8 @@ function makeToken() {
 }
 
 export async function POST(req: Request) {
+  const origin = req.headers.get("origin");
+  if (origin && origin !== new URL(req.url).origin) return NextResponse.json({ error: "Origine non consentita" }, { status: 403 });
   return measureNotificationRequest("/api/moviback/rewards/redeem", () =>
     smartRedemptionEnabled() ? handleSmartPost(req) : handleLegacyPost(req)
   );
@@ -70,6 +73,10 @@ async function handleSmartPost(req: Request) {
   }
 
   const sb = supabaseAdmin();
+  const eligibility = await readMovibackEligibility({ userId: uid });
+  if (!eligibility.can_redeem) {
+    return NextResponse.json({ error: eligibility.human_message, code: eligibility.reason_code }, { status: 400 });
+  }
   const { data, error } = await sb.rpc("redeem_moviback_reward", {
     p_user_id: uid,
     p_idempotency_key: idempotencyKey,
@@ -155,6 +162,11 @@ async function handleLegacyPost(req: Request) {
 
   if (!uid) {
     return NextResponse.json({ error: "Non autenticato" }, { status: 401 });
+  }
+
+  const eligibility = await readMovibackEligibility({ userId: uid });
+  if (!eligibility.can_redeem) {
+    return NextResponse.json({ error: eligibility.human_message, code: eligibility.reason_code }, { status: 400 });
   }
 
   const body = await req.json().catch(() => ({}));

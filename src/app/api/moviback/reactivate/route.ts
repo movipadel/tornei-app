@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getUserIdFromCookie } from "@/lib/userAuth";
+import { readMovibackEligibility } from "@/lib/movibackEligibilityServer";
 
 export const runtime = "nodejs";
 
@@ -36,6 +37,11 @@ export async function POST() {
       { error: "Riattivazione automatica non consentita. Contatta la segreteria." },
       { status: 403 }
     );
+  }
+
+  const eligibility = await readMovibackEligibility({ membershipId: membership.id, membershipStatusOverride: "approved" });
+  if (!["active", "grace_period"].includes(eligibility.eligibility_state)) {
+    return NextResponse.json({ error: eligibility.human_message, code: eligibility.reason_code }, { status: 400 });
   }
 
   const now = new Date().toISOString();
