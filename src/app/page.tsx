@@ -77,10 +77,19 @@ type PublicCircuit = {
   hero_subtitle?: string | null;
   theme_key?: string | null;
 };
+
+type RegistrationSearchRow = {
+  id: string;
+  tournament_id: string;
+  is_reserve: boolean;
+  p1_phone: string;
+  p2_phone?: string | null;
+};
 type MondayLeagueHero = { visible: true; eyebrow: string; title: string; seasonName: string } | { visible: false };
 
 const normalizePhone = (s: string) => String(s ?? "").replace(/\s+/g, "").trim();
 const isValidPhone = (p: string) => normalizePhone(p).length >= 8;
+const errorMessage = (error: unknown, fallback: string) => error instanceof Error ? error.message : fallback;
 
 export default function HomePage() {
   const [loading, setLoading] = useState(true);
@@ -116,6 +125,20 @@ export default function HomePage() {
   // ✅ auto-refresh lista tornei (quando la pagina è visibile)
   const listTimerRef = useRef<number | null>(null);
   const listAbortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    const openNotifications = () => setNotificationsOpen(true);
+    const openFromHash = () => {
+      if (window.location.hash === "#notifiche") setNotificationsOpen(true);
+    };
+    window.addEventListener("movi:open-notifications", openNotifications);
+    window.addEventListener("hashchange", openFromHash);
+    openFromHash();
+    return () => {
+      window.removeEventListener("movi:open-notifications", openNotifications);
+      window.removeEventListener("hashchange", openFromHash);
+    };
+  }, []);
 
   async function loadAll(opts?: { silent?: boolean; includeBootstrap?: boolean }) {
     const silent = Boolean(opts?.silent);
@@ -175,11 +198,11 @@ if (commRes.ok) {
 }
 const mlJson = await mlRes.json().catch(() => ({ visible: false }));
 setMondayLeagueHero(mlRes.ok && mlJson.visible ? mlJson as MondayLeagueHero : { visible: false });
-    } catch (e: any) {
+    } catch (e: unknown) {
       // Abort = normale durante refresh/cleanup
-      if (e?.name === "AbortError") return;
+      if (e instanceof Error && e.name === "AbortError") return;
 
-      if (!silent) toast.error(e?.message ?? "Errore");
+      if (!silent) toast.error(errorMessage(e, "Errore"));
     } finally {
       if (!silent) setLoading(false);
     }
@@ -203,7 +226,7 @@ setMondayLeagueHero(mlRes.ok && mlJson.visible ? mlJson as MondayLeagueHero : { 
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json.error || "Errore ricerca");
 
-      const rows = (json.data ?? []) as any[];
+      const rows = (json.data ?? []) as RegistrationSearchRow[];
       const exact = rows.filter((r) => {
         const p1 = normalizePhone(r.p1_phone ?? "");
         const p2 = normalizePhone(r.p2_phone ?? "");
@@ -219,8 +242,8 @@ setMondayLeagueHero(mlRes.ok && mlJson.visible ? mlJson as MondayLeagueHero : { 
           p2_phone: r.p2_phone ?? null,
         }))
       );
-    } catch (e: any) {
-      toast.error(e?.message ?? "Errore");
+    } catch (e: unknown) {
+      toast.error(errorMessage(e, "Errore"));
     } finally {
       setLoadingMy(false);
     }
@@ -248,8 +271,8 @@ setMondayLeagueHero(mlRes.ok && mlJson.visible ? mlJson as MondayLeagueHero : { 
       toast.success("Iscrizione cancellata");
       await searchMy(p);
       await loadAll();
-    } catch (e: any) {
-      toast.error(e?.message ?? "Errore");
+    } catch (e: unknown) {
+      toast.error(errorMessage(e, "Errore"));
     }
   }
 
@@ -279,8 +302,8 @@ setMondayLeagueHero(mlRes.ok && mlJson.visible ? mlJson as MondayLeagueHero : { 
               : n
           )
     );
-  } catch (e: any) {
-    toast.error(e?.message || "Errore");
+  } catch (e: unknown) {
+    toast.error(errorMessage(e, "Errore"));
   }
 }
 
@@ -310,8 +333,8 @@ async function markAllNotificationsRead() {
         read_at: n.read_at || now,
       }))
     );
-  } catch (e: any) {
-    toast.error(e?.message || "Errore");
+  } catch (e: unknown) {
+    toast.error(errorMessage(e, "Errore"));
   }
 }
 
@@ -917,7 +940,7 @@ const notificationSmallBtn: React.CSSProperties = {
 {mondayLeagueHero.visible ? <Link href="/monday-league" style={{ display: "block", margin: "8px 0 22px", padding: "clamp(22px,5vw,38px)", borderRadius: 28, color: "white", textDecoration: "none", overflow: "hidden", position: "relative", background: "radial-gradient(circle at 85% 10%,rgba(94,234,212,.36),transparent 34%),linear-gradient(135deg,#042f2e,#0f172a 70%)", border: "1px solid rgba(94,234,212,.28)", boxShadow: "0 22px 52px rgba(0,0,0,.26)" }}><div style={{ position: "relative", zIndex: 1 }}><div style={{ color: "#5eead4", textTransform: "uppercase", letterSpacing: 1.4, fontWeight: 900, fontSize: 12 }}>{mondayLeagueHero.eyebrow}</div><div style={{ fontSize: "clamp(24px,5vw,42px)", fontWeight: 950, letterSpacing: -1.1, marginTop: 7 }}>{mondayLeagueHero.title}</div><div style={{ color: "rgba(255,255,255,.68)", marginTop: 6 }}>{mondayLeagueHero.seasonName}</div><div style={{ marginTop: 18, fontWeight: 850 }}>Apri la competizione →</div></div></Link> : null}
 
                {circuits.length > 0 ? (
-  <section style={{ marginTop: 8, marginBottom: 22 }}>
+  <section id="circuiti" style={{ marginTop: 8, marginBottom: 22, scrollMarginTop: 88 }}>
     <div style={{ marginBottom: 14 }}>
       <div
         style={{

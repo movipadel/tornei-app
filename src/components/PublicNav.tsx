@@ -3,8 +3,10 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Settings, UserRound } from "lucide-react";
+import { usePublicShell } from "@/components/public/PublicShellContext";
 
 export default function PublicNav() {
+  const insidePublicShell = usePublicShell();
   const [adminAuthed, setAdminAuthed] = useState(false);
   const [checking, setChecking] = useState(true);
 
@@ -20,12 +22,14 @@ export default function PublicNav() {
   }
 
   useEffect(() => {
-    checkAdmin();
-  }, []);
+    if (!insidePublicShell) checkAdmin();
+  }, [insidePublicShell]);
 
   function goAdmin() {
     window.location.href = adminAuthed ? "/admin" : "/admin/login";
   }
+
+  if (insidePublicShell) return null;
 
   return (
     <nav

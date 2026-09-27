@@ -12,7 +12,7 @@ export default function ProgressiveAuthPrompt() {
   const resumeAttempted = useRef(false);
 
   useEffect(() => {
-    if (pathname.startsWith("/admin") || pathname.startsWith("/staff") || pathname === "/attiva-account" || pathname === "/accedi") return;
+    if (pathname.startsWith("/admin") || pathname.startsWith("/staff") || pathname.startsWith("/dev/") || pathname === "/attiva-account" || pathname === "/accedi") return;
     let active = true;
     const load = () => fetch("/api/user/me", { cache: "no-store" })
       .then(async (response) => response.ok ? response.json() : null)
@@ -66,7 +66,9 @@ export default function ProgressiveAuthPrompt() {
     }
   }
 
-  return <aside aria-live="polite" style={shell}>
+  const publicShellOffset = !pathname.startsWith("/admin") && !pathname.startsWith("/staff") && !["/accedi", "/registrati", "/attiva-account", "/accesso-precedente", "/password-dimenticata", "/reset-password"].includes(pathname) && !pathname.startsWith("/riscatto-premio/");
+
+  return <aside aria-live="polite" style={{ ...shell, bottom: publicShellOffset ? "calc(80px + env(safe-area-inset-bottom))" : 16 }}>
     <div><strong>{migration.status === "review_required" ? "Ci pensiamo noi" : "Attiva il nuovo accesso"}</strong>
       <p style={{ margin: "4px 0 0", fontSize: 13 }}>{migration.message ?? "Userai email e password senza perdere nulla del tuo profilo."}</p>
     </div>

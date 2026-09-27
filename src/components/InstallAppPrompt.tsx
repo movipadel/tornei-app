@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Download, Share, X } from "lucide-react";
+import { usePathname } from "next/navigation";
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -18,15 +19,16 @@ function isStandalone() {
 
   return (
     window.matchMedia("(display-mode: standalone)").matches ||
-    (window.navigator as any).standalone === true
+    (window.navigator as Navigator & { standalone?: boolean }).standalone === true
   );
 }
 
 export default function InstallAppPrompt() {
+  const pathname = usePathname();
   const [deferredPrompt, setDeferredPrompt] =
     useState<BeforeInstallPromptEvent | null>(null);
   const [visible, setVisible] = useState(false);
-  const [ios, setIos] = useState(false);
+  const [ios] = useState(isIos);
 
   useEffect(() => {
   if (isStandalone()) return;
@@ -36,8 +38,6 @@ export default function InstallAppPrompt() {
   );
 
   if (dismissedUntil > Date.now()) return;
-
-  setIos(isIos());
 
   const timer = window.setTimeout(() => {
     setVisible(true);
@@ -82,7 +82,9 @@ export default function InstallAppPrompt() {
   );
 }
 
-  if (!visible) return null;
+  if (!visible || pathname.startsWith("/dev/")) return null;
+
+  const publicShellOffset = !pathname.startsWith("/admin") && !pathname.startsWith("/staff") && !["/accedi", "/registrati", "/attiva-account", "/accesso-precedente", "/password-dimenticata", "/reset-password"].includes(pathname) && !pathname.startsWith("/riscatto-premio/");
 
   return (
     <div
@@ -90,7 +92,7 @@ export default function InstallAppPrompt() {
         position: "fixed",
         left: 12,
         right: 12,
-        bottom: 14,
+        bottom: publicShellOffset ? "calc(78px + env(safe-area-inset-bottom))" : 14,
         zIndex: 9999,
         borderRadius: 24,
         padding: 14,

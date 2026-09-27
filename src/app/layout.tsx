@@ -6,6 +6,7 @@ import "./globals.css";
 
 import InstallAppPrompt from "@/components/InstallAppPrompt";
 import ProgressiveAuthPrompt from "@/components/ProgressiveAuthPrompt";
+import PublicShell from "@/components/public/PublicShell";
 
 const geistSans = Geist({
   subsets: ["latin"],
@@ -83,6 +84,7 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: "#4f46e5",
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
@@ -95,7 +97,7 @@ export default function RootLayout({
       <body className="min-h-screen bg-slate-50 text-slate-900 antialiased">
         <Toaster position="top-center" richColors />
 
-        {children}
+        <PublicShell>{children}</PublicShell>
 
         <ProgressiveAuthPrompt />
         <InstallAppPrompt />
