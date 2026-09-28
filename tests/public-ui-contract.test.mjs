@@ -24,6 +24,12 @@ test("bottom navigation order and current MoviBack QR payload are preserved", as
   const labels = [...nav.matchAll(/label="(Home|Tornei|Circuiti|Profilo)"|<span>QR<\/span>/g)].map((match) => match[1] ?? "QR");
   assert.deepEqual(labels, ["Home", "Tornei", "QR", "Circuiti", "Profilo"]);
   assert.match(nav, /`mb:\$\{qr\.code\}`/);
+  assert.match(nav, /trigger={<button[^>]+aria-haspopup="dialog"/);
+});
+
+test("controlled showcase modal keeps a Radix trigger for focus return", async () => {
+  const showcase = await read("src/components/public/PublicUIShowcase.tsx");
+  assert.match(showcase, /trigger={<PublicButton>Apri modal demo<\/PublicButton>}/);
 });
 
 test("PWA API caching and legacy api-cache purge remain unchanged", async () => {

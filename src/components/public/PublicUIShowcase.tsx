@@ -75,8 +75,7 @@ export default function PublicUIShowcase() {
     </ShowcaseSection>
 
     <ShowcaseSection title="Modal">
-      <PublicButton onClick={() => setModalOpen(true)}>Apri modal demo</PublicButton>
-      <PublicModal open={modalOpen} onOpenChange={setModalOpen} title="Dettaglio rapido" description="Focus intrappolato, Escape e ritorno al controllo di apertura sono gestiti da Radix."><div className={styles.stack}><PublicCard family="highlight"><h3>Spazio sicuro</h3><p className={styles.meta}>Altezza basata su 100dvh, scroll interno e safe area.</p></PublicCard><PublicButton onClick={() => setModalOpen(false)}>Ho capito</PublicButton></div></PublicModal>
+      <PublicModal open={modalOpen} onOpenChange={setModalOpen} trigger={<PublicButton>Apri modal demo</PublicButton>} title="Dettaglio rapido" description="Focus intrappolato, Escape e ritorno al controllo di apertura sono gestiti da Radix."><div className={styles.stack}><PublicCard family="highlight"><h3>Spazio sicuro</h3><p className={styles.meta}>Altezza basata su 100dvh, scroll interno e safe area.</p></PublicCard><PublicButton onClick={() => setModalOpen(false)}>Ho capito</PublicButton></div></PublicModal>
     </ShowcaseSection>
 
     <ShowcaseSection title="Stati condivisi">
