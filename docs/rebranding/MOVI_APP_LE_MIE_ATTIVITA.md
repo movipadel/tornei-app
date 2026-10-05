@@ -15,7 +15,7 @@ La migrazione `20261008100000_movi_activity_read_scope.sql` aggiunge esclusivame
 | Monday League | roster personale attivo e incontri futuri dalla proiezione pubblica esistente | risultati confirmed/special, data durante la permanenza nel roster |
 | Circuiti e `circuit_ranking_groups`/`circuit_results` | una scheda per gruppo del circuito active | gruppi del circuito closed |
 
-La scheda **Da completare** è vuota: attualmente nessuna fonte certifica un'azione personale obbligatoria. Non include richieste semplicemente ricevute, certificati medici o compiti inventati. Lo stato vuoto di In programma propone Trova una partita, Allenati e Vedi i tornei.
+Il modello pubblico finale espone esclusivamente **In programma** e **Storico**. La precedente scheda **Da completare** è stata rimossa perché era un placeholder sempre vuoto: nessuna fonte certifica oggi un'azione personale obbligatoria. Richieste semplicemente ricevute, certificati medici o compiti inventati non vengono riclassificati. Lo stato vuoto di In programma propone Trova una partita, Allenati e Vedi i tornei.
 
 Gioca/Allenati riusano etichette e DTO certificati. Mostrano club, flessibilità/data, fascia oraria, tipo partita/allenamento e obiettivo. `Vedi richiesta` apre `/le-mie-attivita/richiesta/[id]`, il cui endpoint restituisce solo il DTO utente. Annulla richiama esclusivamente il preesistente `POST /api/user/requests/[id]/cancel`; nessuna nuova logica di mutazione. Una richiesta appartenente a un alias è leggibile ma non annullabile attraverso questa pagina se il proprietario non è l'ID canonico, coerentemente con il controllo del vecchio endpoint.
 
@@ -35,9 +35,9 @@ La prossima tappa è il primo torneo futuro non chiuso dello stesso circuito e c
 
 ## DTO e API
 
-`Activity` contiene id con prefisso tipo, type, source_id, tab, title, subtitle, status, status_label, date, club, category, level, primary_meta, secondary_meta, cta_label, cta_href, can_cancel e sort_at. Per i circuiti: classification_id, position, points, events_played. I campi opzionali court/start_at e il tipo booking preparano il futuro adapter prenotazioni, oggi non implementato.
+`Activity` contiene id con prefisso tipo, type, source_id, tab, title, subtitle, status, status_label, date, club, category, level, primary_meta, secondary_meta, cta_label, cta_href, can_cancel e sort_at. Per i circuiti: classification_id, position, points, events_played. I tipi realmente prodotti sono Gioca, Allenati, Torneo, Monday League e Circuito; nessun adapter prenotazioni è implementato.
 
-`GET /api/user/activities?tab=upcoming|action|history&limit=12&offset=0`: limite 1–50, offset 0–10000; deduplicazione e ordinamento globale prima della paginazione, `has_more` per proseguire. In programma crescente, storico decrescente, ID come spareggio stabile. Attività senza data alla fine di In programma; circuiti conclusi senza data alla fine dello storico. Offset non è uno snapshot: aggiornamenti concorrenti possono spostare le pagine.
+`GET /api/user/activities?tab=upcoming|history&limit=12&offset=0`: limite 1–50, offset 0–10000; deduplicazione e ordinamento globale prima della paginazione, `has_more` per proseguire. In programma crescente, storico decrescente, ID come spareggio stabile. Attività senza data alla fine di In programma; circuiti conclusi senza data alla fine dello storico. Offset non è uno snapshot: aggiornamenti concorrenti possono spostare le pagine. Il vecchio valore `action` non aveva consumatori o dati reali ed è ora rifiutato come parametro non valido.
 
 Identità esclusivamente da `getCurrentMoviUser`, ID canonico attivo e alias certificati active; il parametro browser user_id è rifiutato. 401 senza login, 409 conflitto identità, 400 parametri invalidi, 503 fonte indisponibile/oltre soglia. Risposte `Cache-Control: no-store`. Nessun telefono, chiave ranking, nota admin o metadato Telegram nel DTO.
 
@@ -49,13 +49,13 @@ Scope identità massimo 50 profili. Prima fase in parallelo: richieste, iscrizio
 
 Ogni sorgente ordinaria ha un limite di 500 righe più sentinella. Risultati delle classifiche rilevanti: 900 più sentinella, inferiore al limite PostgREST locale di 1000. Oltre soglia si restituisce 503 invece di una classifica troncata o un successo parziale. Questo è un limite esplicito dell'implementazione attuale: per volumi superiori occorrerà paginare internamente le fonti o introdurre una lettura SQL aggregata equivalente.
 
-La League riusa la snapshot pubblica esistente; al massimo tre snapshot, una per fase pertinente (numero limitato dal modello corrente), mai una per partita. La dimensione della League segue i vincoli esistenti. La pagina Da completare non interroga fonti inutilmente.
+La League riusa la snapshot pubblica esistente; al massimo tre snapshot, una per fase pertinente (numero limitato dal modello corrente), mai una per partita. La dimensione della League segue i vincoli esistenti.
 
 ID finali: richiesta per ID richiesta, torneo per ID torneo, League per ID partita, circuito per ID gruppo. Alias e membri di coppia non duplicano le schede. Richieste distinte restano distinte: non si fondono in base al testo.
 
 ## Ambiente locale e fixture
 
-Usare esclusivamente `scripts/padelleria-local.mjs` e `scripts/padelleria-next-local.cjs`: API 127.0.0.1:55021, DB 55022, Studio 55023, Mailpit 55024, progetto unlinked. Il runner scavalca i file env repository (il `.env.local` contiene riferimenti produzione) e disabilita il trasporto Telegram. L'etichetta `.env.local` eventualmente stampata da Next non cambia il caricamento isolato predisposto dal wrapper.
+Usare esclusivamente `scripts/padelleria-local.mjs` e `scripts/padelleria-next-local.cjs`: API 127.0.0.1:55421, DB 55422, Studio 55423, Mailpit 55424, progetto unlinked. Il runner scavalca i file env repository (il `.env.local` contiene riferimenti produzione) e disabilita il trasporto Telegram. L'etichetta `.env.local` eventualmente stampata da Next non cambia il caricamento isolato predisposto dal wrapper.
 
 Prerequisiti: schema e fixture locali degli Stage 1–3 già presenti. Poi:
 
@@ -85,7 +85,7 @@ League: http://localhost:3100/monday-league
 
 Eseguiti: 221 test Node dei contratti (inclusi tre nuovi), SQL attività/identità/privilegi con rollback, 26 controlli HTTP attività; regressioni richieste 23, Padelleria 26, Partner 28 e relativi SQL. Smoke autenticati su tornei, circuiti, Monday League, Auth, MoviBack, Store e comunicazioni, oltre ai contratti esistenti. Non equivale a ripetere manualmente ogni flusso amministrativo dei sistemi congelati.
 
-La verifica HTTP confronta posizioni/punti/tappe con la API pubblica, controlla isolamento tra utenti, assenza campi riservati, deduplica, paginazione, circuito draft/closed e stagione nascosta. Browser Edge locale con richieste esterne bloccate: viste In programma/Da completare/Storico, due classifiche, selezione del gruppo, dettaglio richiesta, larghezza mobile 390 px senza overflow. L'accettazione visiva finale resta dell'utente.
+La verifica HTTP confronta posizioni/punti/tappe con la API pubblica, controlla isolamento tra utenti, assenza campi riservati, deduplica, paginazione, circuito draft/closed e stagione nascosta. La UI finale usa le viste In programma/Storico e mantiene classifiche, selezione del gruppo e dettaglio richiesta. L'accettazione visiva finale resta dell'utente.
 
 TypeScript `--noEmit --incremental false` e build produzione locale passati. ESLint del codice nuovo passato. Nei tre file legacy integrati permangono 8 errori no-explicit-any e 5 warning preesistenti; confronto con HEAD: nessun nuovo diagnostico. La build segnala warning preesistenti themeColor/Browserslist.
 

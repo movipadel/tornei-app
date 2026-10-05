@@ -1,12 +1,12 @@
 # Gioca / Allenati — Stage 3
 
-Fondazione funzionale locale del 25 settembre 2026. Gioca e Allenati sono richieste a MOVI: il personale organizza manualmente e ricontatta il cliente. Non sono prenotazioni confermate né matchmaking automatico. Nessuna Home rebranded o pagina definitiva «Le mie attività» introdotta.
+Fondazione funzionale locale del 25 settembre 2026. Gioca e Allenati sono richieste a MOVI: il personale organizza manualmente e ricontatta il cliente. Non sono prenotazioni confermate né matchmaking automatico. La Home rebranded e la pagina definitiva «Le mie attività» sono state completate nelle fasi successive senza cambiare questa semantica.
 
 ## Moduli e club
 
 Entrambi i moduli raccolgono uno o più club oppure Indifferente, Oggi/Domani/Scegli giorno/Sono flessibile, fascia oraria, orario preferito facoltativo, livello e note. Fasce: Mattina, Pausa pranzo, Pomeriggio, Sera 18:30–23:00, Indifferente. Sono etichette operative, non orari prenotati.
 
-Gioca aggiunge tipo partita Maschile/Femminile/Misto/Indifferente e presenza del compagno. Allenati aggiunge lezione individuale/di coppia/gruppo/consiglio MOVI e obiettivo. Livelli principiante/intermedio/avanzato coerenti con i tornei, con Non saprei al posto di Open, che nel torneo rappresenta una categoria e non l'autovalutazione richiesta qui.
+Gioca aggiunge uno o più tipi partita Maschile/Femminile/Misto oppure l'opzione esclusiva Indifferente, oltre alla presenza del compagno. Allenati permette una o più scelte tra lezione individuale/di coppia/gruppo oppure l'opzione esclusiva consiglio MOVI, e uno o più obiettivi. Livelli principiante/intermedio/avanzato coerenti con i tornei, con Non saprei al posto di Open, che nel torneo rappresenta una categoria e non l'autovalutazione richiesta qui.
 
 È stata verificata la struttura esistente: `league_venues` contiene tre sedi specifiche Monday League, mentre Prenota e i tornei usano liste locali. Non esiste un'anagrafica condivisa completa sicura dei cinque club. La nuova lista controllata in `moviRequests.ts`, validata anche nel DB, comprende Revello, Saluzzo, Manta, Costigliole, Centallo. Array vuoto significa Indifferente; input libero e duplicati sono rifiutati dalle API. Nessuna modifica alle sedi League o alle pagine esistenti.
 
@@ -25,6 +25,8 @@ Gioca aggiunge tipo partita Maschile/Femminile/Misto/Indifferente e presenza del
 
 Unicità `(user_id, client_request_id)` impedisce duplicati per retry/doppio invio della stessa richiesta. Il browser genera una chiave per compilazione; il server assegna sempre user_id tramite il resolver esistente. Nessuna creazione utenti o modifica identità nel flusso richieste. Le sole fixture creano utenti sintetici locali.
 
+La migrazione `20261018100000_movi_request_multi_select.sql` converte in modo atomico `match_type`, `training_type` e `training_goal` da `text` a `text[]` senza rinominare le colonne. Ogni valore storico non nullo diventa un array con un solo elemento, mentre i null restano null: nessuna richiesta viene cancellata o reinterpretata. I vincoli DB richiedono array non vuoti, codici ammessi e unici; `any` e `advice` sono esclusivi. `other` può convivere con altri obiettivi. Il matching Gioca applica OR tra i tipi selezionati, deduplica i candidati e conserva il punteggio migliore; soglia e scoring restano quelli certificati.
+
 Indici su utente+data, stato+data e tipo+data; paginazione 1–50, offset massimo 10000, ordine created_at desc/id. Query admin contatti in batch, senza N+1. La migrazione è stata applicata singolarmente tramite psql al DB locale, senza replay di altre migrazioni e senza registrazione automatica nella migration history. Non eseguire un push globale per allinearla.
 
 ## Stato, annullamento e storico
@@ -41,7 +43,7 @@ L'utente può annullare soltanto received/searching. Per found deve contattare M
 
 ## Identità, privacy e RLS
 
-Riutilizzato `getCurrentMoviUser`: Auth 2.0 e legacy risolvono entrambi `public.users.id`; sessione assente → 401, conflitto → 409. user_id/stato/note admin nel payload di creazione vengono rifiutati. I filtri owner sono applicati dal server a lettura e annullamento. Admin guard esistente, staff escluso.
+Riutilizzato `getCurrentMoviUser`: Auth 2.0 e legacy risolvono entrambi `public.users.id`; sessione assente → 401, conflitto → 409. user_id/stato/note admin nel payload di creazione vengono rifiutati. I filtri owner sono applicati dal server a lettura e annullamento. Le superfici operative usano ora il guard autorevole `requests.manage`; Admin conserva il bypass completo.
 
 RLS abilitata con accesso diretto anon/authenticated revocato: letture e scritture degli utenti passano esclusivamente dalle API con resolver Auth/legacy. È una scelta esplicita per proteggere anche note interne e metadati Telegram, senza introdurre un secondo mapping identità nelle policy SQL. Service role soltanto server-side. I DTO utente sono allowlist: niente user_id, contatti altrui, admin_notes, chiavi idempotenza o metadati Telegram. Nessun endpoint anonimo espone richieste. Origin verificato per mutazioni quando presente; testo reso come testo React, limiti ed enum validati.
 
@@ -57,7 +59,7 @@ Retry admin: claim riservato al service role, almeno 60 secondi tra tentativi; n
 
 ### Sicurezza locale
 
-Il runner costruisce un ambiente pulito, esclude credenziali Telegram e imposta `MOVI_REQUEST_TELEGRAM_MODE=disabled`. Il helper richieste forza comunque disabled quando Supabase è esattamente `http://127.0.0.1:55021`; eventuali credenziali Telegram presenti in tale ambiente producono config_blocked senza inviare. L'avviso locale risulta disabled, notified_at resta nullo, la richiesta è regolarmente ricevuta. Il flag locale associato a URL non locale blocca il trasporto. Nessun messaggio reale è stato inviato durante i test.
+Il runner costruisce un ambiente pulito, esclude credenziali Telegram e imposta `MOVI_REQUEST_TELEGRAM_MODE=disabled`. Il helper richieste forza comunque disabled quando Supabase è esattamente `http://127.0.0.1:55421`; eventuali credenziali Telegram presenti in tale ambiente producono config_blocked senza inviare. L'avviso locale risulta disabled, notified_at resta nullo, la richiesta è regolarmente ricevuta. Il flag locale associato a URL non locale blocca il trasporto. Nessun messaggio reale è stato inviato durante i test.
 
 ## API e UI
 
@@ -68,17 +70,17 @@ Il runner costruisce un ambiente pulito, esclude credenziali Telegram e imposta 
 - GET/PATCH `/api/admin/requests/[id]`: dettaglio e gestione stato/nota interna.
 - POST `/api/admin/requests/[id]/telegram`: tentativo di retry, esito visibile ricaricando il dettaglio.
 
-Risposte no-store. Card nuova nella dashboard, stile corrente riutilizzato. Coda con tutti i filtri del brief, utente, tipo, preferenze, livello, stato e data; dettaglio con contatto, nota e retry. Moduli utente neutrali su percorsi dedicati, conferme testuali richieste, elenco personale minimo con annullamento e storico. Nessun nuovo link nella Home definitiva.
+Risposte no-store. Card nuova nella dashboard, stile corrente riutilizzato. Coda con tutti i filtri del brief, utente, tipo, preferenze, livello, stato e data; dettaglio con contatto, nota e retry. Moduli utente neutrali su percorsi dedicati, conferme testuali richieste, elenco personale minimo con annullamento e storico. La Home definitiva espone gli ingressi Gioca e Allenati verso questi percorsi.
 
 ## Timezone e futura attività
 
 Timestamp UTC/timestamptz; visualizzazione Europe/Rome. requested_date è un `date` senza conversione a mezzanotte UTC. Oggi/Domani vengono risolti sul giorno di Roma al momento dell'invio e mantenuti, con date_mode esplicito. Flexible ha data nulla. Data specifica valida e non nel passato al momento della creazione; DST e passaggio di mezzanotte testati.
 
-DTO pronto per un aggregatore futuro: id, activity_type, status/status_label, created_at, summary, can_cancel, section e preferenze. section è un'indicazione operativa: pending per ricevuta/ricerca, upcoming per trovata, history per conclusa/annullata; non certifica una prenotazione. Il futuro aggregatore «Le mie attività» potrà unire tornei, Monday League e prenotazioni con namespace per tipo, mantenendo le rispettive autorizzazioni, senza cambiare questa tabella.
+Il DTO alimenta l’aggregatore implementato «Le mie attività»: id, activity_type, status/status_label, created_at, summary, can_cancel, section e preferenze. section è un'indicazione operativa: pending per ricevuta/ricerca, upcoming per trovata, history per conclusa/annullata; non certifica una prenotazione. L’aggregatore unisce le sorgenti autorizzate con namespace per tipo senza cambiare questa tabella.
 
 ## Avvio locale e fixture
 
-Usare `scripts/padelleria-local.mjs`, che controlla progetto unlinked, API 55021, DB 55022, Studio 55023, Mailpit 55024 su 127.0.0.1. I valori di `.env.local` non vengono usati; il banner Next può comunque elencarne il nome. Non avviare Next direttamente con quel file ambiente.
+Usare `scripts/padelleria-local.mjs`, che controlla progetto unlinked, API 55421, DB 55422, Studio 55423, Mailpit 55424 su 127.0.0.1. I valori di `.env.local` non vengono usati; il banner Next può comunque elencarne il nome. Non avviare Next direttamente con quel file ambiente.
 
 ```text
 node scripts/padelleria-local.mjs check
@@ -112,3 +114,9 @@ Regressioni Padelleria: 26 controlli HTTP e SQL passati; Partner: 28 controlli H
 Browser Edge/Playwright: moduli Gioca/Allenati, conferme, elenco proprio, coda admin e salvataggio nota verificati; layout mobile 390px senza overflow. Rete browser limitata al loopback. TypeScript senza emissione e lint mirato passati (un warning img preesistente nella dashboard). Build di produzione passata, 156 pagine, con i warning preesistenti themeColor/Browserslist. Diff check passato.
 
 Nessuna accettazione visiva dichiarata per conto dell'utente. PWA mantiene GET /api/** NetworkOnly e worker caches.delete("apis"); artefatti generati ripristinati ai byte precedenti. Icone, manifest, branding, config Supabase, fixture Home e runbook preesistenti esclusi dall'intervento.
+
+## Player Side Preference
+
+Ogni nuova richiesta Gioca o Allenati salva una scelta singola `playing_side`: `right`, `left` oppure `any`. Le etichette pubbliche sono Destra, Sinistra e Indifferente. Il form prova a inizializzare la scelta da `player_profiles.preferred_side`, ma una selezione manuale ha sempre precedenza e resta una fotografia immutabile della richiesta. Se il profilo non contiene la preferenza, il form resta senza selezione e richiede una scelta esplicita.
+
+Le richieste storiche conservano `playing_side = NULL` e vengono mostrate come “Non indicato”. Allenati usa il lato come informazione operativa; non introduce un motore di matching. Telegram omette il lato per le righe storiche NULL.

@@ -1,6 +1,6 @@
 # MOVI App — Nuove funzionalità e proposta dati minima
 
-Stage 0 · 24 settembre 2026 · proposta logica, nessun DDL/migration o modifica schema eseguita.
+Stage 0 · 24 settembre 2026 · proposta logica, nessun DDL/migration o modifica schema eseguita. Le sezioni esplicitamente marcate come implementate e i documenti di fase successivi descrivono lo stato finale prevalente.
 
 ## Base esistente e confini
 
@@ -48,13 +48,13 @@ Sezioni nuove per sole funzionalità, nessun redesign admin: Contenuti Padelleri
 
 ## B. Le mie attività
 
-Route proposta `/attivita`, tabs In programma / Da completare / Storico. Read model server aggregato, nessuna tabella agenda che duplichi sorgenti. Envelope comune: `source`, `source_id`, `title`, `status_label`, `starts_at`, `club`, `action`, `detail_url`, `capabilities`; chiave `(source,source_id)`.
+La route realizzata `/le-mie-attivita` usa le sole viste In programma / Storico. Il precedente concetto Da completare non aveva un predicato o un workflow reale ed è stato rimosso. Il read model resta server aggregato, senza una tabella agenda che duplichi sorgenti.
 
 | Sorgente | Aggregazione proposta |
 |---|---|
 | Iscrizioni torneo | Leggere righe autorizzate e riconciliare associazioni legacy con criteri esistenti verificati; date future → In programma, passate ancora disponibili → Storico. Riserva esplicitata; non fare query globali dal client per nome |
-| Monday League | Solo squadre/partite del contesto utente effettivo; appuntamenti → In programma, azioni capitano dovute → Da completare, disputate → Storico; nessuna ownership inferita |
-| Gioca/Allenati | received/searching e found senza data concordata → Da completare con label “In gestione”; found con scheduled_at futuro → In programma; completed/cancelled → Storico. Data proposta dall'utente non equivale ad appuntamento confermato |
+| Monday League | Solo squadre/partite del contesto utente effettivo; appuntamenti futuri eleggibili → In programma, risultati confirmed/special → Storico; nessuna ownership inferita |
+| Gioca/Allenati | received/searching/found → In programma; completed/cancelled → Storico. Data proposta dall'utente non equivale ad appuntamento confermato |
 | Booking nativo futuro | Adapter successivo; oggi non importare eventi Wansport o simulare prenotazioni |
 
 Escludere transazioni MoviBack, ordini Store e anagrafica. Ordine stabile per data e source/id; paginazione server. Esito parziale di una sorgente indicato, senza svuotare le altre. La cancellazione torneo distruttiva esistente non produce storico persistente: dichiarare limite, non cambiare cancellazione o aggiungere snapshot senza nuova approvazione.
@@ -63,7 +63,7 @@ Escludere transazioni MoviBack, ordini Store e anagrafica. Ordine stabile per da
 
 `partners`: id UUID, slug unique, name, category opzionale, description, benefit, conditions, logo_media_id, cover_media_id opzionale, contact/link fields validati, is_active, valid_from/valid_until date nullable, display_order integer, created_at/updated_at. Finestra valida se fine >= inizio; date di calendario Europe/Rome inclusive, query converte il giorno successivo a fine esclusiva. Attivo senza date non scade. Nessuna tabella redemption/partner validation.
 
-Route proposta `/partner`: logo/immagine, nome, descrizione, beneficio/sconto, condizioni, validità se presente e contatto/link. Testo “Mostra la tessera MOVI” informativo. Cliente mostra la modale e paga al partner; nessuna verifica automatica o scanner partner. Admin gestisce campi, ordine e attivo/inattivo. Validità Partner e stato membership non vengono trasformati in un nuovo motore sconti Store.
+Route realizzata `/partner`, con dettaglio `/partner/[slug]`: logo/immagine, nome, descrizione, beneficio/sconto, condizioni, validità se presente e contatto/link. Testo “Mostra la tessera MOVI” informativo. Cliente mostra la modale e paga al partner; nessuna verifica automatica o scanner partner. Admin gestisce campi, ordine e attivo/inattivo. Validità Partner e stato membership non vengono trasformati in un nuovo motore sconti Store.
 
 ## D. Contenuti Padelleria
 
@@ -75,7 +75,7 @@ Un'unica sezione admin con due destinazioni editoriali, distinta da comunicazion
 | `padelleria_content_media` | content_id FK; media_id FK; role inline/gallery/video; position; caption opzionale; unique content_id+role+position |
 | `public_media_assets` | id UUID; kind image/video_external; bucket/path per immagine oppure provider/external_url per video; width/height/mime/bytes; alt; focal_x/focal_y 0..1; poster_media_id opzionale; created_at; autore operatore secondo identità esistente |
 
-Dettaglio proposto `/padelleria/[slug]`: titolo, sottotitolo/excerpt, cover, body formattato sanificato, immagini interne, gallery, video, CTA, club e data evento facoltativi. Blocchi ammessi invece di HTML arbitrario o iframe libero. URL interni relativi o HTTPS provider ammessi; niente javascript/data URL. Galley/video ereditano la visibilità del contenuto; bozze non esposte dai read endpoint pubblici.
+Dettaglio realizzato `/padelleria/[id]`: titolo, excerpt, cover, body testuale, immagini interne, gallery, video e CTA facoltativa. URL interni relativi o HTTPS ammessi; niente javascript/data URL. Gallery e video ereditano la visibilità del contenuto; bozze non esposte dai read endpoint pubblici.
 
 **Succede:** pubblicato e `(visible_from null oppure <= now)` e `(visible_until null oppure now < visible_until)`. “Nessuna scadenza” è un controllo UI che salva null, non un booleano contraddittorio. featured e display_order ordinano, non scavalcano le finestre. Tie-break proposto display_order, published_at desc, id.
 
@@ -95,10 +95,20 @@ Tabelle nuove con RLS deny-by-default: utente legge solo proprie richieste/event
 
 ## F. Tessera e prenotazione
 
-La mia tessera non richiede nuova tabella: nome da users, numero da membership_code, member since da approved_at se valido (altrimenti omesso), QR personale esistente, stato membership rispettato. Non esporre codice fiscale, certificato o token premio sulla tessera partner. Se serve un nuovo numero commerciale, è una decisione ulteriore, non parte del MVP.
+La mia tessera non richiede nuova tabella: nome da users, numero da membership_code e stato membership rispettato. La tessera digitale implementata non contiene QR, NFC o CTA Partner; il QR personale esistente resta un flusso separato. Non esporre codice fiscale, certificato o token premio sulla tessera. Se serve un nuovo numero commerciale, è una decisione ulteriore, non parte del MVP.
 
 Prenota conserva URL Wansport per club. Proposta frontend di confine `BookingAction(club)` che apre il link attuale; un futuro adapter nativo potrà sostituire il motore finale senza ridisegnare Home o scheda club. Nessuna tabella booking o integrazione Wansport nuova ora.
 
 ## Gate prima di implementare
 
 Confermare vocabolario tipo partita, annullamento richieste, policy conservazione dati operativi e accesso staff; verificare schema/bucket reali solo dopo target guard; risolvere personalizzazione circuito e storico attività legacy senza alterare motori. Approvare migrations/RLS/storage separatamente. Nessun DDL eseguibile incluso e nessun invio Telegram effettuato in Stage 0.
+
+## Player Side Preference — modello implementato
+
+- `public.player_profiles.preferred_side text NULL`: preferenza stabile; valori `right | left | any`; NULL significa non indicato.
+- `public.movi_requests.playing_side text NULL`: scelta della singola richiesta; gli stessi valori; NULL è ammesso solo per compatibilità storica.
+- Nessun default, backfill, enum o indice.
+- I nuovi POST Gioca/Allenati richiedono un valore esplicito.
+- Il writer profilo utente, il writer Admin/operator e il merge dell’identità preservano il campo.
+
+Nel matching Gioca il lato è un punteggio soft da 10 punti: complementare 10, candidato indifferente 7, candidato senza preferenza 5, stesso lato 2. Richiesta `any` o storica NULL disabilita la dimensione con 0/0. I vincoli hard preesistenti restano prioritari; Allenati non usa suggerimenti automatici.
