@@ -14,7 +14,7 @@ const adminUi = read("../../src/app/admin/users/duplicates/page.tsx");
 const reset = read("../../src/app/api/auth/password-reset/request/route.ts");
 const signup = read("../../src/app/api/auth/signup/finalize/route.ts");
 const unifiedSignup = read("../../src/lib/resolveAuthOnboarding.ts");
-const proxy = read("../../proxy.ts");
+const proxy = read("../../src/proxy.ts");
 const staffSession = read("../../src/lib/staffSession.ts");
 
 test("migration state is additive and progressive", () => {

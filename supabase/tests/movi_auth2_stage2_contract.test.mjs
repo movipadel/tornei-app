@@ -9,7 +9,7 @@ const me = read("../../src/app/api/user/me/route.ts");
 const signup = read("../../src/app/api/auth/signup/route.ts");
 const activate = read("../../src/app/api/auth/activation/complete/route.ts");
 const reset = read("../../src/app/api/auth/password-reset/request/route.ts");
-const proxy = read("../../proxy.ts");
+const proxy = read("../../src/proxy.ts");
 
 test("verified identity commands derive email from auth.users and serialize normalized keys", () => {
   assert.match(migration, /FROM auth\.users u WHERE u\.id = p_auth_user_id FOR UPDATE/g);

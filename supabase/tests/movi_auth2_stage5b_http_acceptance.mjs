@@ -5,7 +5,7 @@ const supabaseUrl = process.env.STAGE5B_SUPABASE_URL;
 const anonKey = process.env.STAGE5B_SUPABASE_ANON_KEY;
 const serviceKey = process.env.STAGE5B_SUPABASE_SERVICE_ROLE_KEY;
 const appUrl = process.env.STAGE5B_APP_URL ?? "http://127.0.0.1:3200";
-if (supabaseUrl !== "http://127.0.0.1:55021") throw new Error("Refusing Auth operation: target must be exactly http://127.0.0.1:55021");
+if (supabaseUrl !== "http://127.0.0.1:55421") throw new Error("Refusing Auth operation: target must be exactly http://127.0.0.1:55421");
 if (!anonKey || !serviceKey) throw new Error("Local Supabase keys are required explicitly");
 
 const service = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });

@@ -1,6 +1,6 @@
 // LOCAL ONLY. Requires the verified loopback Supabase runner; never points at hosted projects.
 import { createClient } from '@supabase/supabase-js';
-if (process.env.CUSTOMER_HUB_LOCAL_VERIFIED !== '1' || process.env.SUPABASE_URL !== 'http://127.0.0.1:55021') throw new Error('Verified local Customer Hub runner required');
+if (process.env.CUSTOMER_HUB_LOCAL_VERIFIED !== '1' || process.env.SUPABASE_URL !== 'http://127.0.0.1:55421') throw new Error('Verified local Customer Hub runner required');
 const db=createClient(process.env.SUPABASE_URL,process.env.SUPABASE_SERVICE_ROLE_KEY,{auth:{persistSession:false}});
 const check=({error})=>{if(error)throw error;};
 const password='CustomerHub-Local-2026!';
@@ -21,7 +21,7 @@ for(let index=0;index<people.length;index++){
  check(await db.from('users').upsert({id:userId,full_name:`Customer ${people[index][0]} · ${people[index][1]}`,phone,email,gender:index%2?'F':'M',auth_user_id:authUserId,auth_migration_state:'linked',identity_status:'active'}));
  check(await db.from('player_identities').upsert({id:playerId,full_name:`Customer ${people[index][0]} · ${people[index][1]}`,normalized_phone:phone,gender:index%2?'F':'M',account_user_id:userId,status:'active'}));
 }
-const membershipRows=people.filter(([, ,kind])=>kind!=='none').map(([letter,,kind],index)=>{
+const membershipRows=people.filter(([, ,kind])=>kind!=='none').map(([letter,,kind])=>{
  const slot=people.findIndex(([value])=>value===letter)+1, number=String(slot).padStart(12,'0');
  return {id:`c7003000-0000-4000-8000-${number}`,user_id:`c7001000-0000-4000-8000-${number}`,status:kind==='initial'?'pending_review':'approved',membership_code:`MOVI-HUB-${letter}`,tax_code:`RSSMRA80A01H50${slot}`,membership_type:'ASC',fee_points:0,fee_paid:true,approved_at:kind==='initial'?null:new Date().toISOString(),health_data_consent_at:new Date().toISOString()};
 });

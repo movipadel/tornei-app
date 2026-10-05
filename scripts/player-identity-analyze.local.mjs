@@ -1,5 +1,5 @@
 import {createClient} from '@supabase/supabase-js';
-if(process.env.PADELLERIA_LOCAL_VERIFIED!=='1'||process.env.SUPABASE_URL!=='http://127.0.0.1:55021')throw Error('Verified local runner required');
+if(process.env.PADELLERIA_LOCAL_VERIFIED!=='1'||process.env.SUPABASE_URL!=='http://127.0.0.1:55421')throw Error('Verified local runner required');
 const db=createClient(process.env.SUPABASE_URL,process.env.SUPABASE_SERVICE_ROLE_KEY,{auth:{persistSession:false}});
 const [results,players]=await Promise.all([db.from('circuit_results').select('id,player_key,player_name,player_phone,source_tournament_id,player_identity_id').limit(901),db.from('player_identities').select('id,full_name,normalized_phone,status').limit(901)]);
 if(results.error||players.error||results.data.length>900||players.data.length>900)throw Error('Read failed or safe analysis bound exceeded');

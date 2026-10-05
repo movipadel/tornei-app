@@ -65,7 +65,7 @@ test("smart redemption flag has explicit safe ON/OFF behavior", () => {
 });
 
 test("queue API is guarded, bounded, filtered and batches Store fulfillment", () => {
-  assert.match(queueRoute, /await guardStaff\(\)/);
+  assert.match(queueRoute, /guardOperatorAnyPermission\(\["scanner\.manage", "moviback\.manage"\]\)/);
   assert.match(queueRoute, /Math\.min\(Math\.max\(requestedLimit, 1\), 200\)/);
   assert.match(queueRoute, /query\.in\("status", statuses\)/);
   assert.match(queueRoute, /\.in\("related_redemption_id", ids\)/);

@@ -7,7 +7,7 @@ const supabaseUrl = process.env.FINAL_AUTH_SUPABASE_URL;
 const serviceKey = process.env.FINAL_AUTH_SERVICE_ROLE_KEY;
 const appUrl = process.env.FINAL_AUTH_APP_URL ?? "http://127.0.0.1:3210";
 const staffSecret = process.env.FINAL_AUTH_STAFF_COOKIE_SECRET;
-if (supabaseUrl !== "http://127.0.0.1:55021") throw new Error("Refusing test: target must be exactly http://127.0.0.1:55021");
+if (supabaseUrl !== "http://127.0.0.1:55421") throw new Error("Refusing test: target must be exactly http://127.0.0.1:55421");
 if (!serviceKey || !staffSecret) throw new Error("Explicit local service key and staff secret are required");
 
 const service = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });

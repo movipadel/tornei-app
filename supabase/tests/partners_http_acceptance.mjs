@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { createClient } from '@supabase/supabase-js';
 import { SignJWT } from 'jose';
 import { readFileSync } from 'node:fs';
-if(process.env.PADELLERIA_LOCAL_VERIFIED!=='1'||process.env.SUPABASE_URL!=='http://127.0.0.1:55021')throw new Error('Local runner required');
+if(process.env.PADELLERIA_LOCAL_VERIFIED!=='1'||process.env.SUPABASE_URL!=='http://127.0.0.1:55421')throw new Error('Local runner required');
 const base='http://localhost:3100',db=createClient(process.env.SUPABASE_URL,process.env.SUPABASE_SERVICE_ROLE_KEY,{auth:{persistSession:false}});
 const anon=createClient(process.env.SUPABASE_URL,process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,{auth:{persistSession:false}});
 const form=new FormData();form.set('email','padelleria-admin@example.invalid');form.set('password','Padelleria-Local-2026!');
@@ -15,7 +15,7 @@ const request=async(path,method='GET',body,session=cookie)=>{
 const sample={status:'draft',name:'HTTP Partner test',slug:`http-partner-${Date.now()}`,category:'Sport',short_description:'local',full_description:'<script>not executable</script>',benefit_title:'10%',benefit_description:'Test',conditions:'manual',website_url:null,contact_url:null,phone:'',address:'',locality:'',valid_from:null,valid_until:null,sort_order:0,featured:false};
 const ids=[],paths=[];let checks=0;const ok=()=>checks++;
 try{
- for(const role of ['anon','user','staff']){const token=role==='anon'?'':await new SignJWT({sid:`partner-${role}`,role}).setProtectedHeader({alg:'HS256'}).setExpirationTime('5m').sign(new TextEncoder().encode(process.env.STAFF_COOKIE_SECRET));assert.equal((await request('/api/admin/partners','POST',sample,token?`staff_session=${token}`:'')).status,403);ok();}
+ for(const role of ['anon','user','staff']){const token=role==='anon'?'':await new SignJWT({sid:`partner-${role}`,role}).setProtectedHeader({alg:'HS256'}).setExpirationTime('5m').sign(new TextEncoder().encode(process.env.STAFF_COOKIE_SECRET));assert.ok([401,403].includes((await request('/api/admin/partners','POST',sample,token?`staff_session=${token}`:'')).status));ok();}
  let r=await request('/api/admin/partners','POST',sample);assert.equal(r.status,201);let item=r.json.data;ids.push(item.id);ok();
  assert.equal((await request(`/api/partners/${item.slug}`)).status,404);ok();
  assert.equal((await request('/api/admin/partners','POST',sample)).status,409);ok();
@@ -27,7 +27,7 @@ try{
  assert.ok((await anon.storage.from('movi-partners-media').download(paths[0])).error);ok();
  const bad=new FormData();bad.set('role','logo');bad.set('file',new Blob(['<svg/>'],{type:'image/png'}),'bad.png');assert.equal((await request(`/api/admin/partners/${item.id}/media`,'POST',bad)).status,400);ok();
  assert.equal((await request(`/api/admin/partners/${item.id}/media`,'DELETE',{role:'logo',storage_path:'other/path'})).status,400);ok();
- assert.equal((await request(`/api/admin/partners/${item.id}`,'PUT',{...item,website_url:'http://127.0.0.1:55021'})).status,400);ok();
+ assert.equal((await request(`/api/admin/partners/${item.id}`,'PUT',{...item,website_url:'http://127.0.0.1:55421'})).status,400);ok();
  r=await request(`/api/admin/partners/${item.id}`,'PUT',{...item,status:'active',name:'Updated HTTP partner'});assert.equal(r.status,200);item=r.json.data;ok();
  r=await request(`/api/partners/${item.slug}`);assert.equal(r.status,200);assert.equal(r.json.data.membership_copy,'Mostra la tua tessera MOVI');assert.equal('logo_path' in r.json.data,false);ok();
  r=await request('/api/partners?limit=50');assert.ok(r.json.data.some(p=>p.id===item.id));assert.ok(r.json.data.every(p=>p.status==='active'));ok();

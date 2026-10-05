@@ -1,7 +1,7 @@
 $ErrorActionPreference = "Stop"
 
 $status = npx supabase status -o json | ConvertFrom-Json
-if ($status.API_URL -ne "http://127.0.0.1:55021" -or $status.DB_URL -notmatch "127\.0\.0\.1:55022") {
+if ($status.API_URL -ne "http://127.0.0.1:55421" -or $status.DB_URL -notmatch "127\.0\.0\.1:55422") {
   throw "Stage 2 concurrency tests require the verified local Supabase target"
 }
 

@@ -4,7 +4,7 @@ import { createClient } from "@supabase/supabase-js";
 const supabaseUrl = process.env.UNIFIED_AUTH_SUPABASE_URL;
 const serviceKey = process.env.UNIFIED_AUTH_SERVICE_ROLE_KEY;
 const appUrl = process.env.UNIFIED_AUTH_APP_URL ?? "http://127.0.0.1:3200";
-if (supabaseUrl !== "http://127.0.0.1:55021") throw new Error("Refusing Auth operation: target must be exactly http://127.0.0.1:55021");
+if (supabaseUrl !== "http://127.0.0.1:55421") throw new Error("Refusing Auth operation: target must be exactly http://127.0.0.1:55421");
 if (!serviceKey) throw new Error("The explicit local service key is required");
 
 const service = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
@@ -84,7 +84,7 @@ async function cleanup() {
   await service.from("league_team_players").delete().eq("id", ids.player);
   await service.from("league_teams").delete().eq("id", ids.team);
   await service.from("league_seasons").delete().eq("id", ids.season);
-  await service.from("staff_users").delete().eq("id", ids.staff);
+  await service.from("staff_users").delete().or(`id.eq.${ids.staff},email.eq.unified-admin@example.invalid`);
   await service.from("communications").delete().eq("id", ids.communication);
   await service.from("store_orders").delete().eq("id", ids.order);
   await service.from("loyalty_memberships").delete().eq("id", ids.membership);
@@ -131,7 +131,7 @@ try {
     service.from("tournaments").insert({ id: ids.tournament, name: "Unified Tournament", type: "Baraonda", category: "Misto", date: "2030-01-01", time: "20:00", location: "Local", max_participants: 16 }),
   ]);
   for (const result of businessInsert) if (result.error) throw result.error;
-  let result = await service.from("staff_users").insert({ id: ids.staff, full_name: "Unified Admin", email: "unified-admin@example.invalid", role: "admin", is_active: true });
+  let result = await service.from("staff_users").upsert({ id: ids.staff, full_name: "Unified Admin", email: "unified-admin@example.invalid", role: "admin", is_active: true });
   if (result.error) throw result.error;
   result = await service.from("league_seasons").insert({ id: ids.season, name: "Unified League", slug: "unified-league", status: "draft" });
   if (result.error) throw result.error;

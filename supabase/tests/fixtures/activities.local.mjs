@@ -1,6 +1,6 @@
 import {createClient} from '@supabase/supabase-js';
 import {execFileSync} from 'node:child_process';
-if(process.env.PADELLERIA_LOCAL_VERIFIED!=='1'||process.env.SUPABASE_URL!=='http://127.0.0.1:55021'||process.env.MOVI_REQUEST_TELEGRAM_MODE!=='disabled')throw new Error('Local runner required');
+if(process.env.PADELLERIA_LOCAL_VERIFIED!=='1'||process.env.SUPABASE_URL!=='http://127.0.0.1:55421'||process.env.MOVI_REQUEST_TELEGRAM_MODE!=='disabled')throw new Error('Local runner required');
 const db=createClient(process.env.SUPABASE_URL,process.env.SUPABASE_SERVICE_ROLE_KEY,{auth:{persistSession:false}}),check=({error})=>{if(error)throw error;};
 const user='eded6000-0000-4000-8000-000000000001',cid='edee1000-0000-4000-8000-000000000001';
 const profile=await db.from('users').select('phone,full_name').eq('id',user).single();check(profile);const key=profile.data.phone.trim().replace(/\s+/g,'').replace(/^(\+39|0039)/,'').replace(/[^\d]/g,'');
@@ -20,6 +20,6 @@ check(await db.from('tournament_runs').upsert({id:run,tournament_id:past,mode:'b
 check(await db.from('tournament_run_participants').upsert({id:'edee6000-0000-4000-8000-000000000002',run_id:run,user_id:user,name:profile.data.full_name,phone:profile.data.phone,sex:'m'}));
 const rid='edee7000-0000-4000-8000-000000000001';
 const existing=await db.from('movi_requests').select('id').eq('id',rid).maybeSingle();check(existing);
-if(!existing.data){check(await db.from('movi_requests').insert({id:rid,user_id:user,client_request_id:rid,request_type:'gioca',clubs:['Manta'],date_mode:'flexible',time_window:'evening',level:'intermedio',match_type:'mixed',has_partner:false,notes:'Fixture storico attività locale',telegram_state:'disabled'}));for(const status of ['searching','found','completed'])check(await db.from('movi_requests').update({status}).eq('id',rid));}
-execFileSync('C:/Program Files/PostgreSQL/17/bin/psql.exe',['-h','127.0.0.1','-p','55022','-U','postgres','-d','postgres','-v','ON_ERROR_STOP=1','-f','supabase/tests/fixtures/activities-league.local.sql'],{env:process.env,stdio:'inherit'});
+if(!existing.data){check(await db.from('movi_requests').insert({id:rid,user_id:user,client_request_id:rid,request_type:'gioca',playing_side:'left',clubs:['Manta'],date_mode:'flexible',time_window:'evening',level:'intermedio',match_type:['male','mixed'],has_partner:false,notes:'Fixture storico attività locale',telegram_state:'disabled'}));for(const status of ['searching','found','completed'])check(await db.from('movi_requests').update({status}).eq('id',rid));}
+execFileSync('C:/Program Files/PostgreSQL/17/bin/psql.exe',['-h','127.0.0.1','-p','55422','-U','postgres','-d','postgres','-v','ON_ERROR_STOP=1','-f','supabase/tests/fixtures/activities-league.local.sql'],{env:process.env,stdio:'inherit'});
 console.log('Local activities fixtures ready for requests-demo-1@example.invalid / Requests-Local-2026!');

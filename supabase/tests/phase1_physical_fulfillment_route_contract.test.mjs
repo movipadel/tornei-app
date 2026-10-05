@@ -26,9 +26,9 @@ test("supplier export claims immutable item batches without lifecycle mutation",
   assert.doesNotMatch(route, /sendTelegram|sendAdminPush|web-push/);
 });
 
-test("command adapter is admin-only and has no notification transport", async () => {
+test("command adapter requires store.manage and has no notification transport", async () => {
   const helper = await read("src/lib/storeFulfillmentContracts.ts");
-  assert.match(helper, /session\.role !== "admin"/);
+  assert.match(helper, /requireOperatorPermission\("store\.manage"\)/);
   assert.match(helper, /mark_physical_store_order_ready/);
   assert.match(helper, /deliver_physical_store_order/);
   assert.match(helper, /cancel_physical_store_order/);

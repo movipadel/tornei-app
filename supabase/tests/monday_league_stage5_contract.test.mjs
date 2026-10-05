@@ -66,6 +66,6 @@ test("visibility, archive and delete remain independent and isolated", () => {
 
 test("captain controls share the public team page and home hero precedes circuits", () => {
   for (const label of ["Modifica profilo squadra", "Gestisci rosa", "Inserisci formazione", "Rosa ufficiale — per modifiche contatta"]) assert.ok(captainUi.includes(label));
-  assert.ok(home.indexOf("mondayLeagueHero.visible") < home.indexOf("Circuiti MOVI"));
+  assert.ok(home.indexOf("mondayLeagueHero.visible") < home.indexOf('title="I tuoi circuiti"'));
   assert.match(home, /href="\/monday-league"/);
 });

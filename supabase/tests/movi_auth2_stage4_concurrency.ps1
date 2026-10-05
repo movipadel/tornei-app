@@ -1,6 +1,6 @@
 $ErrorActionPreference = "Stop"
 $psql = "C:\Program Files\PostgreSQL\17\bin\psql.exe"
-$database = @("-h", "127.0.0.1", "-p", "55022", "-U", "postgres", "-d", "postgres")
+$database = @("-h", "127.0.0.1", "-p", "55422", "-U", "postgres", "-d", "postgres")
 $env:PGPASSWORD = "postgres"
 if (-not (Test-Path -LiteralPath $psql)) { throw "psql not found at $psql" }
 function Sql([string]$query) {

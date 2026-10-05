@@ -19,10 +19,15 @@ test("shell excludes privileged and full-screen flows", async () => {
   assert.match(shell, /<PublicHeader/);
 });
 
-test("bottom navigation order and current MoviBack QR payload are preserved", async () => {
+test("bottom navigation links activities and preserves the other destinations and QR payload", async () => {
   const nav = await read("src/components/public/PublicBottomNav.tsx");
-  const labels = [...nav.matchAll(/label="(Home|Tornei|Circuiti|Profilo)"|<span>QR<\/span>/g)].map((match) => match[1] ?? "QR");
-  assert.deepEqual(labels, ["Home", "Tornei", "QR", "Circuiti", "Profilo"]);
+  const labels = [...nav.matchAll(/label="(Home|Tornei|Le mie attività|Profilo)"|<span>QR<\/span>/g)].map((match) => match[1] ?? "QR");
+  assert.deepEqual(labels, ["Home", "Tornei", "QR", "Le mie attività", "Profilo"]);
+  assert.match(nav, /const isActivities = pathname\.startsWith\("\/le-mie-attivita"\)/);
+  assert.match(nav, /href="\/le-mie-attivita" label="Le mie attività" active=\{isActivities\}/);
+  assert.doesNotMatch(nav, /<NavLink href="\/?#?circuiti/);
+  assert.doesNotMatch(nav, /const isCircuits =/);
+  for (const destination of ['href="/"', 'href="/tornei"', 'href="/profilo"']) assert.ok(nav.includes(destination));
   assert.match(nav, /`mb:\$\{qr\.code\}`/);
   assert.match(nav, /trigger={<button[^>]+aria-haspopup="dialog"/);
 });

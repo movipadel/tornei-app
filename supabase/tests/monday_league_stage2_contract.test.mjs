@@ -15,9 +15,9 @@ const routes = [
   "../../src/app/api/admin/monday-league/generator/route.ts",
 ].map(read);
 
-test("every Stage 2 admin route is guarded and server-side", () => {
+test("every Stage 2 operator route is permission-guarded and server-side", () => {
   for (const route of routes) {
-    assert.match(route, /guardAdmin\(\)/);
+    assert.match(route, /guardOperatorPermission\("monday_league\.manage"\)/);
     assert.match(route, /supabaseAdmin\(\)/);
     assert.doesNotMatch(route, /createBrowserClient|NEXT_PUBLIC_SUPABASE_ANON_KEY/);
   }

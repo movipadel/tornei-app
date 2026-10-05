@@ -1,6 +1,6 @@
 $ErrorActionPreference = "Stop"
 $Psql = "C:\Program Files\PostgreSQL\17\bin\psql.exe"
-$Database = "postgresql://postgres:postgres@127.0.0.1:55022/postgres"
+$Database = "postgresql://postgres:postgres@127.0.0.1:55422/postgres"
 $BaseUrl = "http://127.0.0.1:3198"
 
 function Sql([string]$Query) {
@@ -37,7 +37,7 @@ COMMIT;
 $statusRaw = npx supabase status -o json | Out-String
 if ($LASTEXITCODE -ne 0) { throw "Cannot verify local Supabase" }
 $status = $statusRaw | ConvertFrom-Json
-if ($null -ne $status.linked_project -or $status.API_URL -ne "http://127.0.0.1:55021" -or $status.DB_URL -ne $Database) {
+if ($null -ne $status.linked_project -or $status.API_URL -ne "http://127.0.0.1:55421" -or $status.DB_URL -ne $Database) {
   throw "Safety stop: unexpected Supabase target"
 }
 

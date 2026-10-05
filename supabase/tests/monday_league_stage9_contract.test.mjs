@@ -17,8 +17,8 @@ test("completion readiness reuses authoritative terminal semantics for both divi
   for (const label of ["Contestazione aperta", "Risultato ancora provvisorio", "Partita rinviata", "Partita sospesa", "Risultato mancante"]) assert.match(migration, new RegExp(label));
 });
 
-test("completion is admin-only, locked, stale-safe and idempotent", () => {
-  assert.match(route, /guardAdmin\(\)/);
+test("completion is domain-authorized, locked, stale-safe and idempotent", () => {
+  assert.match(route, /guardOperatorPermission\("monday_league\.manage"\)/);
   assert.match(route, /getMondayLeagueAdminActorId/);
   assert.match(migration, /league_assert_admin\(p_actor_id\)/);
   assert.match(migration, /pg_advisory_xact_lock/);

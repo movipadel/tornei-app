@@ -4,6 +4,7 @@ import { registerHooks } from 'node:module';
 import test from 'node:test';
 registerHooks({resolve(specifier,context,nextResolve){
   if(specifier==='@/lib/playerProfile')return {url:new URL('../../src/lib/playerProfile.ts',import.meta.url).href,shortCircuit:true};
+  if(specifier==='./playingSide')return {url:new URL('../../src/lib/playingSide.ts',import.meta.url).href,shortCircuit:true};
   return nextResolve(specifier,context);
 }});
 const {
@@ -13,11 +14,11 @@ const {
 }=await import('../../src/lib/playerMatching.ts');
 
 const criteria=(overrides={})=>({
-  clubs:['Manta'],targetLevelNumeric:3.5,targetLevelDescriptive:null,weekday:5,timeWindow:'evening',matchType:'male',lastMinute:false,excludePlayerId:null,...overrides,
+  clubs:['Manta'],targetLevelNumeric:3.5,targetLevelDescriptive:null,weekday:5,timeWindow:'evening',matchType:'male',playingSide:null,lastMinute:false,excludePlayerId:null,...overrides,
 });
 const candidate=(overrides={})=>({
   id:'10000000-0000-4000-8000-000000000001',fullName:'Mario Rossi',normalizedPhone:'+393330000001',gender:'M',accountLinked:false,status:'active',moviLevel:3.5,identityWarning:false,
-  profile:{descriptive_level:'intermedio',preferred_clubs:['Manta'],available_other_clubs:false,preferred_match_types:['male'],available_last_minute:true,availability:[{weekday:5,time_window:'evening'}]},
+  profile:{descriptive_level:'intermedio',preferred_side:null,preferred_clubs:['Manta'],available_other_clubs:false,preferred_match_types:['male'],available_last_minute:true,availability:[{weekday:5,time_window:'evening'}]},
   ...overrides,
 });
 
@@ -73,6 +74,24 @@ test('last-minute scoring is true 10, unknown 5, false 0 and neutral in normal s
   assert.deepEqual(normal.scoreParts.lastMinute,{score:0,max:0,detail:'Non rilevante per questa ricerca'});
 });
 
+test('side is a soft 10/7/5/2 score and any or legacy request disables the dimension',()=>{
+  const sideScore=(preferred_side,playingSide='left')=>scorePlayerMatch(candidate({profile:{...candidate().profile,preferred_side}}),criteria({playingSide})).scoreParts.side;
+  assert.equal(sideScore('right').score,10);
+  assert.equal(sideScore('any').score,7);
+  assert.equal(sideScore(null).score,5);
+  assert.equal(sideScore('left').score,2);
+  assert.deepEqual(sideScore('right','any'),{score:0,max:0,detail:'Lato richiesta indifferente'});
+  assert.deepEqual(sideScore('right',null),{score:0,max:0,detail:'Lato richiesta non indicato'});
+  assert.notEqual(scorePlayerMatch(candidate({profile:{...candidate().profile,preferred_side:'left'}}),criteria({playingSide:'left'})),null);
+});
+
+test('side never restores candidates rejected by existing hard constraints',()=>{
+  const profile={...candidate().profile,preferred_side:'right'};
+  assert.equal(scorePlayerMatch(candidate({profile,moviLevel:5}),criteria({playingSide:'left'})),null);
+  assert.equal(scorePlayerMatch(candidate({profile:{...profile,preferred_clubs:['Saluzzo'],available_other_clubs:false}}),criteria({playingSide:'left'})),null);
+  assert.equal(scorePlayerMatch(candidate({profile:{...profile,preferred_match_types:['female']}}),criteria({playingSide:'left'})),null);
+});
+
 test('normal searches normalize 90 raw points to 100',()=>{
   assert.equal(scorePlayerMatch(candidate(),criteria()).score,100);
   assert.equal(scorePlayerMatch(candidate(),criteria({lastMinute:true})).score,100);
@@ -119,11 +138,11 @@ test('unknown request criteria are neutral and do not create hard exclusions',()
   assert.equal(result.score,100);
 });
 
-test('matching route is admin-only, same-origin and DTO excludes sensitive domains',()=>{
+test('matching route is players.manage guarded, same-origin and DTO excludes sensitive domains',()=>{
   const route=readFileSync('src/app/api/admin/players/match/route.ts','utf8');
   const server=readFileSync('src/lib/playerMatchingServer.ts','utf8');
   const domain=readFileSync('src/lib/playerMatching.ts','utf8');
-  assert.match(route,/guardAdmin/);
+  assert.match(route,/guardOperatorPermission\("players\.manage"\)/);
   assert.match(route,/Origine non consentita/);
   assert.match(server,/\.eq\("status", "active"\)/);
   assert.doesNotMatch(server,/tax_code|medical_certificates|loyalty_|reward|redemption|internal_notes/);

@@ -29,9 +29,9 @@ test("Stage 3 schema is additive, private, revisioned, and dynamically ranked", 
   assert.doesNotMatch(migration, /CREATE TABLE public\.league_standings/);
 });
 
-test("all Stage 3 APIs are admin guarded and mutations use transactional RPCs", () => {
+test("all Stage 3 APIs are domain guarded and mutations use transactional RPCs", () => {
   const files = ["schedule/route.ts", "round-dates/route.ts", "schedule/round/route.ts", "standings/route.ts", "results/route.ts"];
-  for (const file of files) assert.match(read(`../../src/app/api/admin/monday-league/${file}`), /guardAdmin\(\)/);
+  for (const file of files) assert.match(read(`../../src/app/api/admin/monday-league/${file}`), /guardOperatorPermission\("monday_league\.manage"\)/);
   assert.match(read("../../src/app/api/admin/monday-league/round-dates/route.ts"), /league_set_round_dates/);
   assert.match(read("../../src/app/api/admin/monday-league/schedule/round/route.ts"), /league_schedule_round/);
   const results = read("../../src/app/api/admin/monday-league/results/route.ts");

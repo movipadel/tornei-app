@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 
-if(process.env.PLAYER_MATCHING_LOCAL_VERIFIED!=='1'||process.env.SUPABASE_URL!=='http://127.0.0.1:55021')throw new Error('Verified local player matching runner required');
+if(process.env.PLAYER_MATCHING_LOCAL_VERIFIED!=='1'||process.env.SUPABASE_URL!=='http://127.0.0.1:55421')throw new Error('Verified local player matching runner required');
 const db=createClient(process.env.SUPABASE_URL,process.env.SUPABASE_SERVICE_ROLE_KEY,{auth:{persistSession:false}});
 const check=({error})=>{if(error)throw error;};
 const id=(n)=>`c8601000-0000-4000-8000-${String(n).padStart(12,'0')}`;

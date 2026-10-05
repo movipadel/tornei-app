@@ -1,11 +1,11 @@
 $ErrorActionPreference = "Stop"
 $psql = "C:\Program Files\PostgreSQL\17\bin\psql.exe"
-$database = @("-h", "127.0.0.1", "-p", "55022", "-U", "postgres", "-d", "postgres")
+$database = @("-h", "127.0.0.1", "-p", "55422", "-U", "postgres", "-d", "postgres")
 $env:PGPASSWORD = "postgres"
 if (-not (Test-Path -LiteralPath $psql)) { throw "psql not found at $psql" }
 if (Test-Path -LiteralPath "supabase/.temp/project-ref") { throw "Linked Supabase project is not allowed" }
 $status = npx supabase status -o json | ConvertFrom-Json
-if ($status.API_URL -ne "http://127.0.0.1:55021" -or $status.DB_URL -notmatch "127\.0\.0\.1:55022") {
+if ($status.API_URL -ne "http://127.0.0.1:55421" -or $status.DB_URL -notmatch "127\.0\.0\.1:55422") {
   throw "Unexpected Supabase target"
 }
 function Sql([string]$query) {

@@ -13,7 +13,7 @@ const rewardDeliveryRoute = readFileSync(
   "utf8"
 );
 const staffPage = readFileSync(
-  new URL("../../src/app/staff/page.tsx", import.meta.url),
+  new URL("../../src/app/staff/StaffOperations.tsx", import.meta.url),
   "utf8"
 );
 const scannerPage = readFileSync(
@@ -64,7 +64,7 @@ test("database generation is indexed, immutable, bounded and atomic with redempt
 });
 
 test("staff reward endpoint is authenticated, bounded and converges on lifecycle RPC", () => {
-  assert.match(rewardDeliveryRoute, /await guardStaff\(\)/);
+  assert.match(rewardDeliveryRoute, /guardOperatorPermission\("scanner\.manage"\)/);
   assert.match(rewardDeliveryRoute, /value\.length > 512/);
   assert.match(rewardDeliveryRoute, /\.eq\(credential\.kind, credential\.value\)/);
   assert.match(rewardDeliveryRoute, /deliver_moviback_redemption/);

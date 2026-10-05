@@ -1,10 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { parseContent, safeCta, videoUrl, romeToUtc, romeInput, visible, pageBounds, ownedPath, imageExtension } from '../../src/lib/padelleria.ts';
-const base={kind:'succede',status:'draft',title:'Test',excerpt:'',body:'<script>alert(1)</script>',featured:false,sort_order:0,cta_label:null,cta_url:null,occurred_at:null,visible_from:null,visible_until:null};
+const base={kind:'succede',status:'draft',title:'Test',excerpt:'',body:'<script>alert(1)</script>',featured:false,delete_on_expiry:false,sort_order:0,cta_label:null,cta_url:null,occurred_at:null,visible_from:null,visible_until:null};
 test('lifecycle, fields and archive constraints',()=>{
   assert.equal(parseContent(base).body,base.body);
-  for(const change of [{title:''},{status:'other'},{kind:'other'},{sort_order:1.5},{featured:'true'},{cta_label:'Vai'},{visible_from:'2027-01-06'},{kind:'e_successo',visible_until:'2027-01-06T00:00:00Z'},{visible_from:'2027-01-07T00:00:00Z',visible_until:'2027-01-06T00:00:00Z'}])assert.throws(()=>parseContent({...base,...change}));
+  for(const change of [{title:''},{status:'other'},{kind:'other'},{sort_order:1.5},{featured:'true'},{delete_on_expiry:'true'},{cta_label:'Vai'},{visible_from:'2027-01-06'},{kind:'e_successo',visible_until:'2027-01-06T00:00:00Z'},{kind:'e_successo',delete_on_expiry:true},{delete_on_expiry:true},{visible_from:'2027-01-07T00:00:00Z',visible_until:'2027-01-06T00:00:00Z'}])assert.throws(()=>parseContent({...base,...change}));
+  assert.equal(parseContent({...base,delete_on_expiry:true,visible_until:'2027-01-06T00:00:00Z'}).delete_on_expiry,true);
 });
 test('visibility inclusive boundary, dates optional and archive',()=>{
   const now=Date.parse('2027-01-06T22:59:59Z');
@@ -26,7 +27,7 @@ test('CTA and video allowlist, no arbitrary server fetch target',()=>{
   assert.equal(safeCta('/tornei'),true);assert.equal(safeCta('https://example.invalid/test'),true);
   assert.equal(videoUrl('https://youtu.be/dQw4w9WgXcQ'),'https://www.youtube.com/watch?v=dQw4w9WgXcQ');
   assert.equal(videoUrl('https://vimeo.com/123456'),'https://vimeo.com/123456');
-  for(const u of ['http://localhost:55021','https://youtube.com.evil.test/watch?v=dQw4w9WgXcQ','file:///secret','https://example.com/video.mp4'])assert.throws(()=>videoUrl(u));
+  for(const u of ['http://localhost:55421','https://youtube.com.evil.test/watch?v=dQw4w9WgXcQ','file:///secret','https://example.com/video.mp4'])assert.throws(()=>videoUrl(u));
 });
 test('bounds and owned paths',()=>{
   assert.deepEqual(pageBounds(new URLSearchParams()),{limit:12,offset:0});

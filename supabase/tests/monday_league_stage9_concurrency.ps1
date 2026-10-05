@@ -1,6 +1,6 @@
 $ErrorActionPreference = "Stop"
 $Psql = "C:\Program Files\PostgreSQL\17\bin\psql.exe"
-$Database = "postgresql://postgres:postgres@127.0.0.1:55022/postgres"
+$Database = "postgresql://postgres:postgres@127.0.0.1:55422/postgres"
 
 function Sql([string]$Query) {
   $output = $Query | & $Psql $Database -X -v ON_ERROR_STOP=1 -At 2>&1

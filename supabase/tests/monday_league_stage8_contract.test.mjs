@@ -37,8 +37,8 @@ test("phase memberships reset statistics and preserve source tie break",()=>{
   assert.doesNotMatch(migration,/INSERT INTO public\.(league_standings|league_team_totals)/);
 });
 
-test("admin generation is guarded, confirmed and disabled until ready",()=>{
-  assert.match(route,/guardAdmin/);assert.match(route,/getMondayLeagueAdminActorId/);
+test("operator generation is domain guarded, confirmed and disabled until ready",()=>{
+  assert.match(route,/guardOperatorPermission\("monday_league\.manage"\)/);assert.match(route,/getMondayLeagueAdminActorId/);
   assert.match(page,/window\.confirm/);assert.match(page,/disabled=\{!ready\.ready\|\|generating\}/);
   assert.match(page,/Fase 1 pronta per la divisione/);assert.match(page,/Fase 1 non ancora conclusa/);
 });

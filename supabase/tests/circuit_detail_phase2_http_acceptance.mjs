@@ -1,0 +1,16 @@
+import assert from "node:assert/strict";
+if (process.env.PADELLERIA_LOCAL_VERIFIED !== "1" || process.env.SUPABASE_URL !== "http://127.0.0.1:55421") throw new Error("Local runner required");
+const base = "http://127.0.0.1:3100";
+const login = async (email) => { const response = await fetch(`${base}/api/auth/login`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password: "Requests-Local-2026!" }) }); assert.equal(response.status, 200); return response.headers.getSetCookie().map((value) => value.split(";")[0]).join("; "); };
+const mine = await login("requests-demo-1@example.invalid"), other = await login("requests-demo-2@example.invalid");
+const get = async (path, cookie = "") => { const response = await fetch(base + path, { headers: cookie ? { Cookie: cookie } : {} }); return { status: response.status, body: await response.json(), cache: response.headers.get("cache-control") }; };
+const route = "/api/user/circuits/fixture-circuit-phase1?group=32000000-0000-4000-8000-000000000001";
+assert.equal((await get(route)).status, 401);
+const personal = await get(route, mine); assert.equal(personal.status, 200); assert.equal(personal.cache, "no-store"); assert.equal(personal.body.state, "ready"); assert.equal(personal.body.stages.length, 2); assert.equal(personal.body.stages[0].location, "MOVI Club Revello");
+assert.equal((await get(route, other)).body.stages.length, 1);
+assert.equal((await get(route + "&user_id=eded6000-0000-4000-8000-000000000002", mine)).status, 400);
+const stage = await get("/api/circuits/fixture-circuit-phase1/stages/33000000-0000-4000-8000-000000000002?group=32000000-0000-4000-8000-000000000001"); assert.equal(stage.status, 200); assert.equal(stage.body.stage.location, "MOVI Club Manta"); assert.equal(stage.body.results[0].placement, 1);
+assert.equal((await get("/api/circuits/fixture-circuit-phase1/stages/00000000-0000-4000-8000-000000000000")).status, 404);
+assert.equal((await get("/api/circuits/fixture-circuit-phase1/stages/33000000-0000-4000-8000-000000000004")).status, 404);
+const serialized = JSON.stringify(personal.body); for (const key of ["player_key", "player_identity_id", "account_user_id", "phone"]) assert.ok(!serialized.includes(key));
+console.log("Circuit detail Phase 2 HTTP acceptance PASS: session ownership, personal stages, direct detail, invalid/cross-circuit isolation.");

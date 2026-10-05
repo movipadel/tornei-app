@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 
-if(process.env.PLAYER_MATCHING_LOCAL_VERIFIED!=='1'||process.env.SUPABASE_URL!=='http://127.0.0.1:55021')throw new Error('Verified local player matching runner required');
+if(process.env.PLAYER_MATCHING_LOCAL_VERIFIED!=='1'||process.env.SUPABASE_URL!=='http://127.0.0.1:55421')throw new Error('Verified local player matching runner required');
 const base='http://localhost:3100';
 const cookies=(response)=>response.headers.getSetCookie().map(value=>value.split(';')[0]).join('; ');
 const form=new FormData();
@@ -15,7 +15,7 @@ const call=async(body,cookie=session,origin=base)=>{
 };
 const scenarioA={club:'Manta',target_level_numeric:3.5,target_level_descriptive:null,weekday:5,time_window:'evening',match_type:'male',last_minute:false,exclude_player_id:null};
 const scenarioB={club:'Costigliole',target_level_numeric:3,target_level_descriptive:null,weekday:3,time_window:'evening',match_type:'mixed',last_minute:true,exclude_player_id:null};
-assert.equal((await call(scenarioA,'')).status,403);
+assert.equal((await call(scenarioA,'')).status,401);
 assert.equal((await call(scenarioA,session,'http://evil.invalid')).status,403);
 let result=await call(scenarioA);
 assert.equal(result.status,200);

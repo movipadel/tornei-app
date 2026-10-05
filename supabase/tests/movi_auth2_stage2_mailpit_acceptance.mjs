@@ -8,8 +8,8 @@ const status = spawnSync("npx supabase status -o json", [], {
 });
 if (status.status !== 0) throw new Error(`Local Supabase status unavailable: ${status.error?.message ?? status.stderr}`);
 const local = JSON.parse(status.stdout);
-assert.equal(local.API_URL, "http://127.0.0.1:55021");
-assert.equal(local.MAILPIT_URL, "http://127.0.0.1:55024");
+assert.equal(local.API_URL, "http://127.0.0.1:55421");
+assert.equal(local.MAILPIT_URL, "http://127.0.0.1:55424");
 
 const suffix = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 const signupEmail = `stage2-signup-${suffix}@example.invalid`;

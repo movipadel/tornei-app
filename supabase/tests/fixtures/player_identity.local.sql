@@ -2,7 +2,7 @@
 begin;
 -- Restore coverage with a new fixture request, without resetting a request changed during earlier visual acceptance.
 insert into movi_requests(id,user_id,client_request_id,request_type,clubs,date_mode,time_window,level,training_type,training_goal,notes,telegram_state)
-values('efee7000-0000-4000-8000-000000000001','eded6000-0000-4000-8000-000000000001','efee7000-0000-4000-8000-000000000001','allenati',array['Manta'],'flexible','evening','intermedio','group','technique','Fixture regressione Player Identity locale','disabled') on conflict(id) do nothing;
+values('efee7000-0000-4000-8000-000000000001','eded6000-0000-4000-8000-000000000001','efee7000-0000-4000-8000-000000000001','allenati',array['Manta'],'flexible','evening','intermedio',array['individual','group'],array['technique','regular'],'Fixture regressione Player Identity locale','disabled') on conflict(id) do nothing;
 insert into public.users(id,full_name,phone,email,gender) values
 ('efee1000-0000-4000-8000-000000000001','Identità Demo Account Uno','+393470005101','identity-one@example.invalid','M'),
 ('efee1000-0000-4000-8000-000000000002','Identità Demo Account Due','+393470005102','identity-two@example.invalid','F'),

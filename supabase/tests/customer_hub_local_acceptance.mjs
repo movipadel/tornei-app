@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createClient } from '@supabase/supabase-js';
-if(process.env.CUSTOMER_HUB_LOCAL_VERIFIED!=='1'||process.env.SUPABASE_URL!=='http://127.0.0.1:55021')throw new Error('Verified local Customer Hub runner required');
+if(process.env.CUSTOMER_HUB_LOCAL_VERIFIED!=='1'||process.env.SUPABASE_URL!=='http://127.0.0.1:55421')throw new Error('Verified local Customer Hub runner required');
 const db=createClient(process.env.SUPABASE_URL,process.env.SUPABASE_SERVICE_ROLE_KEY,{auth:{persistSession:false}});
 const read=async(query)=>{const result=await query;if(result.error)throw result.error;return result.data;};
 const memberships=await read(db.from('loyalty_memberships').select('id,user_id,status,tax_code').like('membership_code','MOVI-HUB-%').order('membership_code'));
