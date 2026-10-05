@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { LogOut } from "lucide-react";
 
-export function AdminLogoutButton() {
+export function AdminLogoutButton({ redirectTo = "/admin/login" }: { redirectTo?: string }) {
   const router = useRouter();
 
   return (
@@ -15,7 +15,7 @@ export function AdminLogoutButton() {
           method: "POST",
           credentials: "include",
         });
-        router.replace("/admin/login");
+        router.replace(redirectTo);
         router.refresh();
       }}
       title="Esci"

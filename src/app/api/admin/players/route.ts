@@ -1,5 +1,4 @@
-import { guardAdmin } from "@/lib/adminGuard";
-import { getStaffSessionFromCookie } from "@/lib/staffSession";
+import { getCurrentOperator, guardOperatorPermission } from "@/lib/operatorAuthorization";
 import { editorialJson } from "@/lib/padelleriaServer";
 import { computeMovibackEligibility } from "@/lib/movibackEligibility";
 import { moviLevelLabel } from "@/lib/playerProfile";
@@ -13,12 +12,10 @@ const movibackFilters = new Set(["all", "member", "active", "grace_period", "sta
 const profileFilters = new Set(["all", "complete", "partial", "incomplete"]);
 
 export async function GET(req: Request) {
-  const denied = await guardAdmin();
+  const denied = await guardOperatorPermission("players.manage");
   if (denied) return denied;
-  const session = await getStaffSessionFromCookie();
+  const operator = await getCurrentOperator();
   const sb = supabaseAdmin();
-  const active = await sb.rpc("player_identity_admin", { p_actor: session!.sid });
-  if (active.error) return editorialJson({ error: "Admin attivo richiesto" }, 403);
 
   const params = new URL(req.url).searchParams;
   const q = (params.get("q") ?? "").trim();
@@ -53,7 +50,7 @@ export async function GET(req: Request) {
     ids.length ? sb.from("player_profile_availability").select("player_identity_id").in("player_identity_id", ids) : Promise.resolve({ data: [], error: null }),
     userIds.length ? sb.from("loyalty_memberships").select("id,user_id,status,tax_code,health_data_consent_at").in("user_id", userIds) : Promise.resolve({ data: [], error: null }),
     userIds.length ? sb.from("medical_certificates").select("id,user_id,status,expiry_date,uploaded_at").in("user_id", userIds).order("uploaded_at", { ascending: false }) : Promise.resolve({ data: [], error: null }),
-    ids.length ? sb.from("player_identity_cases").select("id,player_ids,status").in("status", ["open", "in_review"]).overlaps("player_ids", ids) : Promise.resolve({ data: [], error: null }),
+    operator?.role === "admin" && ids.length ? sb.from("player_identity_cases").select("id,player_ids,status").in("status", ["open", "in_review"]).overlaps("player_ids", ids) : Promise.resolve({ data: [], error: null }),
   ]);
   if (profiles.error || adminProfiles.error || availability.error || memberships.error || certificates.error || cases.error) {
     return editorialJson({ error: "Riepilogo Customer Hub non disponibile" }, 503);

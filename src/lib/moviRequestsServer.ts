@@ -20,7 +20,8 @@ export async function notifyRequest(id:string){
  try{
   const sb=supabaseAdmin();const {data,error}=await sb.rpc('movi_request_claim_telegram',{p_id:id});if(error)throw new Error('claim');const row=data?.[0] as RequestRow|undefined;if(!row)return;
   const url=process.env.SUPABASE_URL??process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const local=url==='http://127.0.0.1:55021';
+  const hostname=url?new URL(url).hostname:'';
+  const local=hostname==='127.0.0.1'||hostname==='localhost'||hostname==='::1';
   if((local&&(process.env.TELEGRAM_BOT_TOKEN||process.env.TELEGRAM_CHAT_ID))||(!local&&process.env.PADELLERIA_LOCAL_VERIFIED==='1')){
    await sb.from('movi_requests').update({telegram_state:'failed',telegram_error:'config_blocked'}).eq('id',id).eq('telegram_attempted_at',row.telegram_attempted_at!);return;
   }

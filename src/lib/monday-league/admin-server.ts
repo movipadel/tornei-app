@@ -1,11 +1,14 @@
 import "server-only";
 import { NextResponse } from "next/server";
-import { getStaffSessionFromCookie } from "@/lib/staffSession";
+import { OperatorAccessDenied, requireOperatorPermission } from "@/lib/operatorAuthorization";
 
 export async function getMondayLeagueAdminActorId() {
-  const session = await getStaffSessionFromCookie();
-  if (!session || session.role !== "admin") return null;
-  return session.sid;
+  try {
+    return (await requireOperatorPermission("monday_league.manage")).sid;
+  } catch (error) {
+    if (error instanceof OperatorAccessDenied) return null;
+    throw error;
+  }
 }
 
 const FRIENDLY_ERRORS: Record<string, string> = {

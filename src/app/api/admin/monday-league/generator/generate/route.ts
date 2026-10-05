@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { guardAdmin } from "@/lib/adminGuard";
+import { guardOperatorPermission } from "@/lib/operatorAuthorization";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { generateMondayLeaguePhase1 } from "@/lib/monday-league/generator";
 import { getMondayLeagueAdminActorId, mondayLeagueErrorResponse } from "@/lib/monday-league/admin-server";
@@ -7,7 +7,7 @@ import { getMondayLeagueAdminActorId, mondayLeagueErrorResponse } from "@/lib/mo
 export const runtime = "nodejs";
 
 export async function POST(req: Request) {
-  const denied = await guardAdmin();
+  const denied = await guardOperatorPermission("monday_league.manage");
   if (denied) return denied;
   const actorId = await getMondayLeagueAdminActorId();
   if (!actorId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });

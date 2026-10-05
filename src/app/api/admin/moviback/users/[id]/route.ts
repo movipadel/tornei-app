@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { guardAdmin } from "@/lib/adminGuard";
+import { guardOperatorPermission } from "@/lib/operatorAuthorization";
 import { isSupportedTaxCode, normalizeTaxCode } from "@/lib/movibackEligibility";
 import { readMovibackEligibility } from "@/lib/movibackEligibilityServer";
 
@@ -13,7 +14,7 @@ type Params = {
 };
 
 export async function GET(_req: Request, { params }: Params) {
-  const denied = await guardAdmin();
+  const denied = await guardOperatorPermission("moviback.manage");
   if (denied) return denied;
 
   const { id } = await params;

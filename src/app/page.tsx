@@ -1,1964 +1,309 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { toast } from "sonner";
-import {
-  Bell,
-  CalendarDays,
-  ShoppingBag,
-  Loader2,
-  MessageCircle,
-  Trophy,
-  WalletCards,
-} from "lucide-react";
-
-import { FaInstagram, FaFacebookF } from "react-icons/fa";
+import { ArrowRight, CalendarDays, Clock3, Coins, Dumbbell, Globe2, History, MapPin, MessageCircle, ShoppingBag, Store, Ticket, UsersRound, WalletCards } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
-
-import PublicNav from "@/components/PublicNav";
-import TournamentCard, { PublicTournament } from "@/components/tournaments/TournamentCard";
-import RegistrationDialog from "@/components/tournaments/RegistrationDialog";
+import { useEffect, useRef, useState } from "react";
+import { FaFacebookF, FaInstagram, FaYoutube } from "react-icons/fa";
+import { toast } from "sonner";
 import UserLoginDialog from "@/components/UserLoginDialog";
+import { OPEN_PUBLIC_QR_EVENT } from "@/components/public/publicEvents";
+import { MembershipCardModal, type MembershipCardEligibility, type MembershipCardMembership } from "@/components/public/MembershipCardModal";
+import { PublicHomeHeaderSlot } from "@/components/public/PublicHomeHeaderSlot";
+import { publicLegalLinks, publicSocialLinks } from "@/components/public/publicLinks";
+import { PublicModal } from "@/components/public/PublicModal";
+import { MediaFrame, PublicButton, PublicCard, PublicCarousel, PublicState, StatusBadge, publicStyles } from "@/components/public/PublicPrimitives";
+import RegistrationDialog from "@/components/tournaments/RegistrationDialog";
 import TournamentLiveDialog from "@/components/tournaments/TournamentLiveDialog";
+import type { PublicTournament } from "@/components/tournaments/TournamentCard";
+import type { ContentItem } from "@/lib/padelleria";
+import { filterHomeTournaments } from "@/lib/homeTournamentWindow";
+import { getTournamentHomeBackground, normalizeTournamentHomeCategory } from "@/lib/tournamentHomeBackground";
+import home from "./HomeV2.module.css";
 
-type AppSettings = {
-  home_title: string;
-  home_subtitle: string;
-  home_logo_url: string | null;
-};
-
-type User = {
-  id: string;
-  full_name: string;
-  phone: string;
-  email: string;
-  gender: "M" | "F";
-  privacy_accepted_at?: string | null;
-  terms_accepted_at?: string | null;
-  age_confirmed_at?: string | null;
-  marketing_accepted?: boolean | null;
-  marketing_accepted_at?: string | null;
-};
-
-type MyReg = {
-  id: string;
-  tournament_id: string;
-  is_reserve: boolean;
-  p1_phone: string;
-  p2_phone?: string | null;
-};
-
-type HomeCommunication = {
-  id: string;
-  target: string;
-  tournament_id: string | null;
-  title: string;
-  body: string;
-  image_path: string | null;
-  cta_label: string | null;
-  cta_url: string | null;
-  created_at: string;
-  read_at: string | null;
-  dismissed_at: string | null;
-};
-
-type PublicCircuit = {
-  id: string;
-  name: string;
-  slug: string;
-  tournament_type: string;
-  status: string;
-  ranking_groups_count: number;
-  played_stages_count: number;
-  rules_url: string | null;
-  hero_logo_url?: string | null;
-  hero_logo_2_url?: string | null;
-  hero_logo_3_url?: string | null;
-  hero_subtitle?: string | null;
-  theme_key?: string | null;
-};
-
-type RegistrationSearchRow = {
-  id: string;
-  tournament_id: string;
-  is_reserve: boolean;
-  p1_phone: string;
-  p2_phone?: string | null;
-};
+type User = { id: string; full_name: string; phone: string; email: string; gender: "M" | "F"; privacy_accepted_at?: string | null; terms_accepted_at?: string | null; age_confirmed_at?: string | null; marketing_accepted?: boolean | null; marketing_accepted_at?: string | null };
+type MyReg = { id: string; tournament_id: string; is_reserve: boolean; p1_phone: string; p2_phone?: string | null };
+type HomeCommunication = { id: string; target: string; tournament_id: string | null; title: string; body: string; image_path: string | null; cta_label: string | null; cta_url: string | null; created_at: string; read_at: string | null; dismissed_at: string | null };
+type PublicCircuit = { id: string; name: string; slug: string; tournament_type: string; status: string; home_image_url: string | null; ranking_groups_count: number; played_stages_count: number; rules_url: string | null };
+type HomeTournament = PublicTournament & { circuit_id?: string | null };
 type MondayLeagueHero = { visible: true; eyebrow: string; title: string; seasonName: string } | { visible: false };
+type MoviBackHome = {
+  points: number | null;
+  membershipStatus: string | null;
+  membershipCode: string | null;
+  membership: MembershipCardMembership | null;
+  eligibility: (MembershipCardEligibility & { can_redeem: boolean }) | null;
+};
 
-const normalizePhone = (s: string) => String(s ?? "").replace(/\s+/g, "").trim();
-const isValidPhone = (p: string) => normalizePhone(p).length >= 8;
+const normalizePhone = (value: string) => String(value ?? "").replace(/\s+/g, "").trim();
+const isValidPhone = (value: string) => normalizePhone(value).length >= 8;
 const errorMessage = (error: unknown, fallback: string) => error instanceof Error ? error.message : fallback;
+const firstName = (user: User | null) => user?.full_name?.trim().split(/\s+/)[0] || null;
+
+function formatDate(iso: string | null | undefined, options?: Intl.DateTimeFormatOptions) {
+  if (!iso) return "—";
+  const value = new Date(iso.includes("T") ? iso : `${iso}T00:00:00`);
+  if (!Number.isFinite(value.getTime())) return "—";
+  return value.toLocaleDateString("it-IT", options ?? { day: "numeric", month: "short", year: "numeric" });
+}
+
+function contentImage(item: ContentItem) {
+  const images = item.media.filter((media) => media.media_type === "image" && media.url);
+  return images.find((media) => media.role === "cover")?.url ?? images[0]?.url ?? undefined;
+}
+
+function SectionHeader({ title, copy, href, linkLabel }: { title: string; copy?: string; href?: string; linkLabel?: string }) {
+  return <div className={home.sectionHead}><div><h2 className={home.sectionTitle}>{title}</h2>{copy ? <p className={home.sectionCopy}>{copy}</p> : null}</div>{href && linkLabel ? <Link className={home.textLink} href={href}>{linkLabel}</Link> : null}</div>;
+}
+
+function EditorialCarousel({ title, label, items, href }: { title: string; label: string; items: ContentItem[]; href: string }) {
+  return <section className={home.section}><SectionHeader title={title} href={href} linkLabel="Vedi tutti" /><PublicCarousel label={label}>{items.map((item) => {
+    const image = contentImage(item);
+    return <Link className={`${home.carouselItem} ${home.editorialCardLink}`} href={`/padelleria/${item.id}`} aria-label={`Apri ${item.title}`} key={item.id}><PublicCard family="editorial" className={home.editorialCard}><MediaFrame src={image} alt={image ? item.title : ""} /><div className={home.editorialBody}><span className={home.editorialDate}>{formatDate(item.occurred_at ?? item.visible_from ?? item.published_at)}</span><h3>{item.title}</h3>{item.excerpt ? <p>{item.excerpt}</p> : null}</div></PublicCard></Link>;
+  })}</PublicCarousel></section>;
+}
+
+function HomeTournamentCard({ tournament, circuit, status, onRegister }: { tournament: HomeTournament; circuit?: PublicCircuit; status: "none" | "main" | "reserve"; onRegister: () => void }) {
+  const background = getTournamentHomeBackground(tournament.type, tournament.category);
+  const category = normalizeTournamentHomeCategory(tournament.category);
+  const dateBadgeCategoryClass = category === "maschile" ? home.tournamentDateBadgeMaschile
+    : category === "femminile" ? home.tournamentDateBadgeFemminile
+    : category === "misto" ? home.tournamentDateBadgeMisto
+    : category === "open" ? home.tournamentDateBadgeOpen
+    : home.tournamentDateBadgeDefault;
+  return <PublicCard family="compact" className={home.tournamentCard}>
+    <div className={home.tournamentBackground} style={{ backgroundImage: `url("${background}")` }} aria-hidden />
+    <div className={home.tournamentScrim} aria-hidden />
+    <div className={home.tournamentBody}>
+      <div className={home.tournamentInfo}>
+        <div className={home.tournamentBadges}>
+          <div className={`${home.tournamentDateBadge} ${dateBadgeCategoryClass}`}><strong>{formatDate(tournament.date, { day: "2-digit" })}</strong><span>{formatDate(tournament.date, { month: "short" })}</span></div>
+          {circuit ? <span className={home.tournamentCircuit}>{circuit.name}</span> : null}
+        </div>
+        <h3>{tournament.name}</h3>
+        <div className={home.tournamentClassification}>{tournament.level ? <span>Livello {tournament.level}</span> : null}<span>{[tournament.category, tournament.type].filter(Boolean).join(" · ")}</span></div>
+        <div className={home.metaLine}><CalendarDays size={15} aria-hidden />{formatDate(tournament.date, { weekday: "long", day: "numeric", month: "long" })}{tournament.time ? <><Clock3 size={15} aria-hidden /><span>{tournament.time.slice(0, 5)}</span></> : null}</div>
+        {tournament.location ? <div className={home.metaLine}><MapPin size={15} aria-hidden />{tournament.location}</div> : null}
+      </div>
+      <div className={home.tournamentAction}>{tournament.hasLive ? <TournamentLiveDialog tournamentId={tournament.id} tournamentName={tournament.name} trigger={<PublicButton variant="danger">LIVE</PublicButton>} /> : status === "main" ? <StatusBadge tone="success">Iscritto</StatusBadge> : status === "reserve" ? <StatusBadge tone="warning">Riserva</StatusBadge> : <PublicButton onClick={onRegister}>Iscriviti</PublicButton>}</div>
+    </div>
+  </PublicCard>;
+}
 
 export default function HomePage() {
   const [loading, setLoading] = useState(true);
-  const [loadingMy, setLoadingMy] = useState(false);
-
-  const [tournaments, setTournaments] = useState<PublicTournament[]>([]);
-  const [settings, setSettings] = useState<AppSettings | null>(null);
+  const [homeError, setHomeError] = useState("");
+  const [tournaments, setTournaments] = useState<HomeTournament[]>([]);
   const [circuits, setCircuits] = useState<PublicCircuit[]>([]);
+  const [succede, setSuccede] = useState<ContentItem[]>([]);
+  const [past, setPast] = useState<ContentItem[]>([]);
+  const [sectionErrors, setSectionErrors] = useState({ moviback: "", circuits: "", succede: "", past: "" });
   const [mondayLeagueHero, setMondayLeagueHero] = useState<MondayLeagueHero>({ visible: false });
-
-  // user session (opzionale)
   const [user, setUser] = useState<User | null>(null);
-  const [userDialogOpen, setUserDialogOpen] = useState(false);
-
-  // fallback phone (se NON loggato)
-  const [phone, setPhone] = useState("");
+  const [moviBack, setMoviBack] = useState<MoviBackHome>({ points: null, membershipStatus: null, membershipCode: null, membership: null, eligibility: null });
   const [myRegs, setMyRegs] = useState<MyReg[]>([]);
-  const [moviBackPoints, setMoviBackPoints] = useState<number | null>(null);
   const [communications, setCommunications] = useState<HomeCommunication[]>([]);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const unreadNotifications = communications.filter((n) => !n.read_at).length;
-  const missingRequiredConsents =
-  Boolean(user) &&
-  (!user?.privacy_accepted_at ||
-    !user?.terms_accepted_at ||
-    !user?.age_confirmed_at);
-
+  const [userDialogOpen, setUserDialogOpen] = useState(false);
   const [selectedTournament, setSelectedTournament] = useState<PublicTournament | null>(null);
   const [pendingTournament, setPendingTournament] = useState<PublicTournament | null>(null);
-
-  const effectivePhone = user?.phone ? normalizePhone(user.phone) : normalizePhone(phone);
-
-  // ✅ auto-refresh lista tornei (quando la pagina è visibile)
   const listTimerRef = useRef<number | null>(null);
   const listAbortRef = useRef<AbortController | null>(null);
-
-  useEffect(() => {
-    const openNotifications = () => setNotificationsOpen(true);
-    const openFromHash = () => {
-      if (window.location.hash === "#notifiche") setNotificationsOpen(true);
-    };
-    window.addEventListener("movi:open-notifications", openNotifications);
-    window.addEventListener("hashchange", openFromHash);
-    openFromHash();
-    return () => {
-      window.removeEventListener("movi:open-notifications", openNotifications);
-      window.removeEventListener("hashchange", openFromHash);
-    };
-  }, []);
+  const notificationFocusRef = useRef<HTMLElement | null>(null);
+  const effectivePhone = normalizePhone(user?.phone ?? "");
+  const unreadNotifications = communications.filter((notification) => !notification.read_at).length;
+  const missingRequiredConsents = Boolean(user) && (!user?.privacy_accepted_at || !user?.terms_accepted_at || !user?.age_confirmed_at);
 
   async function loadAll(opts?: { silent?: boolean; includeBootstrap?: boolean }) {
     const silent = Boolean(opts?.silent);
     const includeBootstrap = opts?.includeBootstrap !== false;
-
-    // evita fetch sovrapposti
     listAbortRef.current?.abort();
-    const ac = new AbortController();
-    listAbortRef.current = ac;
-
-    if (!silent) setLoading(true);
-
+    const controller = new AbortController();
+    listAbortRef.current = controller;
+    if (!silent) { setLoading(true); setHomeError(""); }
     try {
-      const [tRes, sRes, meRes, cRes, mbRes, commRes, mlRes] = await Promise.all([
-  fetch("/api/tournaments", { cache: "no-store", signal: ac.signal }),
-  includeBootstrap
-    ? fetch("/api/app-settings", { cache: "no-store", signal: ac.signal })
-    : Promise.resolve(null),
-  includeBootstrap
-    ? fetch("/api/user/me", { cache: "no-store", signal: ac.signal })
-    : Promise.resolve(null),
-  fetch("/api/circuits", { cache: "no-store", signal: ac.signal }),
-  fetch("/api/moviback/me", { cache: "no-store", signal: ac.signal }),
-  fetch("/api/user/communications", { cache: "no-store", signal: ac.signal }),
-  fetch("/api/monday-league/hero", { cache: "no-store", signal: ac.signal }),
-]);
-
-      const tJson = await tRes.json().catch(() => ({}));
-      if (!tRes.ok) throw new Error(tJson.error || "Errore caricamento tornei");
-      setTournaments((tJson.data ?? []) as PublicTournament[]);
-
-      if (sRes) {
-        const sJson = await sRes.json().catch(() => ({}));
-        if (sRes.ok) setSettings(sJson as AppSettings);
-        else setSettings({ home_title: "Tornei", home_subtitle: "", home_logo_url: null });
-      }
-
-      if (meRes) {
-        const meJson = await meRes.json().catch(() => ({}));
-        setUser(meJson.user ?? null);
-      }
-
-      const cJson = await cRes.json().catch(() => ({}));
-if (cRes.ok) setCircuits((cJson.data ?? []) as PublicCircuit[]);
-else setCircuits([]);
-const mbJson = await mbRes.json().catch(() => ({}));
-if (mbRes.ok && mbJson?.membership?.status === "approved") {
-  setMoviBackPoints(Number(mbJson.points ?? 0));
-} else {
-  setMoviBackPoints(null);
-}
-const commJson = await commRes.json().catch(() => ({}));
-if (commRes.ok) {
-  setCommunications((commJson.data ?? []) as HomeCommunication[]);
-} else {
-  setCommunications([]);
-}
-const mlJson = await mlRes.json().catch(() => ({ visible: false }));
-setMondayLeagueHero(mlRes.ok && mlJson.visible ? mlJson as MondayLeagueHero : { visible: false });
-    } catch (e: unknown) {
-      // Abort = normale durante refresh/cleanup
-      if (e instanceof Error && e.name === "AbortError") return;
-
-      if (!silent) toast.error(errorMessage(e, "Errore"));
-    } finally {
-      if (!silent) setLoading(false);
-    }
+      const [tRes, settingsRes, meRes, circuitsRes, moviBackRes, communicationsRes, leagueRes, succedeRes, pastRes] = await Promise.all([
+        fetch("/api/tournaments?scope=home", { cache: "no-store", signal: controller.signal }),
+        includeBootstrap ? fetch("/api/app-settings", { cache: "no-store", signal: controller.signal }) : Promise.resolve(null),
+        includeBootstrap ? fetch("/api/user/me", { cache: "no-store", signal: controller.signal }) : Promise.resolve(null),
+        fetch("/api/circuits", { cache: "no-store", signal: controller.signal }),
+        fetch("/api/moviback/me", { cache: "no-store", signal: controller.signal }),
+        fetch("/api/user/communications", { cache: "no-store", signal: controller.signal }),
+        fetch("/api/monday-league/hero", { cache: "no-store", signal: controller.signal }),
+        includeBootstrap ? fetch("/api/padelleria?kind=succede&limit=6", { cache: "no-store", signal: controller.signal }) : Promise.resolve(null),
+        includeBootstrap ? fetch("/api/padelleria?kind=e_successo&limit=6", { cache: "no-store", signal: controller.signal }) : Promise.resolve(null),
+      ]);
+      const tournamentJson = await tRes.json().catch(() => ({}));
+      if (!tRes.ok) throw new Error(tournamentJson.error || "Errore caricamento tornei");
+      setTournaments((tournamentJson.data ?? []) as HomeTournament[]);
+      if (settingsRes) await settingsRes.json().catch(() => ({}));
+      if (meRes) { const json = await meRes.json().catch(() => ({})); setUser(meRes.ok ? json.user ?? null : null); }
+      const circuitsJson = await circuitsRes.json().catch(() => ({}));
+      if (circuitsRes.ok) { setCircuits((circuitsJson.data ?? []) as PublicCircuit[]); setSectionErrors((current) => ({ ...current, circuits: "" })); }
+      else { setCircuits([]); setSectionErrors((current) => ({ ...current, circuits: circuitsJson.error || "Circuiti non disponibili" })); }
+      const moviBackJson = await moviBackRes.json().catch(() => ({}));
+      if (moviBackRes.ok) {
+        const approved = moviBackJson?.membership?.status === "approved";
+        setMoviBack({
+          points: approved && Number.isFinite(Number(moviBackJson.points)) ? Number(moviBackJson.points) : null,
+          membershipStatus: moviBackJson?.membership?.status ?? null,
+          membershipCode: approved && moviBackJson?.membership?.membership_code ? String(moviBackJson.membership.membership_code) : null,
+          membership: moviBackJson?.membership ? {
+            status: moviBackJson.membership.status,
+            membership_code: moviBackJson.membership.membership_code ?? null,
+          } : null,
+          eligibility: moviBackJson?.eligibility ? {
+            can_use_card: moviBackJson.eligibility.can_use_card === true,
+            can_redeem: moviBackJson.eligibility.can_redeem === true,
+            human_message: moviBackJson.eligibility.human_message ?? null,
+          } : null,
+        });
+        setSectionErrors((current) => ({ ...current, moviback: "" }));
+      } else { setMoviBack({ points: null, membershipStatus: null, membershipCode: null, membership: null, eligibility: null }); setSectionErrors((current) => ({ ...current, moviback: moviBackJson.error || "MoviBack non disponibile" })); }
+      const communicationsJson = await communicationsRes.json().catch(() => ({}));
+      setCommunications(communicationsRes.ok ? (communicationsJson.data ?? []) as HomeCommunication[] : []);
+      const leagueJson = await leagueRes.json().catch(() => ({ visible: false }));
+      setMondayLeagueHero(leagueRes.ok && leagueJson.visible ? leagueJson as MondayLeagueHero : { visible: false });
+      if (succedeRes) { const json = await succedeRes.json().catch(() => ({})); setSuccede(succedeRes.ok ? (json.data ?? []) as ContentItem[] : []); setSectionErrors((current) => ({ ...current, succede: succedeRes.ok ? "" : json.error || "Contenuti non disponibili" })); }
+      if (pastRes) { const json = await pastRes.json().catch(() => ({})); setPast(pastRes.ok ? (json.data ?? []) as ContentItem[] : []); setSectionErrors((current) => ({ ...current, past: pastRes.ok ? "" : json.error || "Contenuti non disponibili" })); }
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") return;
+      if (!silent) setHomeError(errorMessage(error, "Home temporaneamente non disponibile"));
+    } finally { if (!silent) setLoading(false); }
   }
 
-  async function searchMy(phoneValue: string) {
-    const p = normalizePhone(phoneValue);
-    if (!isValidPhone(p)) {
-      setMyRegs([]);
-      return;
-    }
-
-    setLoadingMy(true);
+  async function searchMy(phone: string) {
+    const normalized = normalizePhone(phone);
+    if (!isValidPhone(normalized)) { setMyRegs([]); return; }
     try {
-      // Il search server fa match parziale, noi filtriamo ESATTO qui.
-      const res = await fetch("/api/registrations/search", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: p }),
-      });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json.error || "Errore ricerca");
-
-      const rows = (json.data ?? []) as RegistrationSearchRow[];
-      const exact = rows.filter((r) => {
-        const p1 = normalizePhone(r.p1_phone ?? "");
-        const p2 = normalizePhone(r.p2_phone ?? "");
-        return p === p1 || (p2 && p === p2);
-      });
-
-      setMyRegs(
-        exact.map((r) => ({
-          id: r.id,
-          tournament_id: r.tournament_id,
-          is_reserve: Boolean(r.is_reserve),
-          p1_phone: r.p1_phone,
-          p2_phone: r.p2_phone ?? null,
-        }))
-      );
-    } catch (e: unknown) {
-      toast.error(errorMessage(e, "Errore"));
-    } finally {
-      setLoadingMy(false);
-    }
+      const response = await fetch("/api/registrations/search", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ phone: normalized }) });
+      const json = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(json.error || "Errore ricerca iscrizioni");
+      const exact = ((json.data ?? []) as MyReg[]).filter((registration) => normalized === normalizePhone(registration.p1_phone) || normalized === normalizePhone(registration.p2_phone ?? ""));
+      setMyRegs(exact.map((registration) => ({ ...registration, is_reserve: Boolean(registration.is_reserve), p2_phone: registration.p2_phone ?? null })));
+    } catch (error) { toast.error(errorMessage(error, "Errore ricerca iscrizioni")); }
   }
 
   async function cancelRegistrationByTournament(tournamentId: string) {
     try {
-      const p = effectivePhone;
-      if (!isValidPhone(p)) throw new Error("Inserisci il numero completo (o salva i tuoi dati)");
-
-      const reg = myRegs.find((r) => r.tournament_id === tournamentId);
-      if (!reg) return;
-
-      const ok = confirm("Vuoi cancellare la tua iscrizione?");
-      if (!ok) return;
-
-      const res = await fetch(`/api/registrations/${reg.id}`, {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: p }),
-      });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json.error || "Errore cancellazione");
-
-      toast.success("Iscrizione cancellata");
-      await searchMy(p);
-      await loadAll();
-    } catch (e: unknown) {
-      toast.error(errorMessage(e, "Errore"));
-    }
+      if (!isValidPhone(effectivePhone)) throw new Error("Accedi con il tuo profilo per gestire l’iscrizione");
+      const registration = myRegs.find((item) => item.tournament_id === tournamentId);
+      if (!registration || !confirm("Vuoi cancellare la tua iscrizione?")) return;
+      const response = await fetch(`/api/registrations/${registration.id}`, { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ phone: effectivePhone }) });
+      const json = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(json.error || "Errore cancellazione");
+      toast.success("Iscrizione cancellata"); await searchMy(effectivePhone); await loadAll();
+    } catch (error) { toast.error(errorMessage(error, "Errore cancellazione")); }
   }
 
-  async function updateNotificationState(
-  communicationId: string,
-  action: "read" | "dismiss"
-) {
-  try {
-    const res = await fetch("/api/user/communications/state", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ communication_id: communicationId, action }),
-    });
-
-    const json = await res.json().catch(() => ({}));
-
-    if (!res.ok) {
-      throw new Error(json.error || "Errore aggiornamento notifica");
-    }
-
-    setCommunications((prev) =>
-      action === "dismiss"
-        ? prev.filter((n) => n.id !== communicationId)
-        : prev.map((n) =>
-            n.id === communicationId
-              ? { ...n, read_at: new Date().toISOString() }
-              : n
-          )
-    );
-  } catch (e: unknown) {
-    toast.error(errorMessage(e, "Errore"));
+  async function updateNotificationState(communicationId: string, action: "read" | "dismiss") {
+    try {
+      const response = await fetch("/api/user/communications/state", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ communication_id: communicationId, action }) });
+      const json = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(json.error || "Errore aggiornamento notifica");
+      setCommunications((current) => action === "dismiss" ? current.filter((item) => item.id !== communicationId) : current.map((item) => item.id === communicationId ? { ...item, read_at: new Date().toISOString() } : item));
+    } catch (error) { toast.error(errorMessage(error, "Errore aggiornamento notifica")); }
   }
-}
 
-async function markAllNotificationsRead() {
-  try {
-    const ids = communications.filter((n) => !n.read_at).map((n) => n.id);
-
-    if (ids.length === 0) return;
-
-    const res = await fetch("/api/user/communications/state", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ communication_ids: ids, action: "read_all" }),
-    });
-
-    const json = await res.json().catch(() => ({}));
-
-    if (!res.ok) {
-      throw new Error(json.error || "Errore aggiornamento notifiche");
-    }
-
-    const now = new Date().toISOString();
-
-    setCommunications((prev) =>
-      prev.map((n) => ({
-        ...n,
-        read_at: n.read_at || now,
-      }))
-    );
-  } catch (e: unknown) {
-    toast.error(errorMessage(e, "Errore"));
+  async function markAllNotificationsRead() {
+    const ids = communications.filter((notification) => !notification.read_at).map((notification) => notification.id);
+    if (!ids.length) return;
+    try {
+      const response = await fetch("/api/user/communications/state", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ communication_ids: ids, action: "read_all" }) });
+      const json = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(json.error || "Errore aggiornamento notifiche");
+      const now = new Date().toISOString();
+      setCommunications((current) => current.map((notification) => ({ ...notification, read_at: notification.read_at || now })));
+    } catch (error) { toast.error(errorMessage(error, "Errore aggiornamento notifiche")); }
   }
-}
 
   function statusForTournament(tournamentId: string): "none" | "main" | "reserve" {
-    const p = effectivePhone;
-    if (!isValidPhone(p)) return "none";
-
-    const r = myRegs.find((x) => x.tournament_id === tournamentId);
-    if (!r) return "none";
-    return r.is_reserve ? "reserve" : "main";
+    if (!isValidPhone(effectivePhone)) return "none";
+    const registration = myRegs.find((item) => item.tournament_id === tournamentId);
+    return registration ? registration.is_reserve ? "reserve" : "main" : "none";
   }
-
-  function canUserJoinTournament(t: PublicTournament): boolean {
-    // regola sesso solo se loggato
+  function canUserJoinTournament(tournament: PublicTournament) {
     if (!user?.gender) return true;
-
-    if (t.category === "Femminile" && user.gender === "M") return false;
-    if (t.category === "Maschile" && user.gender === "F") return false;
-
-    return true;
+    return !((tournament.category === "Femminile" && user.gender === "M") || (tournament.category === "Maschile" && user.gender === "F"));
   }
-
-    const upcomingTournaments = tournaments
-  .filter((t) => {
-    if (!t.date) return false;
-
-    const tournamentDate = new Date(`${t.date}T${t.time || "00:00"}`);
-    const tournamentEndOfDay = new Date(`${t.date}T23:59:59.999`);
-
-    const now = new Date();
-
-    // Lunedì della settimana corrente
-    const startOfCurrentWeek = new Date(now);
-    const day = startOfCurrentWeek.getDay(); // 0 domenica, 1 lunedì...
-    const diffToMonday = day === 0 ? -6 : 1 - day;
-
-    startOfCurrentWeek.setDate(startOfCurrentWeek.getDate() + diffToMonday);
-    startOfCurrentWeek.setHours(0, 0, 0, 0);
-
-    // Domenica della seconda settimana successiva
-    const endOfSecondNextWeek = new Date(startOfCurrentWeek);
-    endOfSecondNextWeek.setDate(startOfCurrentWeek.getDate() + 20);
-    endOfSecondNextWeek.setHours(23, 59, 59, 999);
-
-    return tournamentEndOfDay >= now && tournamentDate <= endOfSecondNextWeek;
-  })
-  .sort((a, b) => {
-    const dateA = new Date(`${a.date}T${a.time || "00:00"}`).getTime();
-    const dateB = new Date(`${b.date}T${b.time || "00:00"}`).getTime();
-    return dateA - dateB;
-  })
-  .slice(0, 5);
-
-function formatTournamentDay(t: PublicTournament) {
-  const d = new Date(`${t.date}T${t.time || "00:00"}`);
-
-  return {
-    day: String(d.getDate()).padStart(2, "0"),
-    month: d.toLocaleDateString("it-IT", { month: "short" }).toUpperCase(),
-  };
-}
-
-function formatTournamentTime(t: PublicTournament) {
-  return t.time ? t.time.slice(0, 5) : "";
-}
-
-function shortLocation(location: string) {
-  return String(location || "")
-    .replace(/^Movi Club\s+/i, "")
-    .replace(/^MOVI Club\s+/i, "")
-    .trim();
-}
-
-function tournamentTypeDateStyle(type: string): React.CSSProperties {
-  const t = String(type || "").toLowerCase();
-
-  if (t.includes("baraonda")) {
-    return {
-      background: "linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)",
-      color: "#1f2937",
-      border: "1px solid rgba(245,158,11,0.55)",
-      boxShadow: "0 8px 18px rgba(245,158,11,0.18)",
-    };
+  function openTournamentRegistration(tournament: PublicTournament) {
+    if (!user) { setPendingTournament(tournament); setUserDialogOpen(true); return; }
+    if (!canUserJoinTournament(tournament)) { toast.error("Non puoi iscriverti a questo torneo"); return; }
+    setSelectedTournament(tournament);
   }
-
-  if (t.includes("coppie")) {
-    return {
-      background: "linear-gradient(135deg, #14b8a6 0%, #2dd4bf 100%)",
-      color: "#042f2e",
-      border: "1px solid rgba(45,212,191,0.55)",
-      boxShadow: "0 8px 18px rgba(45,212,191,0.16)",
-    };
+  function changeNotifications(next: boolean) {
+    setNotificationsOpen(next);
+    if (!next && notificationFocusRef.current) { const target = notificationFocusRef.current; notificationFocusRef.current = null; window.requestAnimationFrame(() => target.focus()); }
   }
-
-  return {
-    background: "linear-gradient(135deg, #4f46e5 0%, #6366f1 100%)",
-    color: "#ffffff",
-    border: "1px solid rgba(99,102,241,0.45)",
-    boxShadow: "0 8px 18px rgba(99,102,241,0.18)",
-  };
-}
-
-function tournamentMeta(t: PublicTournament) {
-  return [t.category, t.level, formatTournamentTime(t), shortLocation(t.location)]
-    .filter(Boolean)
-    .join(" • ");
-}
-const premiumActionStyle = (accent: string): React.CSSProperties => ({
-  height: 58,
-  minHeight: 58,
-  borderRadius: 18,
-  padding: "0 12px",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "flex-start",
-  gap: 12,
-  textDecoration: "none",
-  color: "white",
-  background:
-    "linear-gradient(135deg, rgba(255,255,255,0.075), rgba(255,255,255,0.035))",
-  border: "1px solid rgba(255,255,255,0.09)",
-  boxShadow: `0 0 0 1px rgba(255,255,255,0.02), 0 14px 30px rgba(0,0,0,0.16), 0 0 22px ${accent}20`,
-  backdropFilter: "blur(14px)",
-  transition: "transform 160ms ease, box-shadow 160ms ease",
-willChange: "transform",
-});
-
-const legalFooterLink: React.CSSProperties = {
-  color: "rgba(255,255,255,0.42)",
-  textDecoration: "none",
-};
-
-const premiumIconStyle = (accent: string): React.CSSProperties => ({
-  width: 36,
-  height: 36,
-  borderRadius: 13,
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  flex: "0 0 36px",
-  color: "#ffffff",
-  background: `linear-gradient(135deg, ${accent}, rgba(255,255,255,0.10))`,
-  boxShadow: `0 10px 22px ${accent}30`,
-});
-
-const premiumEyebrowStyle: React.CSSProperties = {
-  display: "block",
-  color: "rgba(255,255,255,0.50)",
-  fontSize: 11,
-  lineHeight: 1,
-  fontWeight: 700,
-  letterSpacing: "0.12em",
-  textTransform: "uppercase",
-};
-
-const premiumTitleStyle: React.CSSProperties = {
-  display: "block",
-  marginTop: 6,
-  color: "#ffffff",
-  fontSize: 18,
-  lineHeight: 1,
-  fontWeight: 820,
-  letterSpacing: -0.5,
-};
-
-const premiumTitleSmallStyle: React.CSSProperties = {
-  ...premiumTitleStyle,
-  fontSize: 16,
-};
-
-const premiumArrowStyle: React.CSSProperties = {
-  marginLeft: "auto",
-  width: 30,
-  height: 30,
-  borderRadius: 999,
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  background: "rgba(255,255,255,0.08)",
-  color: "rgba(255,255,255,0.86)",
-  fontSize: 18,
-  fontWeight: 800,
-  flexShrink: 0,
-};
-
-const premiumTextStackStyle: React.CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  justifyContent: "center",
-  gap: 2,
-  minWidth: 0,
-};
-
-const premiumInlineTitleStyle: React.CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  height: 36,
-  color: "#ffffff",
-  fontSize: 17,
-  lineHeight: 1,
-  fontWeight: 760,
-  letterSpacing: -0.35,
-  whiteSpace: "nowrap",
-};
-
-const summaryItemStyle: React.CSSProperties = {
-  minHeight: 76,
-  padding: "12px 8px",
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  justifyContent: "center",
-  gap: 5,
-  color: "rgba(255,255,255,0.86)",
-  textAlign: "center",
-};
-
-const notificationSmallBtn: React.CSSProperties = {
-  minHeight: 32,
-  padding: "0 11px",
-  borderRadius: 999,
-  border: "1px solid rgba(255,255,255,0.10)",
-  background: "rgba(255,255,255,0.06)",
-  color: "rgba(255,255,255,0.78)",
-  fontSize: 12,
-  fontWeight: 850,
-  cursor: "pointer",
-};
-
 
   useEffect(() => {
-    loadAll();
-
-    // Refresh periodico dei soli dati che possono cambiare durante la sessione.
-    listTimerRef.current = window.setInterval(() => {
-      if (document.visibilityState !== "visible") return;
-      loadAll({ silent: true, includeBootstrap: false });
-    }, 15000);
-
-    const onVis = () => {
-      if (document.visibilityState === "visible") loadAll({ silent: true });
-    };
-    document.addEventListener("visibilitychange", onVis);
-
-    return () => {
-      document.removeEventListener("visibilitychange", onVis);
-      listAbortRef.current?.abort();
-      listAbortRef.current = null;
-
-      if (listTimerRef.current) window.clearInterval(listTimerRef.current);
-      listTimerRef.current = null;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const openNotifications = () => { notificationFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null; setNotificationsOpen(true); };
+    const openFromHash = () => { if (window.location.hash === "#notifiche") setNotificationsOpen(true); };
+    window.addEventListener("movi:open-notifications", openNotifications); window.addEventListener("hashchange", openFromHash); openFromHash();
+    return () => { window.removeEventListener("movi:open-notifications", openNotifications); window.removeEventListener("hashchange", openFromHash); };
   }, []);
-
   useEffect(() => {
-  if (!user) return;
+    void loadAll();
+    listTimerRef.current = window.setInterval(() => { if (document.visibilityState === "visible") void loadAll({ silent: true, includeBootstrap: false }); }, 15000);
+    const onVisibility = () => { if (document.visibilityState === "visible") void loadAll({ silent: true }); };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => { document.removeEventListener("visibilitychange", onVisibility); listAbortRef.current?.abort(); if (listTimerRef.current) window.clearInterval(listTimerRef.current); };
+  }, []);
+  useEffect(() => { if (user && (!user.privacy_accepted_at || !user.terms_accepted_at || !user.age_confirmed_at)) { setPendingTournament(null); setUserDialogOpen(true); } }, [user]);
+  useEffect(() => { const timer = window.setTimeout(() => { void searchMy(effectivePhone); }, 300); return () => window.clearTimeout(timer); }, [effectivePhone]);
 
-  const missing =
-    !user.privacy_accepted_at ||
-    !user.terms_accepted_at ||
-    !user.age_confirmed_at;
+  const upcomingTournaments = filterHomeTournaments(tournaments);
 
-  if (missing) {
-    setPendingTournament(null);
-    setUserDialogOpen(true);
-  }
-}, [user]);
+  if (loading) return <main className={home.page}><div className={home.skeletonGrid} aria-label="Caricamento Home"><div className={home.skeletonBlock} /><div className={home.skeletonBlock} /><div className={home.skeletonBlock} /></div></main>;
+  if (homeError) return <main className={home.page}><PublicState kind="error" title="Home non disponibile" message={homeError} action={<PublicButton variant="secondary" onClick={() => void loadAll()}>Riprova</PublicButton>} /></main>;
 
-  // quando cambia telefono (guest) o user.phone, aggiorna myRegs (debounce)
-  useEffect(() => {
-    const p = effectivePhone;
-    const t = setTimeout(() => searchMy(p), 300);
-    return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.phone, phone]);
-
-  if (loading) {
-    return (
-      <div className="base44-home-wrap" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <Loader2 className="w-8 h-8 animate-spin" style={{ color: "#4f46e5" }} />
-      </div>
-    );
-  }
-
-  return (
-    <div
-  className="base44-home-wrap"
-  style={{
-    background:
-      "linear-gradient(180deg, #030712 0%, #07111f 42%, #0f172a 100%)",
-    minHeight: "100dvh",
-  }}
->
-      <PublicNav />
-
-      <div
-  className="base44-home-container"
-  style={{
-    paddingTop: 0,
-  }}
->
-     {/* HERO / APP LAUNCHER PREMIUM */}
-<section
-  style={{
-    position: "relative",
-    marginBottom: 28,
-    padding: "12px 18px 22px",
-    borderRadius: 0,
-    overflow: "hidden",
-    color: "white",
-  }}
->
-  <div
-    aria-hidden
-    style={{
-      position: "absolute",
-      inset: "-80px -40px auto -40px",
-      height: 420,
-      background:
-        "radial-gradient(circle at 20% 0%, rgba(14,165,233,0.32), transparent 35%), radial-gradient(circle at 85% 10%, rgba(99,102,241,0.36), transparent 38%)",
-      pointerEvents: "none",
-    }}
-  />
-
-  <div style={{ position: "relative", zIndex: 1 }}>
-    <div
-      style={{
-        display: "flex",
-        alignItems: "flex-start",
-        justifyContent: "space-between",
-        gap: 16,
-        marginBottom: 18,
-      }}
-    >
-      <div style={{ minWidth: 0 }}>
-        <div
-          style={{
-            width: 54,
-            height: 34,
-            backgroundImage: "url('/home/movi-logo.png')",
-            backgroundSize: "contain",
-            backgroundRepeat: "no-repeat",
-            backgroundPosition: "left center",
-            opacity: 0.92,
-          }}
-        />
-
-        <div
-          style={{
-            marginTop: 16,
-            fontSize: 11,
-            fontWeight: 650,
-            color: "rgba(255,255,255,0.52)",
-            letterSpacing: "0.14em",
-            textTransform: "uppercase",
-          }}
-        >
-          MOVI App
-        </div>
-
-        <h1
-          style={{
-            margin: "8px 0 0",
-            fontSize: "clamp(27px, 6.6vw, 36px)",
-            lineHeight: 1,
-            fontWeight: 850,
-            letterSpacing: -1.2,
-            color: "#ffffff",
-            whiteSpace: "nowrap",
-          }}
-        >
-          Ciao {user?.full_name?.split(" ")?.[0] || "benvenuto"}
-        </h1>
-
-        <p
-          style={{
-            margin: "10px 0 0",
-            maxWidth: "100%",
-            color: "rgba(255,255,255,0.62)",
-            fontSize: 14,
-            lineHeight: 1.25,
-            fontWeight: 520,
-            whiteSpace: "nowrap",
-          }}
-        >
-          Il mondo MOVI in un’unica app.
-        </p>
-      </div>
-
-      {user ? (
-        <button
-          type="button"
-          onClick={async () => {
-            await fetch("/api/user/logout", { method: "POST" });
-            toast.success("Sei uscito");
-            setUser(null);
-            setMyRegs([]);
-            setCommunications([]);
-          }}
-          style={{
-            border: "1px solid rgba(255,255,255,0.12)",
-            background: "rgba(255,255,255,0.07)",
-            color: "rgba(255,255,255,0.86)",
-            borderRadius: 999,
-            padding: "8px 13px",
-            fontWeight: 750,
-            fontSize: 13,
-            cursor: "pointer",
-            backdropFilter: "blur(12px)",
-            flexShrink: 0,
-          }}
-        >
-          Esci
-        </button>
-      ) : (
-        <button
-          type="button"
-          onClick={() => { window.location.href = "/accedi"; }}
-          style={{
-            border: "1px solid rgba(255,255,255,0.12)",
-            background: "rgba(255,255,255,0.07)",
-            color: "rgba(255,255,255,0.86)",
-            borderRadius: 999,
-            padding: "8px 13px",
-            fontWeight: 750,
-            fontSize: 13,
-            cursor: "pointer",
-            backdropFilter: "blur(12px)",
-            flexShrink: 0,
-          }}
-        >
-          Accedi
-        </button>
-      )}
-    </div>
-
-    <div
-  style={{
-    marginBottom: 16,
-    borderRadius: 22,
-    background: "rgba(255,255,255,0.055)",
-    border: "1px solid rgba(255,255,255,0.08)",
-    display: "grid",
-    gridTemplateColumns: "repeat(3, 1fr)",
-    overflow: "hidden",
-    backdropFilter: "blur(14px)",
-  }}
->
-  <div style={summaryItemStyle}>
-    <Trophy className="w-4 h-4" strokeWidth={1.6} style={{ color: "#a78bfa" }} />
-    <strong>{myRegs.length}</strong>
-    <span>Iscrizioni</span>
-  </div>
-
-  <div style={{ ...summaryItemStyle, borderLeft: "1px solid rgba(255,255,255,0.08)" }}>
-  <WalletCards className="w-4 h-4" strokeWidth={1.6} style={{ color: "#2dd4bf" }} />
-  <strong>{moviBackPoints !== null ? moviBackPoints : "—"}</strong>
-  <span>MoviBack</span>
-</div>
-
-  <button
-  type="button"
-  onClick={() => setNotificationsOpen(true)}
-  style={{
-    ...summaryItemStyle,
-    position: "relative",
-    borderLeft: "1px solid rgba(255,255,255,0.08)",
-    background: "transparent",
-    borderTop: 0,
-    borderRight: 0,
-    borderBottom: 0,
-    cursor: "pointer",
-    width: "100%",
-    fontFamily: "inherit",
-  }}
->
-  <div style={{ position: "relative" }}>
-    <Bell className="w-4 h-4" strokeWidth={1.6} style={{ color: "#38bdf8" }} />
-
-    {unreadNotifications > 0 ? (
-      <span
-        style={{
-          position: "absolute",
-          top: -10,
-          right: -14,
-          minWidth: 18,
-          height: 18,
-          padding: "0 5px",
-          borderRadius: 999,
-          background: "#ef4444",
-          color: "white",
-          fontSize: 10,
-          fontWeight: 950,
-          display: "inline-flex",
-          alignItems: "center",
-          justifyContent: "center",
-          border: "2px solid rgba(15,23,42,0.95)",
-          lineHeight: 1,
-        }}
-      >
-        {unreadNotifications > 9 ? "9+" : unreadNotifications}
-      </span>
-    ) : null}
-  </div>
-
-  <strong>{communications.length}</strong>
-  <span>Notifiche</span>
-</button>
-</div>
-
-    <div style={{ display: "grid", gap: 10 }}>
-  {/* ROW 1 */}
-  <div
-    style={{
-      display: "grid",
-      gridTemplateColumns: "1fr 1fr",
-      gap: 10,
-    }}
-  >
-    <Link
-      href="/tornei"
-      style={premiumActionStyle("#7c3aed")}
-      onMouseDown={(e) => (e.currentTarget.style.transform = "scale(0.98)")}
-      onMouseUp={(e) => (e.currentTarget.style.transform = "scale(1)")}
-      onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
-    >
-      <span style={premiumIconStyle("#7c3aed")}>
-        <Trophy className="w-4 h-4" strokeWidth={1.6} />
-      </span>
-      <span style={premiumInlineTitleStyle}>Tornei</span>
-    </Link>
-
-    <Link
-      href="/prenota"
-      style={premiumActionStyle("#0ea5e9")}
-      onMouseDown={(e) => (e.currentTarget.style.transform = "scale(0.98)")}
-      onMouseUp={(e) => (e.currentTarget.style.transform = "scale(1)")}
-      onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
-    >
-      <span style={premiumIconStyle("#0ea5e9")}>
-        <CalendarDays className="w-4 h-4" strokeWidth={1.6} />
-      </span>
-      <span style={premiumInlineTitleStyle}>Prenota</span>
-    </Link>
-  </div>
-
-  {/* ROW 2 */}
-  <div
-    style={{
-      display: "grid",
-      gridTemplateColumns: "1fr 1fr",
-      gap: 10,
-    }}
-  >
-    <Link
-      href="/moviback"
-      style={premiumActionStyle("#14b8a6")}
-      onMouseDown={(e) => (e.currentTarget.style.transform = "scale(0.98)")}
-      onMouseUp={(e) => (e.currentTarget.style.transform = "scale(1)")}
-      onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
-    >
-      <span style={premiumIconStyle("#14b8a6")}>
-        <WalletCards className="w-4 h-4" strokeWidth={1.6} />
-      </span>
-      <span style={premiumInlineTitleStyle}>MoviBack</span>
-    </Link>
-
-    <Link
-      href="/store"
-      style={premiumActionStyle("#d4af37")}
-      onMouseDown={(e) => (e.currentTarget.style.transform = "scale(0.98)")}
-      onMouseUp={(e) => (e.currentTarget.style.transform = "scale(1)")}
-      onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
-    >
-      <span style={premiumIconStyle("#d4af37")}>
-        <ShoppingBag className="w-4 h-4" strokeWidth={1.6} />
-      </span>
-      <span style={premiumInlineTitleStyle}>Store</span>
-    </Link>
-  </div>
-
-  {/* ROW 3 */}
-  <Link
-    href="/contatti"
-    style={premiumActionStyle("#38bdf8")}
-    onMouseDown={(e) => (e.currentTarget.style.transform = "scale(0.98)")}
-    onMouseUp={(e) => (e.currentTarget.style.transform = "scale(1)")}
-    onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
-  >
-    <span style={premiumIconStyle("#38bdf8")}>
-      <MessageCircle className="w-4 h-4" strokeWidth={1.6} />
-    </span>
-
-    <span style={premiumInlineTitleStyle}>Contattaci</span>
-
-    <span style={premiumArrowStyle}>→</span>
-  </Link>
-    </div>
-  </div>
-</section>
-
-{mondayLeagueHero.visible ? <Link href="/monday-league" style={{ display: "block", margin: "8px 0 22px", padding: "clamp(22px,5vw,38px)", borderRadius: 28, color: "white", textDecoration: "none", overflow: "hidden", position: "relative", background: "radial-gradient(circle at 85% 10%,rgba(94,234,212,.36),transparent 34%),linear-gradient(135deg,#042f2e,#0f172a 70%)", border: "1px solid rgba(94,234,212,.28)", boxShadow: "0 22px 52px rgba(0,0,0,.26)" }}><div style={{ position: "relative", zIndex: 1 }}><div style={{ color: "#5eead4", textTransform: "uppercase", letterSpacing: 1.4, fontWeight: 900, fontSize: 12 }}>{mondayLeagueHero.eyebrow}</div><div style={{ fontSize: "clamp(24px,5vw,42px)", fontWeight: 950, letterSpacing: -1.1, marginTop: 7 }}>{mondayLeagueHero.title}</div><div style={{ color: "rgba(255,255,255,.68)", marginTop: 6 }}>{mondayLeagueHero.seasonName}</div><div style={{ marginTop: 18, fontWeight: 850 }}>Apri la competizione →</div></div></Link> : null}
-
-               {circuits.length > 0 ? (
-  <section id="circuiti" style={{ marginTop: 8, marginBottom: 22, scrollMarginTop: 88 }}>
-    <div style={{ marginBottom: 14 }}>
-      <div
-        style={{
-          fontWeight: 900,
-          fontSize: "clamp(20px, 4vw, 26px)",
-          color: "rgba(255,255,255,0.92)",
-          lineHeight: 1.05,
-          letterSpacing: -0.6,
-        }}
-      >
-        Circuiti MOVI
-      </div>
-
-      <div
-        style={{
-          color: "rgba(255,255,255,0.52)",
-          marginTop: 5,
-          fontWeight: 600,
-          fontSize: 14,
-        }}
-      >
-        Classifiche e ranking dei circuiti ufficiali
-      </div>
-    </div>
-
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
-        gap: 14,
-      }}
-    >
-      {circuits.map((c) => {
-        const isPadelSeries =
-          String(c.theme_key ?? "").toLowerCase() === "padelseries";
-
-        const background = isPadelSeries
-          ? "linear-gradient(135deg, rgba(4,22,43,0.92), rgba(15,59,104,0.72), rgba(14,165,233,0.42))"
-          : "linear-gradient(135deg, rgba(15,23,42,0.92), rgba(49,46,129,0.72), rgba(79,70,229,0.42))";
-
-        return (
-          <div
-            key={c.id}
-            style={{
-              position: "relative",
-              overflow: "hidden",
-              borderRadius: 26,
-              minHeight: 150,
-              padding: 18,
-              background,
-              color: "white",
-              boxShadow: "0 18px 42px rgba(0,0,0,0.22)",
-              border: "1px solid rgba(255,255,255,0.10)",
-              backdropFilter: "blur(14px)",
-            }}
-          >
-            <div
-              aria-hidden
-              style={{
-                position: "absolute",
-                inset: 0,
-                background:
-                  "radial-gradient(circle at top right, rgba(255,255,255,0.18), transparent 35%)",
-                pointerEvents: "none",
-              }}
-            />
-
-            <div
-              style={{
-                position: "relative",
-                zIndex: 1,
-                display: "flex",
-                flexDirection: "column",
-                minHeight: 114,
-                gap: 14,
-              }}
-            >
-              <div>
-                <div
-                  style={{
-                    fontSize: 11,
-                    fontWeight: 850,
-                    letterSpacing: "0.16em",
-                    textTransform: "uppercase",
-                    color: "rgba(255,255,255,0.58)",
-                  }}
-                >
-                  Circuito ufficiale
-                </div>
-
-                <div
-                  style={{
-                    marginTop: 8,
-                    fontWeight: 900,
-                    fontSize: 24,
-                    lineHeight: 1,
-                    letterSpacing: -0.5,
-                    color: "#ffffff",
-                  }}
-                >
-                  {c.name}
-                </div>
-
-                <div
-                  style={{
-                    marginTop: 8,
-                    color: "rgba(255,255,255,0.68)",
-                    fontWeight: 650,
-                    fontSize: 14,
-                  }}
-                >
-                  {c.hero_subtitle || c.tournament_type}
-                </div>
-              </div>
-
-              <div
-                style={{
-                  marginTop: "auto",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: 10,
-                }}
-              >
-                <Link
-                  href={`/circuiti/${c.slug}`}
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    minHeight: 38,
-                    padding: "0 15px",
-                    borderRadius: 999,
-                    background: "#ffffff",
-                    color: "#0f172a",
-                    fontWeight: 850,
-                    fontSize: 13,
-                    textDecoration: "none",
-                  }}
-                >
-                  Vedi classifica
-                </Link>
-
-                {c.rules_url ? (
-                  <a
-                    href={c.rules_url}
-                    target="_blank"
-                    rel="noreferrer"
-                    onClick={(e) => e.stopPropagation()}
-                    style={{
-                      color: "rgba(255,255,255,0.68)",
-                      fontWeight: 750,
-                      fontSize: 13,
-                      textDecoration: "none",
-                    }}
-                  >
-                    Regolamento
-                  </a>
-                ) : null}
-              </div>
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  </section>
-) : null}
-
-{myRegs.length > 0 ? (
-  <section style={{ marginTop: 22, marginBottom: 22 }}>
-    <div style={{ marginBottom: 12 }}>
-      <div
-        style={{
-          fontWeight: 900,
-          fontSize: "clamp(20px, 4vw, 26px)",
-          color: "rgba(255,255,255,0.92)",
-          lineHeight: 1.1,
-          letterSpacing: -0.4,
-        }}
-      >
-        Le tue iscrizioni
-      </div>
-
-      <div
-        style={{
-          color: "rgba(255,255,255,0.52)",
-          marginTop: 4,
-          fontWeight: 600,
-          fontSize: 14,
-        }}
-      >
-        Gestisci rapidamente i tornei a cui sei iscritto
-      </div>
-    </div>
-
-    <div
-      style={{
-        overflow: "hidden",
-        borderRadius: 24,
-        background: "rgba(255,255,255,0.055)",
-        border: "1px solid rgba(255,255,255,0.09)",
-        boxShadow: "0 18px 42px rgba(0,0,0,0.18)",
-        backdropFilter: "blur(14px)",
-      }}
-    >
-      {myRegs.map((reg, index) => {
-        const t = tournaments.find((x) => x.id === reg.tournament_id);
-        if (!t) return null;
-
-        const date = formatTournamentDay(t);
-        const isReserve = reg.is_reserve;
-
-        return (
-          <div
-            key={reg.id}
-            style={{
-              display: "grid",
-              gridTemplateColumns: "44px minmax(0, 1fr)",
-              gap: 11,
-              alignItems: "center",
-              padding: "13px 12px",
-              borderTop:
-                index === 0 ? "none" : "1px solid rgba(255,255,255,0.07)",
-              background: isReserve
-                ? "linear-gradient(90deg, rgba(245,158,11,0.12), rgba(255,255,255,0.015))"
-                : "linear-gradient(90deg, rgba(16,185,129,0.10), rgba(255,255,255,0.015))",
-            }}
-          >
-            <div
-              style={{
-                width: 44,
-                minHeight: 50,
-                borderRadius: 15,
-                ...tournamentTypeDateStyle(t.type),
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                lineHeight: 1,
-                flexShrink: 0,
-              }}
-            >
-              <div style={{ fontSize: 18, fontWeight: 950, color: "inherit" }}>
-                {date.day}
-              </div>
-              <div
-                style={{
-                  marginTop: 4,
-                  fontSize: 10,
-                  fontWeight: 900,
-                  color: "inherit",
-                  opacity: 0.72,
-                }}
-              >
-                {date.month}
-              </div>
-            </div>
-
-            <div style={{ minWidth: 0 }}>
-              <div
-                style={{
-                  fontSize: 15,
-                  fontWeight: 900,
-                  color: "rgba(255,255,255,0.94)",
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  letterSpacing: -0.25,
-                  lineHeight: 1.12,
-                }}
-              >
-                {t.name}
-              </div>
-
-              <div
-                style={{
-                  marginTop: 7,
-                  color: "rgba(255,255,255,0.55)",
-                  fontSize: 12,
-                  fontWeight: 700,
-                  lineHeight: 1.2,
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                }}
-              >
-                {tournamentMeta(t)}
-              </div>
-            </div>
-
-            <div
-              style={{
-                gridColumn: "2 / 3",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "flex-start",
-                gap: 8,
-                marginTop: 4,
-              }}
-            >
-              <span
-                style={{
-                  borderRadius: 999,
-                  padding: "7px 10px",
-                  background: isReserve
-                    ? "rgba(245,158,11,0.16)"
-                    : "rgba(16,185,129,0.16)",
-                  color: isReserve ? "#fbbf24" : "#86efac",
-                  border: isReserve
-                    ? "1px solid rgba(245,158,11,0.24)"
-                    : "1px solid rgba(16,185,129,0.24)",
-                  fontSize: 11,
-                  fontWeight: 850,
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {isReserve ? "Riserva" : "Iscritto"}
-              </span>
-
-              <button
-                type="button"
-                onClick={() => cancelRegistrationByTournament(t.id)}
-                aria-label="Cancella iscrizione"
-                style={{
-                  width: 34,
-                  height: 34,
-                  borderRadius: 999,
-                  border: "1px solid rgba(239,68,68,0.28)",
-                  background: "rgba(255,255,255,0.06)",
-                  color: "#f87171",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontWeight: 900,
-                  fontSize: 16,
-                  cursor: "pointer",
-                  lineHeight: 1,
-                }}
-              >
-                ✕
-              </button>
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  </section>
-) : null}
-
-{upcomingTournaments.length > 0 ? (
-  <section style={{ marginTop: 22, marginBottom: 10 }}>
-    <div style={{ marginBottom: 12 }}>
-      <div
-        style={{
-          fontWeight: 900,
-          fontSize: "clamp(20px, 4vw, 26px)",
-          color: "rgba(255,255,255,0.92)",
-          lineHeight: 1.1,
-          letterSpacing: -0.4,
-        }}
-      >
-        Tornei in arrivo
-      </div>
-
-      <div
-        style={{
-          color: "rgba(255,255,255,0.52)",
-          marginTop: 4,
-          fontWeight: 600,
-          fontSize: 14,
-        }}
-      >
-        I tornei delle prossime 2 settimane
-      </div>
-    </div>
-
-    <div
-      style={{
-        overflow: "hidden",
-        borderRadius: 24,
-        background: "rgba(255,255,255,0.055)",
-        border: "1px solid rgba(255,255,255,0.09)",
-        boxShadow: "0 18px 42px rgba(0,0,0,0.18)",
-        backdropFilter: "blur(14px)",
-      }}
-    >
-      {upcomingTournaments.map((t, index) => {
-        const status = statusForTournament(t.id);
-        const allowed = canUserJoinTournament(t);
-        const date = formatTournamentDay(t);
-
-        const isRegistered = status === "main";
-        const isReserve = status === "reserve";
-
-        return (
-          <div
-            key={t.id}
-            style={{
-              display: "grid",
-              gridTemplateColumns: "44px minmax(0, 1fr)",
-              gap: 11,
-              alignItems: "center",
-              padding: "13px 12px",
-              borderTop:
-                index === 0 ? "none" : "1px solid rgba(255,255,255,0.07)",
-              background: isRegistered
-                ? "linear-gradient(90deg, rgba(16,185,129,0.10), rgba(255,255,255,0.015))"
-                : isReserve
-                  ? "linear-gradient(90deg, rgba(245,158,11,0.12), rgba(255,255,255,0.015))"
-                  : "rgba(255,255,255,0.015)",
-            }}
-          >
-            <div
-              style={{
-                width: 44,
-                minHeight: 50,
-                borderRadius: 15,
-                ...tournamentTypeDateStyle(t.type),
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                lineHeight: 1,
-                flexShrink: 0,
-              }}
-            >
-              <div style={{ fontSize: 19, fontWeight: 950, color: "inherit" }}>
-                {date.day}
-              </div>
-
-              <div
-                style={{
-                  marginTop: 4,
-                  fontSize: 10,
-                  fontWeight: 900,
-                  color: "inherit",
-                  opacity: 0.72,
-                  textTransform: "uppercase",
-                }}
-              >
-                {date.month}
-              </div>
-            </div>
-
-            <div style={{ minWidth: 0 }}>
-              <div
-                style={{
-                  fontSize: 15,
-                  fontWeight: 900,
-                  color: "rgba(255,255,255,0.94)",
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  letterSpacing: -0.25,
-                  lineHeight: 1.12,
-                }}
-              >
-                {t.name}
-              </div>
-
-              <div
-                style={{
-                  marginTop: 7,
-                  color: "rgba(255,255,255,0.55)",
-                  fontSize: 12,
-                  fontWeight: 700,
-                  lineHeight: 1.2,
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                }}
-              >
-                {tournamentMeta(t)}
-              </div>
-            </div>
-
-            <div style={{ gridColumn: "2 / 3", marginTop: 4 }}>
-              {t.hasLive ? (
-                <TournamentLiveDialog
-                  tournamentId={t.id}
-                  tournamentName={t.name}
-                  trigger={
-                    <button
-                      type="button"
-                      style={{
-                        background:
-                          "linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)",
-                        color: "white",
-                        fontWeight: 900,
-                        padding: "8px 12px",
-                        fontSize: 11,
-                        borderRadius: 999,
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 6,
-                        border: "1px solid rgba(255,255,255,0.25)",
-                        boxShadow: "0 8px 18px rgba(239,68,68,0.25)",
-                        cursor: "pointer",
-                      }}
-                    >
-                      LIVE
-                    </button>
-                  }
-                />
-              ) : isRegistered ? (
-                <span
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    borderRadius: 999,
-                    padding: "8px 11px",
-                    background: "rgba(16,185,129,0.16)",
-                    color: "#86efac",
-                    border: "1px solid rgba(16,185,129,0.24)",
-                    fontSize: 11,
-                    fontWeight: 850,
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  Iscritto
-                </span>
-              ) : isReserve ? (
-                <span
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    borderRadius: 999,
-                    padding: "8px 11px",
-                    background: "rgba(245,158,11,0.16)",
-                    color: "#fbbf24",
-                    border: "1px solid rgba(245,158,11,0.24)",
-                    fontSize: 11,
-                    fontWeight: 850,
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  Riserva
-                </span>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!user) {
-                      setPendingTournament(t);
-                      setUserDialogOpen(true);
-                      return;
-                    }
-
-                    if (!allowed) {
-                      toast.error("Non puoi iscriverti a questo torneo");
-                      return;
-                    }
-
-                    setSelectedTournament(t);
-                  }}
-                  style={{
-                    border: 0,
-                    borderRadius: 999,
-                    padding: "9px 14px",
-                    background: "#4f46e5",
-                    color: "white",
-                    fontSize: 12,
-                    fontWeight: 850,
-                    cursor: "pointer",
-                    whiteSpace: "nowrap",
-                    boxShadow: "0 8px 18px rgba(79,70,229,0.24)",
-                  }}
-                >
-                  Iscriviti
-                </button>
-              )}
-            </div>
-          </div>
-        );
-      })}
-    </div>
-
-    <Link
-      href="/tornei"
-      style={{
-        marginTop: 12,
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        minHeight: 44,
-        borderRadius: 16,
-        background: "rgba(255,255,255,0.06)",
-        border: "1px solid rgba(255,255,255,0.08)",
-        color: "rgba(255,255,255,0.88)",
-        fontWeight: 850,
-        fontSize: 14,
-        textDecoration: "none",
-      }}
-    >
-      Vedi tutti i tornei →
-    </Link>
-  </section>
-) : null}
-
-<footer
-  style={{
-    marginTop: 36,
-    paddingTop: 22,
-    borderTop: "1px solid rgba(255,255,255,0.08)",
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    gap: 14,
-    color: "rgba(255,255,255,0.42)",
-    fontSize: 12,
-    fontWeight: 750,
-  }}
->
-  <div
-  style={{
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 12,
-  }}
->
-  <a
-    href="https://www.instagram.com/movi_padel_clubs"
-    target="_blank"
-    rel="noreferrer"
-    aria-label="Instagram MOVI"
-    style={{
-      width: 38,
-      height: 38,
-      borderRadius: 999,
-      display: "inline-flex",
-      alignItems: "center",
-      justifyContent: "center",
-      color: "rgba(255,255,255,0.74)",
-      background: "rgba(255,255,255,0.05)",
-      border: "1px solid rgba(255,255,255,0.08)",
-      textDecoration: "none",
-      backdropFilter: "blur(10px)",
-    }}
-  >
-    <FaInstagram size={15} />
-  </a>
-
-  <a
-    href="https://www.facebook.com/MoviPadel"
-    target="_blank"
-    rel="noreferrer"
-    aria-label="Facebook MOVI"
-    style={{
-      width: 38,
-      height: 38,
-      borderRadius: 999,
-      display: "inline-flex",
-      alignItems: "center",
-      justifyContent: "center",
-      color: "rgba(255,255,255,0.74)",
-      background: "rgba(255,255,255,0.05)",
-      border: "1px solid rgba(255,255,255,0.08)",
-      textDecoration: "none",
-      backdropFilter: "blur(10px)",
-    }}
-  >
-    <FaFacebookF size={14} />
-  </a>
-</div>
-
-  <div
-    style={{
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      gap: 14,
-      flexWrap: "wrap",
-    }}
-  >
-    <Link href="/privacy" style={legalFooterLink}>
-      Privacy
-    </Link>
-
-    <Link href="/termini" style={legalFooterLink}>
-      Termini
-    </Link>
-
-    <Link href="/cookie" style={legalFooterLink}>
-      Cookie
-    </Link>
-  </div>
-</footer>
-
-{notificationsOpen ? (
-  <div
-    onClick={() => setNotificationsOpen(false)}
-    style={{
-      position: "fixed",
-      inset: 0,
-      zIndex: 120,
-      background: "rgba(3,7,18,0.72)",
-      backdropFilter: "blur(10px)",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      padding: 14,
-    }}
-  >
-    <div
-      onClick={(e) => e.stopPropagation()}
-      style={{
-        width: "100%",
-        maxWidth: 520,
-        maxHeight: "82dvh",
-        overflow: "hidden",
-        borderRadius: 28,
-        background:
-          "linear-gradient(180deg, rgba(15,23,42,0.98), rgba(3,7,18,0.98))",
-        border: "1px solid rgba(255,255,255,0.10)",
-        boxShadow: "0 26px 70px rgba(0,0,0,0.45)",
-        color: "white",
-      }}
-    >
-      <div
-        style={{
-          padding: 18,
-          borderBottom: "1px solid rgba(255,255,255,0.08)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 12,
-        }}
-      >
-        <div>
-          <div style={{ fontSize: 22, fontWeight: 950, letterSpacing: -0.5 }}>
-            Notifiche
-          </div>
-          <div
-            style={{
-              marginTop: 4,
-              color: "rgba(255,255,255,0.56)",
-              fontSize: 13,
-              fontWeight: 650,
-            }}
-          >
-            {unreadNotifications > 0
-              ? `${unreadNotifications} non lette`
-              : "Tutto letto"}
+  const name = firstName(user);
+  const hasUsableMoviBack = moviBack.membershipStatus === "approved" && moviBack.eligibility?.can_use_card === true;
+  const canRedeemMoviBackRewards = moviBack.membershipStatus === "approved" && moviBack.eligibility?.can_redeem === true;
+  const moviBackStatus = moviBack.membershipStatus === "pending_review"
+    ? { label: "In revisione", tone: "warning" as const }
+    : moviBack.membershipStatus === "rejected"
+      ? { label: "Non approvata", tone: "error" as const }
+      : moviBack.membershipStatus === "suspended"
+        ? { label: "Tessera sospesa", tone: "error" as const }
+        : moviBack.membershipStatus === "approved" && !hasUsableMoviBack
+          ? { label: "Tessera non disponibile", tone: "warning" as const }
+          : { label: "Tessera attiva", tone: "success" as const };
+  return <>
+    <PublicHomeHeaderSlot><div className={home.headerGreeting}><div><h1>{name ? `Ciao ${name}.` : "Ciao."}</h1><p>Che facciamo oggi?</p></div>{user ? <button className={home.headerUtility} type="button" onClick={async () => { await fetch("/api/user/logout", { method: "POST" }); setUser(null); setMyRegs([]); setCommunications([]); toast.success("Sei uscito"); }}>Esci</button> : <Link className={home.textLink} href="/accedi">Accedi</Link>}</div></PublicHomeHeaderSlot>
+    <main className={home.page}><div className={home.stack}>
+      <section className={home.section}>{sectionErrors.moviback ? <><SectionHeader title="MoviBack" /><PublicState kind="error" title="MoviBack non disponibile" message={sectionErrors.moviback} action={<PublicButton variant="secondary" onClick={() => void loadAll()}>Riprova</PublicButton>} /></> : <PublicCard family="highlight" className={home.moviback}>
+        <div className={home.movibackTop}><h2 className={home.movibackTitle}>MoviBack</h2><button className={home.qrAction} type="button" onClick={(event) => window.dispatchEvent(new CustomEvent(OPEN_PUBLIC_QR_EVENT, { detail: { membershipCode: moviBack.membershipCode ?? undefined, returnFocus: event.currentTarget } }))}>Mostra QR<ArrowRight size={17} aria-hidden /></button></div>
+        <div className={`${home.balanceRow} ${!moviBack.membership ? home.balanceRowAccess : ""}`}>
+          <span className={home.balanceIcon} aria-hidden><Coins size={29} /></span>
+          <div className={home.balanceCopy}><span className={home.pointsLabel}>Punti disponibili</span><strong className={home.points}>{moviBack.points ?? "—"}<small>punti</small></strong></div>
+          <div className={home.membershipState}>{!moviBack.membership
+            ? <Link className={home.movibackAccessCta} href="/moviback">Accedi a MoviBack<ArrowRight size={17} aria-hidden /></Link>
+            : <StatusBadge tone={moviBackStatus.tone}>{moviBackStatus.label}</StatusBadge>}
           </div>
         </div>
-
-        <button
-          type="button"
-          onClick={() => setNotificationsOpen(false)}
-          style={{
-            width: 38,
-            height: 38,
-            borderRadius: 999,
-            border: "1px solid rgba(255,255,255,0.12)",
-            background: "rgba(255,255,255,0.07)",
-            color: "white",
-            fontWeight: 900,
-            cursor: "pointer",
-          }}
-        >
-          ✕
-        </button>
-      </div>
-
-      {communications.length > 0 ? (
-        <div
-          style={{
-            padding: 12,
-            display: "flex",
-            justifyContent: "flex-end",
-            borderBottom: "1px solid rgba(255,255,255,0.08)",
-          }}
-        >
-          <button
-            type="button"
-            onClick={markAllNotificationsRead}
-            disabled={unreadNotifications === 0}
-            style={{
-              minHeight: 34,
-              padding: "0 12px",
-              borderRadius: 999,
-              border: "1px solid rgba(255,255,255,0.10)",
-              background: "rgba(255,255,255,0.06)",
-              color:
-                unreadNotifications === 0
-                  ? "rgba(255,255,255,0.35)"
-                  : "rgba(255,255,255,0.86)",
-              fontSize: 12,
-              fontWeight: 850,
-              cursor: unreadNotifications === 0 ? "default" : "pointer",
-            }}
-          >
-            Segna tutte come lette
-          </button>
+        <div className={home.movibackLinks}>
+          {canRedeemMoviBackRewards
+            ? <Link className={home.miniAction} href="/moviback/premi"><Ticket size={19} aria-hidden />Premi</Link>
+            : <span className={`${home.miniAction} ${home.miniActionDisabled}`} aria-disabled="true"><Ticket size={19} aria-hidden />Premi</span>}
+          {hasUsableMoviBack
+            ? <Link className={home.miniAction} href="/moviback"><History size={19} aria-hidden />Storico</Link>
+            : <span className={`${home.miniAction} ${home.miniActionDisabled}`} aria-disabled="true"><History size={19} aria-hidden />Storico</span>}
+          <MembershipCardModal user={user} membership={moviBack.membership} eligibility={moviBack.eligibility} trigger={<button className={home.miniAction} type="button"><WalletCards size={19} aria-hidden />La mia tessera</button>} />
         </div>
-      ) : null}
-
-      <div
-        style={{
-          maxHeight: "62dvh",
-          overflowY: "auto",
-          padding: 12,
-        }}
-      >
-        {communications.length === 0 ? (
-          <div
-            style={{
-              padding: 28,
-              textAlign: "center",
-              color: "rgba(255,255,255,0.56)",
-              fontWeight: 700,
-            }}
-          >
-            Nessuna notifica.
-          </div>
-        ) : (
-          <div style={{ display: "grid", gap: 10 }}>
-            {communications.map((n) => {
-              const unread = !n.read_at;
-
-              return (
-                <div
-                  key={n.id}
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: n.image_path
-                      ? "58px minmax(0, 1fr)"
-                      : "1fr",
-                    gap: 12,
-                    padding: 12,
-                    borderRadius: 20,
-                    background: unread
-                      ? "rgba(56,189,248,0.12)"
-                      : "rgba(255,255,255,0.055)",
-                    border: unread
-                      ? "1px solid rgba(56,189,248,0.24)"
-                      : "1px solid rgba(255,255,255,0.08)",
-                  }}
-                >
-                  {n.image_path ? (
-                    <img
-                      src={n.image_path}
-                      alt={n.title}
-                      style={{
-                        width: 58,
-                        height: 58,
-                        borderRadius: 16,
-                        objectFit: "cover",
-                        border: "1px solid rgba(255,255,255,0.10)",
-                      }}
-                    />
-                  ) : null}
-
-                  <div style={{ minWidth: 0 }}>
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "flex-start",
-                        justifyContent: "space-between",
-                        gap: 8,
-                      }}
-                    >
-                      <div
-                        style={{
-                          fontSize: 15,
-                          fontWeight: 950,
-                          lineHeight: 1.15,
-                        }}
-                      >
-                        {n.title}
-                      </div>
-
-                      {unread ? (
-                        <span
-                          style={{
-                            width: 9,
-                            height: 9,
-                            borderRadius: 999,
-                            background: "#38bdf8",
-                            flexShrink: 0,
-                            marginTop: 4,
-                          }}
-                        />
-                      ) : null}
-                    </div>
-
-                    <div
-                      style={{
-                        marginTop: 6,
-                        color: "rgba(255,255,255,0.62)",
-                        fontSize: 13,
-                        fontWeight: 600,
-                        lineHeight: 1.35,
-                      }}
-                    >
-                      {n.body}
-                    </div>
-
-                    <div
-                      style={{
-                        marginTop: 11,
-                        display: "flex",
-                        flexWrap: "wrap",
-                        gap: 8,
-                        alignItems: "center",
-                      }}
-                    >
-                      {n.cta_url ? (
-                        <a
-                          href={n.cta_url}
-                          onClick={() => {
-                            if (unread) updateNotificationState(n.id, "read");
-                          }}
-                          style={{
-                            minHeight: 32,
-                            padding: "0 11px",
-                            borderRadius: 999,
-                            background: "#38bdf8",
-                            color: "#082f49",
-                            display: "inline-flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            textDecoration: "none",
-                            fontSize: 12,
-                            fontWeight: 950,
-                          }}
-                        >
-                          {n.cta_label || "Apri"}
-                        </a>
-                      ) : null}
-
-                      {unread ? (
-                        <button
-                          type="button"
-                          onClick={() => updateNotificationState(n.id, "read")}
-                          style={notificationSmallBtn}
-                        >
-                          Segna come letta
-                        </button>
-                      ) : null}
-
-                      <button
-                        type="button"
-                        onClick={() => updateNotificationState(n.id, "dismiss")}
-                        style={{
-                          ...notificationSmallBtn,
-                          color: "#f87171",
-                          border: "1px solid rgba(239,68,68,0.24)",
-                        }}
-                      >
-                        Elimina
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-    </div>
-  </div>
-) : null}
-
-<RegistrationDialog
-  tournament={selectedTournament}
-  open={!!selectedTournament}
-  onClose={() => setSelectedTournament(null)}
-  user={user}
-  onSuccess={async () => {
-    setSelectedTournament(null);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-    await loadAll();
-    if (isValidPhone(effectivePhone)) await searchMy(effectivePhone);
-  }}
-/>
-
-<UserLoginDialog
-  open={userDialogOpen}
-  existingUser={user}
-  onClose={() => {
-    if (missingRequiredConsents) {
-      toast.error("Devi confermare Privacy, Termini e maggiore età per continuare");
-      return;
-    }
-
-    setUserDialogOpen(false);
-    setPendingTournament(null);
-  }}
-  onSaved={async (u) => {
-  setUser(u);
-  toast.success("Dati salvati");
-
-  const tournamentToOpen = pendingTournament;
-
-  setUserDialogOpen(false);
-  setPendingTournament(null);
-
-  if (tournamentToOpen) {
-    await searchMy(normalizePhone(u.phone));
-
-    const genderBlocked =
-      (tournamentToOpen.category === "Femminile" && u.gender === "M") ||
-      (tournamentToOpen.category === "Maschile" && u.gender === "F");
-
-    if (genderBlocked) {
-      toast.error("Non puoi iscriverti a questo torneo");
-      return;
-    }
-
-    setSelectedTournament(tournamentToOpen);
-  }
-}}
-/>
-      </div>
-    </div>
-  );
+      </PublicCard>}</section>
+      <section className={home.section} aria-label="Azioni principali"><div className={home.primaryGrid}><Link className={`${home.quickAction} ${home.quickActionPlay}`} href="/richieste/gioca"><span className={home.quickIcon}><UsersRound size={28} aria-hidden /></span><strong>Gioca</strong><span className={home.quickCopy}>Trova una partita.</span><span className={home.quickArrow} aria-hidden><ArrowRight size={17} /></span></Link><Link className={`${home.quickAction} ${home.quickActionTrain}`} href="/richieste/allenati"><span className={home.quickIcon}><Dumbbell size={28} aria-hidden /></span><strong>Allenati</strong><span className={home.quickCopy}>Trova il gruppo giusto.</span><span className={home.quickArrow} aria-hidden><ArrowRight size={17} /></span></Link><Link className={`${home.quickAction} ${home.quickActionBook}`} href="/prenota"><span className={home.quickIcon}><CalendarDays size={28} aria-hidden /></span><strong>Prenota</strong><span className={home.quickCopy}>Prenota un campo.</span><span className={home.quickArrow} aria-hidden><ArrowRight size={17} /></span></Link></div></section>
+      <div id="public-sticky-sentinel" className={home.sentinel} aria-hidden />
+      <section className={home.section}><SectionHeader title="Tornei in evidenza" copy="Questa settimana e la prossima." href="/tornei" linkLabel="Vedi tutti" />{upcomingTournaments.length ? <div className={home.tournamentList}>{upcomingTournaments.map((tournament) => <HomeTournamentCard tournament={tournament} circuit={circuits.find((circuit) => circuit.id === tournament.circuit_id)} status={statusForTournament(tournament.id)} onRegister={() => openTournamentRegistration(tournament)} key={tournament.id} />)}</div> : <PublicState kind="empty" title="Nessun torneo nelle prossime due settimane" message="Consulta il calendario completo per tutte le prossime date." action={<Link className={`${publicStyles.button} ${publicStyles.tertiary}`} href="/tornei">Vai ai tornei</Link>} />}{myRegs.length ? <div className={home.registrationList} aria-label="Le tue iscrizioni">{myRegs.map((registration) => { const tournament = tournaments.find((item) => item.id === registration.tournament_id); return tournament ? <div className={home.registrationRow} key={registration.id}><div><strong>{tournament.name}</strong><span>{registration.is_reserve ? "Lista riserve" : "Iscrizione confermata"}</span></div><PublicButton variant="danger" onClick={() => void cancelRegistrationByTournament(tournament.id)}>Cancella</PublicButton></div> : null; })}</div> : null}</section>
+      {succede.length ? <EditorialCarousel title="Succede in Padelleria" label="Succede in Padelleria" items={succede} href="/padelleria" /> : sectionErrors.succede ? <section className={home.section}><SectionHeader title="Succede in Padelleria" /><PublicState kind="error" title="Contenuti non disponibili" message={sectionErrors.succede} action={<PublicButton variant="secondary" onClick={() => void loadAll()}>Riprova</PublicButton>} /></section> : null}
+      {mondayLeagueHero.visible ? <section className={home.section} aria-label="Monday League"><Link className={`${home.leagueBanner} ${home.leagueBannerLink}`} href="/monday-league" aria-label="Apri Monday League" /></section> : null}
+      {circuits.length || sectionErrors.circuits ? <section id="circuiti" className={home.section}><SectionHeader title="I tuoi circuiti" />{circuits.length ? <PublicCarousel label="I tuoi circuiti">{circuits.map((circuit) => <Link className={`${home.carouselItem} ${home.circuitCardLink}`} href={`/circuiti/${circuit.slug}`} aria-label={`Apri circuito ${circuit.name}`} key={circuit.id}><PublicCard family="compact" className={`${home.circuitCard} ${circuit.home_image_url ? home.circuitImageCard : ""}`}>{circuit.home_image_url ? <Image className={home.circuitImage} src={circuit.home_image_url} alt={`Circuito ${circuit.name}`} fill sizes="(min-width: 1024px) 324px, (min-width: 768px) 317px, 84vw" unoptimized /> : <><span className={home.circuitAccent} aria-hidden /><span className={home.circuitStatus}><span aria-hidden />{circuit.status === "active" ? "In corso" : "Concluso"}</span><h3>{circuit.name}</h3><div className={home.circuitStats}><span><strong>{circuit.ranking_groups_count}</strong> classifiche</span><span><strong>{circuit.played_stages_count}</strong> tappe giocate</span></div></>}</PublicCard></Link>)}</PublicCarousel> : <PublicState kind="error" title="Circuiti non disponibili" message={sectionErrors.circuits} action={<PublicButton variant="secondary" onClick={() => void loadAll()}>Riprova</PublicButton>} />}</section> : null}
+      {past.length ? <EditorialCarousel title="È successo in Padelleria" label="È successo in Padelleria" items={past} href="/padelleria?view=archivio" /> : sectionErrors.past ? <section className={home.section}><SectionHeader title="È successo in Padelleria" /><PublicState kind="error" title="Contenuti non disponibili" message={sectionErrors.past} action={<PublicButton variant="secondary" onClick={() => void loadAll()}>Riprova</PublicButton>} /></section> : null}
+      <section className={home.section} aria-label="Servizi rapidi"><div className={home.serviceGrid}><Link className={home.serviceLink} href="/le-mie-attivita"><CalendarDays size={21} aria-hidden /><span className={home.serviceText}>Le mie attività</span></Link><Link className={home.serviceLink} href="/store"><ShoppingBag size={21} aria-hidden /><span className={home.serviceText}>Store MOVI</span></Link><Link className={home.serviceLink} href="/partner"><Store size={21} aria-hidden /><span className={home.serviceText}>Partner</span></Link><Link className={home.serviceLink} href="/contatti"><MessageCircle size={21} aria-hidden /><span className={home.serviceText}>Contattaci</span></Link></div></section>
+      <footer className={home.brandFooter}><div className={home.socials} aria-label="Collegamenti esterni MOVI">{publicSocialLinks.map((link) => <a className={home.socialLink} href={link.href} target="_blank" rel="noopener noreferrer" aria-label={`${link.label}, si apre in una nuova scheda`} title={link.label} key={link.href}>{link.kind === "facebook" ? <FaFacebookF aria-hidden /> : link.kind === "instagram" ? <FaInstagram aria-hidden /> : link.kind === "youtube" ? <FaYoutube aria-hidden /> : <Globe2 size={20} aria-hidden />}</a>)}</div><nav className={home.footer} aria-label="Link legali">{publicLegalLinks.map((link) => <Link href={link.href} key={link.href}>{link.label}</Link>)}</nav></footer>
+    </div></main>
+    <PublicModal open={notificationsOpen} onOpenChange={changeNotifications} title="Notifiche" description={unreadNotifications ? `${unreadNotifications} non lette` : "Tutto letto"}>{communications.length ? <><div className={home.notificationTools}><PublicButton variant="tertiary" disabled={!unreadNotifications} onClick={() => void markAllNotificationsRead()}>Segna tutte come lette</PublicButton></div><div className={home.notificationList}>{communications.map((notification) => <article className={`${home.notification} ${!notification.read_at ? home.notificationUnread : ""}`} key={notification.id}><h3>{notification.title}</h3><p>{notification.body}</p><div className={home.notificationActions}>{notification.cta_url ? <a className={`${publicStyles.button} ${publicStyles.secondary}`} href={notification.cta_url} onClick={() => { if (!notification.read_at) void updateNotificationState(notification.id, "read"); }}>{notification.cta_label || "Apri"}</a> : null}{!notification.read_at ? <PublicButton variant="tertiary" onClick={() => void updateNotificationState(notification.id, "read")}>Segna come letta</PublicButton> : null}<PublicButton variant="tertiary" onClick={() => void updateNotificationState(notification.id, "dismiss")}>Elimina</PublicButton></div></article>)}</div></> : <PublicState kind="empty" title="Nessuna notifica" message="Le nuove comunicazioni compariranno qui." />}</PublicModal>
+    <RegistrationDialog tournament={selectedTournament} open={Boolean(selectedTournament)} onClose={() => setSelectedTournament(null)} user={user} onSuccess={async () => { setSelectedTournament(null); window.scrollTo({ top: 0, behavior: "smooth" }); await loadAll(); if (isValidPhone(effectivePhone)) await searchMy(effectivePhone); }} />
+    <UserLoginDialog open={userDialogOpen} existingUser={user} onClose={() => { if (missingRequiredConsents) { toast.error("Devi confermare Privacy, Termini e maggiore età per continuare"); return; } setUserDialogOpen(false); setPendingTournament(null); }} onSaved={async (savedUser) => { setUser(savedUser); toast.success("Dati salvati"); const tournament = pendingTournament; setUserDialogOpen(false); setPendingTournament(null); if (tournament) { await searchMy(normalizePhone(savedUser.phone)); const blocked = (tournament.category === "Femminile" && savedUser.gender === "M") || (tournament.category === "Maschile" && savedUser.gender === "F"); if (blocked) { toast.error("Non puoi iscriverti a questo torneo"); return; } setSelectedTournament(tournament); } }} />
+  </>;
 }

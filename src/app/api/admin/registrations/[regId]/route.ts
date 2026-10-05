@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { guardAdmin } from "@/lib/adminGuard";
+import { guardOperatorPermission } from "@/lib/operatorAuthorization";
 
 export const runtime = "nodejs";
 
@@ -45,7 +45,7 @@ async function getNextMainPosition(sb: ReturnType<typeof supabaseAdmin>, tournam
  * PATCH: sposta manualmente tra principale/riserva (admin)
  */
 export async function PATCH(req: Request, ctx: { params: Promise<{ regId: string }> }) {
-  const denied = await guardAdmin(req);
+  const denied = await guardOperatorPermission("tournaments.manage");
 if (denied) return denied;
 
 
@@ -115,7 +115,7 @@ if (denied) return denied;
  * - Altrimenti -> promuove prima riserva (position più bassa)
  */
 export async function DELETE(req: Request, ctx: { params: Promise<{ regId: string }> }) {
-  const denied = await guardAdmin(req);
+  const denied = await guardOperatorPermission("tournaments.manage");
 if (denied) return denied;
 
 

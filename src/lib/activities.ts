@@ -1,8 +1,8 @@
-export type ActivityTab='upcoming'|'action'|'history';
-export type ActivityType='gioca'|'allenati'|'tournament'|'monday_league'|'circuit'|'booking';
-export type Activity={id:string;type:ActivityType;source_id:string;tab:ActivityTab;title:string;subtitle:string;status:string;status_label:string;date:string|null;club:string|null;category:string|null;level:string|null;primary_meta:string;secondary_meta:string;cta_label:string|null;cta_href:string|null;can_cancel:boolean;sort_at:string;position?:number|null;points?:number|null;events_played?:number|null;classification_id?:string;court?:string;start_at?:string|null};
-export const activityTabs={upcoming:'In programma',action:'Da completare',history:'Storico'};
-export const activityTypes={gioca:'Gioca',allenati:'Allenati',tournament:'Torneo',monday_league:'Monday League',circuit:'Circuito',booking:'Prenotazione'};
+export type ActivityTab='upcoming'|'history';
+export type ActivityType='gioca'|'allenati'|'tournament'|'monday_league'|'circuit';
+export type Activity={id:string;type:ActivityType;source_id:string;tab:ActivityTab;title:string;subtitle:string;status:string;status_label:string;date:string|null;club:string|null;category:string|null;level:string|null;primary_meta:string;secondary_meta:string;cta_label:string|null;cta_href:string|null;can_cancel:boolean;sort_at:string;position?:number|null;points?:number|null;events_played?:number|null;classification_id?:string};
+export const activityTabs={upcoming:'In programma',history:'Storico'};
+export const activityTypes={gioca:'Gioca',allenati:'Allenati',tournament:'Torneo',monday_league:'Monday League',circuit:'Circuito'};
 export function activityPagination(p:URLSearchParams){
  if(p.has('user_id'))throw new Error('Identità non consentita');
  const tab=p.get('tab')??'upcoming';if(!Object.hasOwn(activityTabs,tab))throw new Error('Vista non valida');

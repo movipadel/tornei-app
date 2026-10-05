@@ -21,6 +21,7 @@ import PublicNav from "@/components/PublicNav";
 import UserLoginDialog from "@/components/UserLoginDialog";
 import { QRCodeCanvas } from "qrcode.react";
 import { formatManualRewardCode } from "@/lib/movibackContracts";
+import { MembershipCardModal } from "@/components/public/MembershipCardModal";
 
 type User = {
   id: string;
@@ -199,7 +200,7 @@ export default function MoviBackPage() {
     loadMe();
   }, []);
 
-  
+
 async function submitReplaceCertificate(e: React.FormEvent) {
   e.preventDefault();
 
@@ -1036,22 +1037,46 @@ return (
         Codice: {membership.membership_code}
       </div>
 
-      <button
-        onClick={() => setQrOpen(true)}
-        style={{
-          marginTop: 16,
-          width: "100%",
-          height: 52,
-          borderRadius: 18,
-          border: 0,
-          background: "linear-gradient(135deg,#14b8a6,#0ea5e9)",
-          color: "white",
-          fontWeight: 900,
-          fontSize: 15,
-        }}
-      >
-        Mostra QR
-      </button>
+      <div style={{ marginTop: 16, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
+        <MembershipCardModal
+          user={user}
+          membership={membership}
+          eligibility={data.eligibility}
+          trigger={(
+            <button
+              type="button"
+              style={{
+                width: "100%",
+                minHeight: 52,
+                borderRadius: 18,
+                border: "1px solid rgba(103,223,255,.56)",
+                background: "linear-gradient(135deg,rgba(16,16,255,.42),rgba(14,165,233,.24))",
+                color: "white",
+                fontWeight: 900,
+                fontSize: 15,
+              }}
+            >
+              La mia tessera
+            </button>
+          )}
+        />
+        <button
+          type="button"
+          onClick={() => setQrOpen(true)}
+          style={{
+            width: "100%",
+            minHeight: 52,
+            borderRadius: 18,
+            border: 0,
+            background: "linear-gradient(135deg,#14b8a6,#0ea5e9)",
+            color: "white",
+            fontWeight: 900,
+            fontSize: 15,
+          }}
+        >
+          Mostra QR
+        </button>
+      </div>
     </div>
   </section>
 ) : null}

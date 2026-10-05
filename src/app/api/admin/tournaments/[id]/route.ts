@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { guardAdmin } from "@/lib/adminGuard";
+import { guardOperatorPermission } from "@/lib/operatorAuthorization";
 
 export const runtime = "nodejs";
 
 type LegacyType = "Baraonda" | "Coppie fisse";
 type LegacyCategory = "Maschile" | "Femminile" | "Misto" | "Libero";
+type TournamentBody = Record<string, unknown>;
 
 const TYPE_UI_TO_DB: Record<string, LegacyType> = {
   baraonda: "Baraonda",
@@ -25,7 +26,7 @@ const CATEGORY_UI_TO_DB: Record<string, LegacyCategory> = {
   Libero: "Libero",
 };
 
-function parseDateTimeFromBody(body: any): { date: string; time: string } {
+function parseDateTimeFromBody(body: TournamentBody): { date: string; time: string } {
   const d = typeof body?.date === "string" ? body.date.trim() : "";
   const t = typeof body?.time === "string" ? body.time.trim() : "";
   if (d && t) return { date: d.slice(0, 10), time: t.slice(0, 5) };
@@ -44,7 +45,7 @@ function parseDateTimeFromBody(body: any): { date: string; time: string } {
   return { date: "", time: "" };
 }
 
-function parseMaxParticipants(body: any): number {
+function parseMaxParticipants(body: TournamentBody): number {
   if (body?.max_participants !== undefined && body?.max_participants !== null) {
     const n = Number(body.max_participants);
     return Number.isFinite(n) ? n : 0;
@@ -107,7 +108,7 @@ async function validateCircuitCompatibility(params: {
 }
 
 export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }) {
-  const denied = await guardAdmin(req);
+  const denied = await guardOperatorPermission("tournaments.manage");
   if (denied) return denied;
   const { id } = await ctx.params;
   const sb = supabaseAdmin();
@@ -125,11 +126,11 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
 }
 
 export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }> }) {
-  const denied = await guardAdmin(req);
+  const denied = await guardOperatorPermission("tournaments.manage");
   if (denied) return denied;
 
   const { id } = await ctx.params;
-  const body = await req.json().catch(() => ({}));
+  const body = await req.json().catch(() => ({})) as TournamentBody;
 
   const name = String(body?.name ?? "").trim();
   if (!name) return NextResponse.json({ error: "Nome obbligatorio" }, { status: 400 });
@@ -170,14 +171,14 @@ try {
     category,
     level,
   });
-} catch (e: any) {
+} catch (e: unknown) {
   return NextResponse.json(
-    { error: e?.message ?? "Circuito non compatibile con il torneo" },
+    { error: e instanceof Error ? e.message : "Circuito non compatibile con il torneo" },
     { status: 400 }
   );
 }
 
-    const payload: any = {
+    const payload: Record<string, unknown> = {
   name,
   type,
   category,
@@ -205,7 +206,7 @@ try {
 }
 
 export async function DELETE(req: Request, ctx: { params: Promise<{ id: string }> }) {
-  const denied = await guardAdmin(req);
+  const denied = await guardOperatorPermission("tournaments.manage");
   if (denied) return denied;
 
   const { id: tournamentId } = await ctx.params;
@@ -219,7 +220,7 @@ export async function DELETE(req: Request, ctx: { params: Promise<{ id: string }
 
   if (runsErr) return NextResponse.json({ error: runsErr.message }, { status: 500 });
 
-  const runIds = (runs ?? []).map((r: any) => String(r.id)).filter(Boolean);
+  const runIds = (runs ?? []).map((r) => String(r.id)).filter(Boolean);
 
   // 2) per ogni run: matches -> turns -> participants -> run
   for (const runId of runIds) {
@@ -231,7 +232,7 @@ export async function DELETE(req: Request, ctx: { params: Promise<{ id: string }
 
     if (terr) return NextResponse.json({ error: terr.message }, { status: 500 });
 
-    const turnIds = (turns ?? []).map((t: any) => String(t.id)).filter(Boolean);
+    const turnIds = (turns ?? []).map((t) => String(t.id)).filter(Boolean);
 
     // 2b) delete matches (FK verso participants)
     if (turnIds.length) {

@@ -3,11 +3,13 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import satori from "satori";
 import { Resvg } from "@resvg/resvg-js";
+import QRCode from "qrcode";
 
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { guardAdmin } from "@/lib/adminGuard";
+import { guardOperatorPermission } from "@/lib/operatorAuthorization";
 import { TournamentPoster } from "@/lib/posters/tournamentPoster";
 import { getTournamentPosterData } from "@/lib/posters/getTournamentPosterData";
+import { getPosterProductionBackground } from "@/lib/posters/getPosterProductionBackground";
 
 export const runtime = "nodejs";
 
@@ -24,121 +26,20 @@ type TournamentRow = {
   circuit_id: string | null;
 };
 
-type PosterVariant = "baraonda" | "fixed_pairs" | "padelseries";
-
 function toDataUrl(buffer: Buffer, mime: string) {
   return `data:${mime};base64,${buffer.toString("base64")}`;
 }
 
-function normalizeTournamentType(type: string | null) {
-  const raw = String(type ?? "").trim().toLowerCase();
-
-  if (raw === "baraonda") {
-    return "baraonda" as const;
-  }
-
-  if (raw === "coppie fisse") {
-    return "fixed_pairs" as const;
-  }
-
-  return "baraonda" as const;
-}
-
-function normalizeCategory(category: string | null) {
-  return String(category ?? "").trim().toLowerCase();
-}
-
-function normalizeLevel(level: string | null) {
-  return String(level ?? "").trim().toLowerCase();
-}
-
-function getStandardBackgroundPath(normalizedType: "baraonda" | "fixed_pairs") {
-  if (normalizedType === "fixed_pairs") {
-    return join(process.cwd(), "public", "posters", "coppie-fisse-base.png");
-  }
-
-  return join(process.cwd(), "public", "posters", "baraonda-base.png");
-}
-
-function getPadelSeriesBackgroundPath(params: {
-  category: string | null;
-  level: string | null;
-}) {
-  const category = normalizeCategory(params.category);
-  const level = normalizeLevel(params.level);
-
-  if (category === "maschile" && level === "avanzato") {
-    return join(
-      process.cwd(),
-      "public",
-      "posters",
-      "padelseries-maschile-avanzato.png"
-    );
-  }
-
-  if (category === "maschile" && level === "intermedio") {
-  return join(
-    process.cwd(),
-    "public",
-    "posters",
-    "padelseries-maschile-intermedio.png"
-  );
-}
-
-  if (category === "misto" && level === "avanzato") {
-    return join(
-      process.cwd(),
-      "public",
-      "posters",
-      "padelseries-misto-avanzato.png"
-    );
-  }
-
-  if (category === "femminile" && level === "avanzato") {
-    return join(
-      process.cwd(),
-      "public",
-      "posters",
-      "padelseries-femminile-avanzato.png"
-    );
-  }
-
-  if (category === "femminile" && level === "principiante") {
-    return join(
-      process.cwd(),
-      "public",
-      "posters",
-      "padelseries-femminile-principiante.png"
-    );
-  }
-
-  return null;
-}
-
-function resolvePosterConfig(t: TournamentRow): {
-  variant: PosterVariant;
-  backgroundPath: string;
-} {
-  const normalizedType = normalizeTournamentType(t.type);
-
-  if (t.circuit_id) {
-    const padelSeriesPath = getPadelSeriesBackgroundPath({
-      category: t.category,
-      level: t.level,
-    });
-
-    if (padelSeriesPath) {
-      return {
-        variant: "padelseries",
-        backgroundPath: padelSeriesPath,
-      };
-    }
-  }
-
-  return {
-    variant: normalizedType,
-    backgroundPath: getStandardBackgroundPath(normalizedType),
-  };
+async function qrDataUrl(value: string) {
+  const svg = await QRCode.toString(value, {
+    type: "svg",
+    width: 132,
+    margin: 1,
+    errorCorrectionLevel: "M",
+    color: { dark: "#061123", light: "#ffffff" },
+  });
+  const png = new Resvg(svg, { fitTo: { mode: "width", value: 132 } }).render().asPng();
+  return toDataUrl(Buffer.from(png), "image/png");
 }
 
 export async function GET(
@@ -146,7 +47,7 @@ export async function GET(
   ctx: { params: Promise<{ id: string }> }
 ) {
   try {
-    const denied = await guardAdmin(req);
+    const denied = await guardOperatorPermission("tournaments.manage");
     if (denied) return denied;
 
     const { id } = await ctx.params;
@@ -191,13 +92,33 @@ export async function GET(
       );
     }
 
+    let circuitName: string | null = null;
+    if (t.circuit_id) {
+      const { data: circuit, error: circuitError } = await sb
+        .from("circuits")
+        .select("name")
+        .eq("id", t.circuit_id)
+        .single();
+      if (circuitError || !circuit) {
+        return NextResponse.json({ error: "Circuito associato non trovato" }, { status: 500 });
+      }
+      circuitName = String(circuit.name ?? "").trim() || null;
+    }
+
+    const publicTournamentUrl = new URL("/tornei", req.url);
+    publicTournamentUrl.searchParams.set("tournament", id);
     const posterData = getTournamentPosterData({
+      id: t.id,
+      name: t.name,
+      type: t.type,
       category: t.category,
       level: t.level,
       date: t.date,
       time: t.time,
       club_name: t.location,
       max_participants: t.max_participants,
+      circuit_name: circuitName,
+      qr_url: publicTournamentUrl.toString(),
     });
 
     const interRegularPath = join(
@@ -224,25 +145,29 @@ export async function GET(
       "fonts",
       "BebasNeue-Regular.ttf"
     );
+    const logoPath = join(process.cwd(), "public", "branding", "movi-padelleria.png");
+    const backgroundPublicPath = getPosterProductionBackground(t.type, t.category);
+    const backgroundPath = backgroundPublicPath
+      ? join(process.cwd(), "public", backgroundPublicPath.replace(/^\//, ""))
+      : null;
 
-    const [interRegularData, interMediumData, interSemiBoldData, bebasData] =
+    const [interRegularData, interMediumData, interSemiBoldData, bebasData, logoData, backgroundData] =
       await Promise.all([
         readFile(interRegularPath),
         readFile(interMediumPath),
         readFile(interSemiBoldPath),
         readFile(bebasPath),
+        readFile(logoPath),
+        backgroundPath ? readFile(backgroundPath) : Promise.resolve(null),
       ]);
-
-    const posterConfig = resolvePosterConfig(t);
-
-    const backgroundBuffer = await readFile(posterConfig.backgroundPath);
-    const backgroundDataUrl = toDataUrl(backgroundBuffer, "image/png");
 
     const svg = await satori(
       TournamentPoster({
-        background: backgroundDataUrl,
+        logo: toDataUrl(logoData, "image/png"),
+        qrImage: await qrDataUrl(posterData.qrUrl),
         data: posterData,
-        variant: posterConfig.variant,
+        mode: "production",
+        backgroundImage: backgroundData ? toDataUrl(backgroundData, "image/png") : undefined,
       }),
       {
         width: 1080,

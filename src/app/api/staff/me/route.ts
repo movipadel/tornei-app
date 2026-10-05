@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { getStaffSessionFromCookie } from "@/lib/staffSession";
+import { getCurrentOperator } from "@/lib/operatorAuthorization";
 
 export const runtime = "nodejs";
 
 export async function GET() {
-  const session = await getStaffSessionFromCookie();
+  const session = await getCurrentOperator();
 
   if (!session || (session.role !== "admin" && session.role !== "staff")) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });

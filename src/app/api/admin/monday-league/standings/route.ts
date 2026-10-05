@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { guardAdmin } from "@/lib/adminGuard";
+import { guardOperatorPermission } from "@/lib/operatorAuthorization";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { mondayLeagueAdminReadError } from "@/lib/monday-league/admin-read-error";
 
@@ -9,7 +9,7 @@ function adminStandingsReadFailure(scope: string, error: { code?: string } | nul
 }
 
 export async function GET(req: Request) {
-  const denied = await guardAdmin(); if (denied) return denied;
+  const denied = await guardOperatorPermission("monday_league.manage"); if (denied) return denied;
   const sb = supabaseAdmin();
   const requested = new URL(req.url).searchParams.get("phase_id");
   const { data: season, error: seasonError } = await sb.from("league_seasons").select("id").neq("status", "archived").order("created_at", { ascending: false }).limit(1).maybeSingle();

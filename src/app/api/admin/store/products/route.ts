@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { guardAdmin } from "@/lib/adminGuard";
+import { guardOperatorPermission } from "@/lib/operatorAuthorization";
 
 export const runtime = "nodejs";
 
@@ -27,7 +27,7 @@ type StoreStockInput = {
 };
 
 export async function GET() {
-  const denied = await guardAdmin();
+  const denied = await guardOperatorPermission("store.manage");
   if (denied) return denied;
 
   const sb = supabaseAdmin();
@@ -52,7 +52,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const denied = await guardAdmin();
+  const denied = await guardOperatorPermission("store.manage");
   if (denied) return denied;
 
   const body = await req.json().catch(() => ({}));

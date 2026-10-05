@@ -1,19 +1,258 @@
-'use client';
-import Link from 'next/link';
-import {useState,type FormEvent} from 'react';
-import {requestClubs,windows,levels,matchTypes,trainingTypes,goals,type RequestInput} from '@/lib/moviRequests';
-import s from '../admin/padelleria/padelleria.module.css';
-export default function RequestForm({type}:{type:'gioca'|'allenati'}){
- const [data,setData]=useState<RequestInput>({request_type:type,clubs:[],date_mode:'flexible',requested_date:null,time_window:'any',preferred_time_text:'',level:'unknown',match_type:type==='gioca'?'any':null,has_partner:type==='gioca'?false:null,training_type:type==='allenati'?'advice':null,training_goal:type==='allenati'?'learn':null,notes:'',client_request_id:''});
- const [key]=useState(()=>crypto.randomUUID()),[busy,setBusy]=useState(false),[error,setError]=useState(''),[login,setLogin]=useState(false),[done,setDone]=useState(false);
- function set<K extends keyof RequestInput>(k:K,v:RequestInput[K]){setData(d=>({...d,[k]:v}));}
- async function submit(e:FormEvent){e.preventDefault();setBusy(true);setError('');try{const r=await fetch('/api/user/requests',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...data,client_request_id:key})});const j=await r.json();if(!r.ok){setLogin(r.status===401);throw new Error(j.error);}setDone(true);}catch(e){setError((e as Error).message);}finally{setBusy(false);}}
- const select=(label:string,k:keyof RequestInput,options:Record<string,string>)=><label className={s.field}>{label}<select value={String(data[k]??'')} onChange={e=>set(k,e.target.value as never)}>{Object.entries(options).map(([v,l])=><option key={v} value={v}>{l}</option>)}</select></label>;
- return <main className={s.page}><div className={s.header}><Link href="/">← MOVI</Link><Link href="/richieste">Le mie richieste</Link></div><h1>{type==='gioca'?'Gioca':'Allenati'}</h1>
- {done?<section className={s.card} role="status"><h2>Richiesta ricevuta</h2><p>{type==='gioca'?'Ci pensiamo noi. Ti ricontattiamo appena troviamo la soluzione.':'Ci pensiamo noi. Ti ricontattiamo appena troviamo la soluzione giusta.'}</p><Link className={s.button} href="/richieste">Vedi la richiesta</Link></section>:<form className={s.card} onSubmit={submit}><p>MOVI organizza la tua richiesta e ti ricontatta.</p><fieldset style={{border:'1px solid #dce1ee',borderRadius:12,padding:16}}><legend>Dove</legend><label className={s.check}><input type="checkbox" checked={!data.clubs.length} onChange={e=>{if(e.target.checked)set('clubs',[]);}}/>Indifferente</label>{requestClubs.map(c=><label key={c} className={s.check}><input type="checkbox" checked={data.clubs.includes(c)} onChange={e=>set('clubs',e.target.checked?[...data.clubs,c]:data.clubs.filter(v=>v!==c))}/>{c}</label>)}</fieldset><div className={s.form} style={{marginTop:20}}>
- {select('Quando','date_mode',{today:'Oggi',tomorrow:'Domani',specific:'Scegli giorno',flexible:'Sono flessibile'})}{data.date_mode==='specific'&&<label className={s.field}>Giorno<input type="date" required value={data.requested_date??''} onChange={e=>set('requested_date',e.target.value)}/></label>}
- {select('Fascia oraria','time_window',windows)}<label className={s.field}>Orario preferito (facoltativo)<input maxLength={100} placeholder="Verso le 20:00" value={data.preferred_time_text} onChange={e=>set('preferred_time_text',e.target.value)}/></label>
- {select('Livello','level',levels)}{type==='gioca'?<>{select('Tipo partita','match_type',matchTypes)}<label className={s.field}>Compagno<select value={String(data.has_partner)} onChange={e=>set('has_partner',e.target.value==='true')}><option value="false">Cerco anche il compagno</option><option value="true">Ho già un compagno</option></select></label></>:<>{select('Tipo allenamento','training_type',trainingTypes)}{select('Obiettivo','training_goal',goals)}</>}
- <label className={`${s.field} ${s.wide}`}>Note (facoltative)<textarea rows={4} maxLength={1000} value={data.notes} onChange={e=>set('notes',e.target.value)}/></label></div>{error&&<p role="alert" className={s.error}>{error} {login&&<Link href="/accedi">Accedi a MOVI</Link>}</p>}<button className={s.button} disabled={busy}>{busy?'Invio…':type==='gioca'?'Trova la mia partita':'Trova il mio allenamento'}</button></form>}
- </main>;
+"use client";
+
+import { Check, Clock3, Dumbbell, ListChecks, Send, UsersRound } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import { PublicModal } from "@/components/public/PublicModal";
+import { PublicButton } from "@/components/public/PublicPrimitives";
+import {
+  goals,
+  levels,
+  matchTypes,
+  requestClubs,
+  trainingTypes,
+  windows,
+  type RequestInput,
+} from "@/lib/moviRequests";
+import styles from "./RequestForm.module.css";
+import { playingSideLabels, playingSides, type PlayingSide } from "@/lib/playingSide";
+
+type RequestType = "gioca" | "allenati";
+type Choice = { value: string; label: string };
+
+function ChoiceGroup({ label, name, value, options, required = false, onChange }: {
+  label: string;
+  name: string;
+  value: string;
+  options: Choice[];
+  required?: boolean;
+  onChange: (value: string) => void;
+}) {
+  return <fieldset className={styles.fieldset} aria-required={required || undefined}>
+    <legend>{label}</legend>
+    <div className={styles.choiceGrid}>
+      {options.map((option) => {
+        const selected = option.value === value;
+        return <label className={styles.choice} data-selected={selected || undefined} key={option.value}>
+          <input className={styles.choiceInput} type="radio" name={name} value={option.value} checked={selected} required={required} onChange={() => onChange(option.value)} />
+          <span>{option.label}</span>
+          {selected ? <Check className={styles.selectedIcon} size={17} aria-hidden /> : null}
+        </label>;
+      })}
+    </div>
+  </fieldset>;
+}
+
+function MultiChoiceGroup({ label, name, value, options, exclusiveValue, onChange }: {
+  label: string;
+  name: string;
+  value: string[];
+  options: Choice[];
+  exclusiveValue?: string;
+  onChange: (value: string[]) => void;
+}) {
+  return <fieldset className={styles.fieldset} aria-required="true">
+    <legend>{label}</legend>
+    <div className={styles.choiceGrid}>
+      {options.map((option) => {
+        const selected = value.includes(option.value);
+        return <label className={styles.choice} data-selected={selected || undefined} key={option.value}>
+          <input
+            className={styles.choiceInput}
+            type="checkbox"
+            name={name}
+            value={option.value}
+            checked={selected}
+            required={value.length === 0}
+            onChange={(event) => {
+              if (event.target.checked) {
+                onChange(option.value === exclusiveValue ? [option.value] : [...value.filter((item) => item !== exclusiveValue), option.value]);
+              } else {
+                onChange(value.filter((item) => item !== option.value));
+              }
+            }}
+          />
+          <span>{option.label}</span>
+          {selected ? <Check className={styles.selectedIcon} size={17} aria-hidden /> : null}
+        </label>;
+      })}
+    </div>
+  </fieldset>;
+}
+
+function ClubChoices({ value, onChange }: { value: string[]; onChange: (clubs: string[]) => void }) {
+  const choices = [{ value: "", label: "Indifferente" }, ...requestClubs.map((club) => ({ value: club, label: club }))];
+  return <fieldset className={styles.fieldset}>
+    <legend>Dove vuoi giocare?</legend>
+    <div className={styles.choiceGrid}>
+      {choices.map((choice) => {
+        const selected = choice.value ? value.includes(choice.value) : value.length === 0;
+        return <label className={styles.choice} data-selected={selected || undefined} key={choice.value || "any"}>
+          <input
+            className={styles.choiceInput}
+            type="checkbox"
+            value={choice.value || "any"}
+            checked={selected}
+            onChange={(event) => {
+              if (!choice.value) {
+                if (event.target.checked) onChange([]);
+                return;
+              }
+              onChange(event.target.checked ? [...value, choice.value] : value.filter((club) => club !== choice.value));
+            }}
+          />
+          <span>{choice.label}</span>
+          {selected ? <Check className={styles.selectedIcon} size={17} aria-hidden /> : null}
+        </label>;
+      })}
+    </div>
+  </fieldset>;
+}
+
+function SuccessState({ type, onClose }: { type: RequestType; onClose: () => void }) {
+  const subject = type === "gioca" ? "la partita giusta" : "la soluzione di allenamento giusta";
+  return <section className={styles.success} role="status" aria-live="polite">
+    <span className={styles.successIcon}><Send size={38} aria-hidden /></span>
+    <div className={styles.successIntro}>
+      <h2>Richiesta inviata!</h2>
+      <strong>Ci pensiamo noi.</strong>
+      <p>Ti ricontattiamo appena troviamo la soluzione giusta per te.</p>
+    </div>
+    <div className={styles.nextSteps}>
+      <div className={styles.nextStepsTitle}><Clock3 size={22} aria-hidden /><h3>Cosa succede ora?</h3></div>
+      <ol>
+        <li><span>1</span>Abbiamo ricevuto la tua richiesta</li>
+        <li><span>2</span>Il team MOVI sta cercando {subject}</li>
+        <li><span>3</span>Ti ricontatteremo quando avremo una proposta</li>
+      </ol>
+    </div>
+    <div className={styles.successActions}>
+      <PublicButton type="button" onClick={onClose}>Ok, perfetto!</PublicButton>
+      <Link className={styles.activitiesLink} href="/le-mie-attivita"><ListChecks size={19} aria-hidden />Vai alle mie attività</Link>
+    </div>
+    <p className={styles.signature}>Qualcosa trovi.<span aria-hidden>•</span></p>
+  </section>;
+}
+
+export default function RequestForm({ type }: { type: RequestType }) {
+  const router = useRouter();
+  const [data, setData] = useState<RequestInput>({
+    request_type: type,
+    clubs: [],
+    date_mode: "flexible",
+    requested_date: null,
+    time_window: "any",
+    preferred_time_text: "",
+    level: "unknown",
+    playing_side: null,
+    match_type: type === "gioca" ? ["any"] : null,
+    has_partner: type === "gioca" ? false : null,
+    training_type: type === "allenati" ? ["advice"] : null,
+    training_goal: type === "allenati" ? ["learn"] : null,
+    notes: "",
+    client_request_id: "",
+  });
+  const [key] = useState(() => crypto.randomUUID());
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [login, setLogin] = useState(false);
+  const [done, setDone] = useState(false);
+  const sideTouched = useRef(false);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch("/api/user/profile", { cache: "no-store", signal: controller.signal })
+      .then(async response => response.ok ? response.json() : null)
+      .then(payload => {
+        const preferred = payload?.data?.profile?.shared?.preferred_side;
+        if (!controller.signal.aborted && !sideTouched.current && playingSides.includes(preferred)) {
+          setData(current => current.playing_side === null ? { ...current, playing_side: preferred } : current);
+        }
+      })
+      .catch(cause => { if (cause?.name !== "AbortError") return; });
+    return () => controller.abort();
+  }, []);
+
+  function set<K extends keyof RequestInput>(field: K, value: RequestInput[K]) {
+    setData((current) => ({ ...current, [field]: value }));
+  }
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    setBusy(true);
+    setError("");
+    setLogin(false);
+    try {
+      const response = await fetch("/api/user/requests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...data, client_request_id: key }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setLogin(response.status === 401);
+        throw new Error(typeof payload.error === "string" ? payload.error : "Richiesta non inviata, riprova");
+      }
+      setDone(true);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Richiesta non inviata, riprova");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const isPlay = type === "gioca";
+  const title = isPlay ? "Gioca" : "Allenati";
+  const description = isPlay
+    ? "Compila la richiesta e pensiamo noi a trovare la tua partita."
+    : "Compila la richiesta e pensiamo noi a organizzare il tuo allenamento.";
+  const close = () => router.push("/");
+
+  return <main className={styles.page}>
+    <PublicModal
+      open
+      onOpenChange={(open) => { if (!open) close(); }}
+      contentClassName={styles.requestDialog}
+      title={<span className={styles.dialogTitle}>{isPlay ? <UsersRound size={26} aria-hidden /> : <Dumbbell size={26} aria-hidden />}{title}</span>}
+      description={done ? undefined : description}
+    >
+      {done ? <SuccessState type={type} onClose={close} /> : <form className={styles.form} onSubmit={submit}>
+        <ClubChoices value={data.clubs} onChange={(clubs) => set("clubs", clubs)} />
+
+        <ChoiceGroup
+          label="Quando?"
+          name="date_mode"
+          value={data.date_mode}
+          options={[{ value: "today", label: "Oggi" }, { value: "tomorrow", label: "Domani" }, { value: "specific", label: "Scegli giorno" }, { value: "flexible", label: "Sono flessibile" }]}
+          onChange={(value) => set("date_mode", value as RequestInput["date_mode"])}
+        />
+        {data.date_mode === "specific" ? <label className={styles.textField}><span>Giorno</span><input type="date" required value={data.requested_date ?? ""} onChange={(event) => set("requested_date", event.target.value)} /></label> : null}
+
+        <ChoiceGroup label="In che momento?" name="time_window" value={data.time_window} options={Object.entries(windows).map(([value, label]) => ({ value, label }))} onChange={(value) => set("time_window", value as RequestInput["time_window"])} />
+        <label className={styles.textField}><span>Orario preferito <small>(facoltativo)</small></span><input maxLength={100} placeholder="Verso le 20:00" value={data.preferred_time_text} onChange={(event) => set("preferred_time_text", event.target.value)} /></label>
+
+        <ChoiceGroup label="Che livello?" name="level" value={data.level} options={Object.entries(levels).map(([value, label]) => ({ value, label }))} onChange={(value) => set("level", value as RequestInput["level"])} />
+
+        <ChoiceGroup label="Lato di gioco" name="playing_side" value={data.playing_side ?? ""} options={playingSides.map(value => ({ value, label: playingSideLabels[value] }))} required onChange={(value) => { sideTouched.current = true; set("playing_side", value as PlayingSide); }} />
+
+        {isPlay ? <>
+          <MultiChoiceGroup label="Che tipo di partita?" name="match_type" value={data.match_type ?? []} options={Object.entries(matchTypes).map(([value, label]) => ({ value, label }))} exclusiveValue="any" onChange={(value) => set("match_type", value as RequestInput["match_type"])} />
+          <ChoiceGroup label="Hai già un compagno?" name="has_partner" value={String(data.has_partner)} options={[{ value: "true", label: "Sì" }, { value: "false", label: "No" }]} onChange={(value) => set("has_partner", value === "true")} />
+        </> : <>
+          <MultiChoiceGroup label="Che tipo di allenamento?" name="training_type" value={data.training_type ?? []} options={Object.entries(trainingTypes).map(([value, label]) => ({ value, label }))} exclusiveValue="advice" onChange={(value) => set("training_type", value as RequestInput["training_type"])} />
+          <MultiChoiceGroup label="Quali sono i tuoi obiettivi?" name="training_goal" value={data.training_goal ?? []} options={Object.entries(goals).map(([value, label]) => ({ value, label }))} onChange={(value) => set("training_goal", value as RequestInput["training_goal"])} />
+        </>}
+
+        <label className={styles.notesField}>
+          <span>Note <small>(facoltative)</small></span>
+          <textarea rows={4} maxLength={1000} placeholder="Preferenze, disponibilità o indicazioni particolari…" value={data.notes} onChange={(event) => set("notes", event.target.value)} />
+          <small className={styles.counter}>{data.notes.length}/1000</small>
+        </label>
+
+        {error ? <div className={styles.error} role="alert"><span>{error}</span>{login ? <Link href="/accedi">Accedi a MOVI</Link> : null}</div> : null}
+        <PublicButton className={`${styles.submit} ${isPlay ? styles.submitPlay : styles.submitTrain}`} type="submit" loading={busy}>{isPlay ? "Trova la mia partita" : "Trova il mio allenamento"}</PublicButton>
+      </form>}
+    </PublicModal>
+  </main>;
 }

@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { levels, matchTypes, windows } from "@/lib/moviRequests";
 import { playerMatchingWeekdays, type PlayerMatchResult } from "@/lib/playerMatching";
+import { playingSideLabel, type PlayingSide } from "@/lib/playingSide";
 import PlayerMatchResults from "../../players/PlayerMatchResults";
 import s from "../../players/players.module.css";
 
@@ -12,7 +13,8 @@ type MatchingContext = {
   level: string | null;
   weekday: number | null;
   timeWindow: string | null;
-  matchType: string | null;
+  matchTypes: string[];
+  playingSide: PlayingSide | null;
   lastMinute: false;
   requesterExcluded: boolean;
 };
@@ -41,7 +43,8 @@ export default function RequestMatchingPanel({ id }: { id: string }) {
       <div><dt>Livello</dt><dd>{context.level ? levels[context.level as keyof typeof levels] : "Non indicato"}</dd></div>
       <div><dt>Giorno</dt><dd>{context.weekday ? playerMatchingWeekdays[context.weekday - 1] : "Non indicato"}</dd></div>
       <div><dt>Fascia</dt><dd>{context.timeWindow ? windows[context.timeWindow as keyof typeof windows] : "Non indicato"}</dd></div>
-      <div><dt>Tipo</dt><dd>{context.matchType ? matchTypes[context.matchType as keyof typeof matchTypes] : "Non indicato"}</dd></div>
+      <div><dt>Tipo</dt><dd>{context.matchTypes.map(type => matchTypes[type as keyof typeof matchTypes]).join(" oppure ")}</dd></div>
+      <div><dt>Lato</dt><dd>{playingSideLabel(context.playingSide)}</dd></div>
       <div><dt>Last minute</dt><dd>Non previsto</dd></div>
       <div><dt>Richiedente</dt><dd>{context.requesterExcluded ? "Escluso tramite identità collegata" : "Identità non collegata: nessuna esclusione dedotta"}</dd></div>
     </dl></div>}

@@ -1,7 +1,7 @@
-import { getStaffSessionFromCookie } from "@/lib/staffSession";
+import { getCurrentOperator } from "@/lib/operatorAuthorization";
 
 export async function getStoreEconomicsAccess() {
-  const session = await getStaffSessionFromCookie();
+  const session = await getCurrentOperator();
 
   if (!session || session.role !== "admin") {
     return { allowed: false, session: null };

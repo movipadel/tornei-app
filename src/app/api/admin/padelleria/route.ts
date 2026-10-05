@@ -1,9 +1,9 @@
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { pageBounds, parseContent } from '@/lib/padelleria';
-import { editorialAdmin, editorialJson, withMedia } from '@/lib/padelleriaServer';
+import { editorialOperator, editorialJson, withMedia } from '@/lib/padelleriaServer';
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
-export async function GET(req:Request){return editorialAdmin(req,async()=>{
+export async function GET(req:Request){return editorialOperator(req,'padelleria.manage',async()=>{
   const params=new URL(req.url).searchParams;
   const {limit,offset}=pageBounds(params);
   let query=supabaseAdmin().from('padelleria_contents').select('*').is('deleted_at',null);
@@ -14,7 +14,7 @@ export async function GET(req:Request){return editorialAdmin(req,async()=>{
   if(error)return editorialJson({error:'Lista non disponibile'},500);
   return editorialJson({data:await withMedia(data??[]),limit,offset});
 });}
-export async function POST(req:Request){return editorialAdmin(req,async()=>{
+export async function POST(req:Request){return editorialOperator(req,'padelleria.manage',async()=>{
   const input=parseContent(await req.json());
   const {data,error}=await supabaseAdmin().from('padelleria_contents').insert(input).select('*').single();
   if(error)return editorialJson({error:'Creazione non riuscita'},500);

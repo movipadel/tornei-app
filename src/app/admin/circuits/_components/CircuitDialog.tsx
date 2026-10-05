@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
@@ -38,6 +39,7 @@ type CircuitDetail = {
   slug: string;
   tournament_type: TournamentType;
   status: "draft" | "active" | "closed";
+  home_image_url: string | null;
   hero_logo_url: string | null;
   hero_logo_2_url: string | null;
   hero_logo_3_url: string | null;
@@ -85,6 +87,10 @@ export default function CircuitDialog({
   const [name, setName] = useState("");
   const [type, setType] = useState<TournamentType>("Baraonda");
   const [status, setStatus] = useState<"draft" | "active" | "closed">("active");
+  const [homeImageUrl, setHomeImageUrl] = useState("");
+  const [originalHomeImageUrl, setOriginalHomeImageUrl] = useState("");
+  const [pendingHomeImageUrl, setPendingHomeImageUrl] = useState("");
+  const [uploadingHomeImage, setUploadingHomeImage] = useState(false);
 
   const [heroLogoUrl, setHeroLogoUrl] = useState("");
   const [heroLogo2Url, setHeroLogo2Url] = useState("");
@@ -130,6 +136,9 @@ export default function CircuitDialog({
           setName(c.name);
           setType(c.tournament_type);
           setStatus(c.status);
+          setHomeImageUrl(c.home_image_url ?? "");
+          setOriginalHomeImageUrl(c.home_image_url ?? "");
+          setPendingHomeImageUrl("");
           setHeroLogoUrl(c.hero_logo_url ?? "");
           setHeroLogo2Url(c.hero_logo_2_url ?? "");
           setHeroLogo3Url(c.hero_logo_3_url ?? "");
@@ -159,8 +168,8 @@ export default function CircuitDialog({
             })
           );
         })
-        .catch((e: any) => {
-          toast.error(e?.message ?? "Errore caricamento circuito");
+        .catch((error: unknown) => {
+          toast.error(error instanceof Error ? error.message : "Errore caricamento circuito");
         })
         .finally(() => {
           setLoadingDetail(false);
@@ -169,6 +178,9 @@ export default function CircuitDialog({
       setName("");
       setType("Baraonda");
       setStatus("active");
+      setHomeImageUrl("");
+      setOriginalHomeImageUrl("");
+      setPendingHomeImageUrl("");
       setHeroLogoUrl("");
       setHeroLogo2Url("");
       setHeroLogo3Url("");
@@ -179,6 +191,56 @@ export default function CircuitDialog({
       setPoints([]);
     }
   }, [open, circuit?.id]);
+
+  async function deleteHomeImage(url: string) {
+    if (!url) return;
+    const res = await fetch("/api/admin/circuits/home-image", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url }),
+    });
+    if (!res.ok) {
+      const json = await res.json().catch(() => ({}));
+      throw new Error(json.error || "Errore rimozione immagine");
+    }
+  }
+
+  async function uploadHomeImage(file: File) {
+    if (uploadingHomeImage) return;
+    try {
+      setUploadingHomeImage(true);
+      const form = new FormData();
+      form.set("file", file);
+      const res = await fetch("/api/admin/circuits/home-image", { method: "POST", body: form });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || "Errore upload immagine");
+
+      const previousPending = pendingHomeImageUrl;
+      setHomeImageUrl(String(json.url));
+      setPendingHomeImageUrl(String(json.url));
+      if (previousPending && previousPending !== json.url) {
+        await deleteHomeImage(previousPending).catch(() => undefined);
+      }
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Errore upload immagine");
+    } finally {
+      setUploadingHomeImage(false);
+    }
+  }
+
+  async function removeHomeImage() {
+    if (pendingHomeImageUrl) {
+      await deleteHomeImage(pendingHomeImageUrl).catch(() => undefined);
+      setPendingHomeImageUrl("");
+    }
+    setHomeImageUrl("");
+  }
+
+  function closeDialog() {
+    if (pendingHomeImageUrl) void deleteHomeImage(pendingHomeImageUrl).catch(() => undefined);
+    setPendingHomeImageUrl("");
+    onClose();
+  }
 
   const sortedGroups = useMemo(() => {
     return [...groups].sort((a, b) => {
@@ -305,6 +367,7 @@ export default function CircuitDialog({
         slug: name.trim(),
         tournament_type: type,
         status,
+        home_image_url: homeImageUrl || null,
         hero_logo_url: heroLogoUrl.trim() || null,
         hero_logo_2_url: heroLogo2Url.trim() || null,
         hero_logo_3_url: heroLogo3Url.trim() || null,
@@ -327,18 +390,23 @@ export default function CircuitDialog({
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json.error || "Errore salvataggio circuito");
 
+      const committedHomeImageUrl = homeImageUrl;
+      setPendingHomeImageUrl("");
+      if (originalHomeImageUrl && originalHomeImageUrl !== committedHomeImageUrl) {
+        await deleteHomeImage(originalHomeImageUrl).catch(() => undefined);
+      }
       toast.success(isEdit ? "Circuito aggiornato" : "Circuito creato");
       await onSaved();
       onClose();
-    } catch (e: any) {
-      toast.error(e?.message ?? "Errore salvataggio");
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Errore salvataggio");
     } finally {
       setSaving(false);
     }
   }
 
   return (
-    <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
+    <Dialog open={open} onOpenChange={(next) => !next && closeDialog()}>
       <DialogContent
         className="max-w-4xl admin-circuit-dialog admin-specialist-page"
         data-admin-theme={adminTheme}
@@ -406,6 +474,76 @@ export default function CircuitDialog({
                   <option value="active">Attivo</option>
                   <option value="closed">Chiuso</option>
                 </select>
+              </div>
+            </div>
+
+            <div
+              className="admin-circuit-home-image"
+              style={{
+                border: "1px solid #e2e8f0",
+                borderRadius: 14,
+                padding: 14,
+                background: "white",
+              }}
+            >
+              <div className="admin-circuit-home-image__title" style={{ fontWeight: 900, marginBottom: 6 }}>
+                Immagine Home circuito
+              </div>
+              <div
+                className="admin-circuit-home-image__helper"
+                style={{ color: "#64748b", fontSize: 13, marginBottom: 12 }}
+              >
+                Formato consigliato: 1600×900 px (16:9)
+              </div>
+
+              {homeImageUrl ? (
+                <Image
+                  src={homeImageUrl}
+                  alt="Anteprima immagine Home circuito"
+                  width={560}
+                  height={315}
+                  unoptimized
+                  style={{
+                    display: "block",
+                    width: "min(100%, 560px)",
+                    aspectRatio: "16 / 9",
+                    objectFit: "cover",
+                    borderRadius: 12,
+                    border: "1px solid #cbd5e1",
+                    marginBottom: 12,
+                  }}
+                />
+              ) : null}
+
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+                <label
+                  className="base44-csv-btn admin-circuit-home-image__action"
+                  data-disabled={uploadingHomeImage ? "true" : undefined}
+                  aria-disabled={uploadingHomeImage}
+                >
+                  {uploadingHomeImage ? "Caricamento..." : homeImageUrl ? "Sostituisci immagine" : "Carica immagine"}
+                  <input
+                    className="admin-circuit-home-image__file-input"
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    disabled={uploadingHomeImage}
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      if (file) void uploadHomeImage(file);
+                      event.target.value = "";
+                    }}
+                  />
+                </label>
+                {homeImageUrl ? (
+                  <button
+                    type="button"
+                    className="base44-csv-btn admin-circuit-home-image__action admin-circuit-home-image__action--remove"
+                    disabled={uploadingHomeImage}
+                    onClick={() => void removeHomeImage()}
+                  >
+                    Rimuovi immagine
+                  </button>
+                ) : null}
               </div>
             </div>
 
@@ -709,8 +847,8 @@ export default function CircuitDialog({
                 type="button"
                 className="base44-primary-btn"
                 onClick={save}
-                disabled={saving}
-                style={{ opacity: saving ? 0.7 : 1 }}
+                disabled={saving || uploadingHomeImage}
+                style={{ opacity: saving || uploadingHomeImage ? 0.7 : 1 }}
               >
                 {saving ? "Salvataggio..." : isEdit ? "Salva" : "Crea circuito"}
               </button>

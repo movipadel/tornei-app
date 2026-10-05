@@ -13,6 +13,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { getTournamentHomeBackground } from "@/lib/tournamentHomeBackground";
+import styles from "./TournamentCard.module.css";
 
 export type PublicTournament = {
   id: string;
@@ -25,6 +27,7 @@ export type PublicTournament = {
   location: string;
   max_participants: number;
   image_url?: string | null;
+  circuit_id?: string | null;
   counts?: { main: number; reserve: number; male: number; female: number };
   hasLive?: boolean; // se true, CTA diventa "LIVE"
   registrations_open?: boolean; // ✅ nuovo: blocco iscrizioni pubblico
@@ -39,6 +42,7 @@ type Props = {
 
   // legacy: se lo passi da fuori ok, ma se non lo passi usa tournament.hasLive
   hasLive?: boolean;
+  circuitName?: string | null;
 };
 
 type CatKey = "maschile" | "femminile" | "misto" | "open";
@@ -147,34 +151,6 @@ function lvlLabel(key: string) {
   return "INTERMEDIO";
 }
 
-function categoryPillStyle(cat: CatKey) {
-  if (cat === "maschile") {
-    return {
-      bg: "linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%)",
-      border: "1px solid rgba(255,255,255,0.25)",
-    };
-  }
-
-  if (cat === "femminile") {
-    return {
-      bg: "linear-gradient(135deg, #be185d 0%, #9d174d 100%)",
-      border: "1px solid rgba(255,255,255,0.25)",
-    };
-  }
-
-  if (cat === "open") {
-    return {
-      bg: "linear-gradient(135deg, #059669 0%, #047857 100%)",
-      border: "1px solid rgba(255,255,255,0.25)",
-    };
-  }
-
-  return {
-    bg: "linear-gradient(135deg, #eab308 0%, #b45309 100%)",
-    border: "1px solid rgba(255,255,255,0.25)",
-  };
-}
-
 function FullUser({ color, size = 16 }: { color: string; size?: number }) {
   return (
     <span
@@ -215,7 +191,7 @@ function formatPrettyDate(dateStr: string) {
     .join(" ");
 }
 
-export default function TournamentCard({ tournament, onRegister, status, onCancel, hasLive }: Props) {
+export default function TournamentCard({ tournament, onRegister, status, onCancel, hasLive, circuitName }: Props) {
   const counts = tournament.counts ?? { main: 0, reserve: 0, male: 0, female: 0 };
 
   const cat = catKey(tournament.category);
@@ -252,15 +228,20 @@ export default function TournamentCard({ tournament, onRegister, status, onCance
     setParticipantsLoading(true);
     try {
       const res = await fetch(`/api/tournaments/${tournament.id}/participants`, { cache: "no-store" });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error((json as any).error || "Errore caricamento iscritti");
+      const json = await res.json().catch(() => ({})) as {
+        error?: string;
+        type?: string;
+        names?: unknown;
+        pairs?: unknown;
+      };
+      if (!res.ok) throw new Error(json.error || "Errore caricamento iscritti");
 
-      const type = String((json as any).type ?? tournament.type ?? "");
+      const type = String(json.type ?? tournament.type ?? "");
       if (type.toLowerCase().includes("baraonda")) {
-        setParticipantNames(Array.isArray((json as any).names) ? (json as any).names : []);
+        setParticipantNames(Array.isArray(json.names) ? json.names.filter((name): name is string => typeof name === "string") : []);
         setParticipantPairs([]);
       } else {
-        setParticipantPairs(Array.isArray((json as any).pairs) ? (json as any).pairs : []);
+        setParticipantPairs(Array.isArray(json.pairs) ? json.pairs.filter((pair): pair is { p1: string; p2: string } => Boolean(pair) && typeof pair === "object" && "p1" in pair && "p2" in pair && typeof pair.p1 === "string" && typeof pair.p2 === "string") : []);
         setParticipantNames([]);
       }
 
@@ -270,74 +251,6 @@ export default function TournamentCard({ tournament, onRegister, status, onCance
     } finally {
       setParticipantsLoading(false);
     }
-  }
-
-  /** Pill premium */
-  function Pill({
-    children,
-    weight,
-    bg,
-    fg,
-    border,
-  }: {
-    children: React.ReactNode;
-    weight: number;
-    bg?: string;
-    fg?: string;
-    border?: string;
-  }) {
-    return (
-      <span
-        className="base44-pill"
-        style={{
-          background: bg ?? "rgba(255,255,255,0.90)",
-          border: border ?? "1px solid rgba(15,23,42,0.08)",
-          color: fg ?? "#0f172a",
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 8,
-          padding: "6px 10px",
-          borderRadius: 999,
-          fontWeight: weight,
-          fontSize: 12,
-          lineHeight: 1,
-          letterSpacing: "0.08em",
-          textTransform: "uppercase",
-          boxShadow: `
-            0 2px 4px rgba(0,0,0,0.18),
-            inset 0 1px 0 rgba(255,255,255,0.35),
-            inset 0 -1px 0 rgba(0,0,0,0.15)
-          `,
-          whiteSpace: "nowrap",
-        }}
-      >
-        {children}
-      </span>
-    );
-  }
-
-  function CategoryIcons({ cat }: { cat: CatKey }) {
-    const blueDefault = "#3b82f6";
-    const pinkDefault = "#ec4899";
-    const green = "#10b981";
-
-    const blueMisto = "#2563eb";
-    const pinkMisto = "#db2777";
-
-    const size = 16;
-
-    if (cat === "misto") {
-      return (
-        <OverlapTwo
-          left={<FullUser color={blueMisto} size={size} />}
-          right={<FullUser color={pinkMisto} size={size} />}
-        />
-      );
-    }
-
-    const color = cat === "maschile" ? blueDefault : cat === "femminile" ? pinkDefault : green;
-
-    return <OverlapTwo left={<FullUser color={color} size={size} />} right={<FullUser color={color} size={size} />} />;
   }
 
   function CountIconsDouble({ cat }: { cat: CatKey }) {
@@ -602,222 +515,69 @@ export default function TournamentCard({ tournament, onRegister, status, onCance
     </Dialog>
   ) : null;
 
+  const cardImage = tournament.image_url || getTournamentHomeBackground(tournament.type, tournament.category);
+  const categoryClass = cat === "maschile" ? styles.maschile : cat === "femminile" ? styles.femminile : cat === "misto" ? styles.misto : styles.open;
+
   return (
-    <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }}>
+    <motion.article className={styles.card} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
       <div
-        className="base44-tcard"
+        className={styles.cardInner}
         onMouseEnter={() => {
           if (showParticipants) loadParticipants();
         }}
         onTouchStart={() => {
           if (showParticipants) loadParticipants();
         }}
-        style={{
-          overflow: "hidden",
-          borderRadius: 20,
-          boxShadow: "0 14px 30px rgba(0,0,0,0.12)",
-          background: "#ffffff",
-        }}
       >
-        <div
-          style={{
-            background: getHeaderGradient(tournament.type),
-            padding: "18px 20px 14px 20px",
-            color: "white",
-            position: "relative",
-          }}
-        >
-          <div
-            aria-hidden="true"
-            style={{
-              position: "absolute",
-              inset: 0,
-              pointerEvents: "none",
-              ...getHeaderOverlayStyle(tournament.type),
-            }}
-          />
-
-          <div style={{ position: "relative" }}>
-            <div className="base44-tcard-top" style={{ alignItems: "flex-start" }}>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div
-                  className="base44-tcard-name"
-                  style={{
-                    fontWeight: 700,
-                    fontSize: 20,
-                    letterSpacing: "-0.01em",
-                    color: "#0f172a",
-                  }}
-                >
-                  {tournament.name}
-                </div>
-
-                <div
-                  className="base44-tcard-type"
-                  style={{
-                    color: "rgba(255,255,255,0.85)",
-                    fontWeight: 600,
-                    fontSize: 15,
-                    letterSpacing: "0.02em",
-                    marginTop: 2,
-                  }}
-                >
-                  {typeLabel(tournament.type)}
-                </div>
-              </div>
-
-              <div
-                className="base44-tcard-badges"
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "flex-end",
-                  gap: 8,
-                  flexShrink: 0,
-                }}
-              >
-                {(() => {
-                  const s = categoryPillStyle(cat);
-                  return (
-                    <Pill weight={900} bg={s.bg} fg="#ffffff" border={s.border}>
-                      <CategoryIcons cat={cat} />
-                      <span>{catLabel(cat)}</span>
-                    </Pill>
-                  );
-                })()}
-
-                <Pill
-                  weight={750}
-                  bg="linear-gradient(135deg, #334155 0%, #1e293b 100%)"
-                  fg="#ffffff"
-                  border="1px solid rgba(255,255,255,0.15)"
-                >
-                  <span>{lvlLabel(lvl)}</span>
-                </Pill>
-              </div>
-            </div>
-          </div>
+        <div className={styles.media}>
+          {/* image_url is the existing public tournament image; poster assets remain separate */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={cardImage} alt={tournament.image_url ? tournament.name : ""} />
+          <div className={styles.mediaScrim} aria-hidden />
         </div>
-
-        {tournament.image_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img className="base44-tcard-img" src={tournament.image_url} alt={tournament.name} />
-        ) : null}
-
-        <div
-          className="base44-tcard-body"
-          style={{
-            padding: "12px 20px 20px 20px",
-            backgroundImage: `
-              radial-gradient(circle at 1px 1px, rgba(15,23,42,0.05) 0.6px, rgba(0,0,0,0) 0.7px),
-              linear-gradient(to bottom, #ffffff 0%, #eef2ff 100%)
-            `,
-            backgroundSize: "3px 3px, 100% 100%",
-            backgroundPosition: "0 0, 0 0",
-          }}
-        >
-          <div
-            className="base44-tcard-info"
-            style={{
-              display: "grid",
-              gridTemplateColumns: "minmax(0,1fr) auto",
-              columnGap: 18,
-              rowGap: 10,
-              alignItems: "center",
-            }}
-          >
-            <div className="base44-info-row" style={{ minWidth: 0 }}>
-              <Calendar className="w-4 h-4" style={{ color: "#4f46e5" }} />
-              <span
-                style={{
-                  fontSize: 15,
-                  fontWeight: 600,
-                  color: "#0f172a",
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  display: "block",
-                }}
-              >
-                {formatPrettyDate(tournament.date)}
-              </span>
-            </div>
-
-            <div
-              className="base44-info-row"
-              style={{
-                justifyContent: "flex-end",
-                justifySelf: "end",
-                whiteSpace: "nowrap",
-              }}
-            >
-              <Clock className="w-4 h-4" style={{ color: "#4f46e5" }} />
-              <span style={{ fontSize: 15, fontWeight: 600, color: "#0f172a" }}>
-                {tournament.time}
-              </span>
-            </div>
-
-            <div className="base44-info-row full" style={{ gridColumn: "1 / -1" }}>
-              <MapPin className="w-4 h-4" style={{ color: "#4f46e5" }} />
-              <span style={{ fontSize: 15, fontWeight: 600, color: "#0f172a" }}>
-                {tournament.location}
-              </span>
+        <div className={styles.body}>
+          <div className={styles.identity}>
+            {circuitName ? <span className={styles.circuit}>{circuitName}</span> : null}
+            <span className={styles.type}>{typeLabel(tournament.type)}</span>
+            <h2>{tournament.name}</h2>
+            <div className={styles.badges}>
+              <span className={`${styles.badge} ${categoryClass}`}>{catLabel(cat)}</span>
+              <span className={`${styles.badge} ${styles.level}`}>{lvlLabel(lvl)}</span>
             </div>
           </div>
-
-          <div
-            className="base44-tcard-bottom"
-            style={{
-              marginTop: 14,
-              paddingTop: 14,
-              borderTop: "1px solid #e2e8f0",
-            }}
-          >
-            <div className="base44-counts" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div className={styles.meta}>
+            <div><Calendar size={17} aria-hidden /><span>{formatPrettyDate(tournament.date)}</span></div>
+            <div><Clock size={17} aria-hidden /><span>{tournament.time.slice(0, 5)}</span></div>
+            <div className={styles.location}><MapPin size={17} aria-hidden /><span>{tournament.location}</span></div>
+          </div>
+          <div className={styles.footer}>
+            <div className={styles.counts}>
               {isMixedBaraonda ? (
-                <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "nowrap", whiteSpace: "nowrap" }}>
-                  <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                <div className={styles.mixedCounts}>
+                  <div>
                     {CountIconSingle({ color: "#2563eb" })}
-                    <span style={{ fontWeight: 900, color: "#0f172a" }}>
-                      {counts.male}/{maxPerGender}
-                    </span>
+                    <span>{counts.male}/{maxPerGender}</span>
                   </div>
-
-                  <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                  <div>
                     {CountIconSingle({ color: "#db2777" })}
-                    <span style={{ fontWeight: 900, color: "#0f172a" }}>
-                      {counts.female}/{maxPerGender}
-                    </span>
+                    <span>{counts.female}/{maxPerGender}</span>
                   </div>
                   {LensDialog}
                 </div>
               ) : (
-                <div
-                  className="base44-info-row"
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 10,
-                    whiteSpace: "nowrap",
-                  }}
-                >
+                <div className={styles.countRow}>
                   <CountIconsDouble cat={cat} />
-
-                  <span style={{ fontWeight: 800, color: "#0f172a" }}>
-                    {countText}
-                  </span>
-
+                  <span>{countText}</span>
                   {LensDialog}
                 </div>
               )}
-
               {counts.reserve > 0 ? (
-                <span className="base44-pill" style={{ background: "#fffbeb", borderColor: "#fde68a", color: "#b45309" }}>
+                <span className={styles.reserveCount}>
                   +{counts.reserve} {counts.reserve === 1 ? "riserva" : "riserve"}
                 </span>
               ) : null}
             </div>
-
+            <div className={styles.actions}>
             {live ? (
   <TournamentLiveDialog
     tournamentId={tournament.id}
@@ -826,38 +586,24 @@ export default function TournamentCard({ tournament, onRegister, status, onCance
       <button
         type="button"
         aria-label="Apri avanzamento torneo"
-        style={{
-          background: "linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)",
-          color: "white",
-          fontWeight: 900,
-          padding: "10px 14px",
-          fontSize: 14,
-          borderRadius: 999,
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 8,
-          minWidth: "unset",
-          border: "1px solid rgba(255,255,255,0.25)",
-          boxShadow: "0 12px 26px rgba(239, 68, 68, 0.25)",
-        }}
+        className={`${styles.button} ${styles.live}`}
       >
         LIVE
       </button>
     }
   />
 ) : status !== "none" ? (
-  <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-    <button className="base44-cta base44-cta-disabled" type="button" disabled>
+  <div className={styles.registeredActions}>
+    <span className={`${styles.status} ${status === "reserve" ? styles.statusReserve : styles.statusSuccess}`}>
       {status === "reserve" ? "In riserva" : "Iscritto"}
-    </button>
+    </span>
 
     {onCancel ? (
       <button
         type="button"
         title="Cancella iscrizione"
         onClick={onCancel}
-        className="base44-icon-btn"
-        style={{ width: 40, height: 40, borderRadius: 999, color: "#dc2626" }}
+        className={`${styles.iconButton} ${styles.cancel}`}
       >
         <X className="w-4 h-4" />
       </button>
@@ -865,34 +611,27 @@ export default function TournamentCard({ tournament, onRegister, status, onCance
   </div>
 ) : registrationsOpen ? (
               <button
-                className={`base44-cta ${isFull ? "base44-cta-amber" : "base44-cta-indigo"}`}
+                className={`${styles.button} ${isFull ? styles.reserve : styles.primary}`}
                 type="button"
                 onClick={() => onRegister(tournament)}
-                style={{
-                  fontWeight: 600,
-                  padding: "10px 14px",
-                  fontSize: 14,
-                  gap: 6,
-                  minWidth: "unset",
-                }}
               >
                 <UserPlus className="w-3.5 h-3.5" />
                 {isFull ? "Lista riserva" : "Iscriviti"}
               </button>
             ) : (
               <button
-                className="base44-cta base44-cta-disabled"
+                className={`${styles.button} ${styles.disabled}`}
                 type="button"
                 disabled
-                style={{ fontWeight: 800, padding: "10px 14px", fontSize: 14, minWidth: "unset" }}
                 title="Iscrizioni chiuse"
               >
                 Iscrizioni chiuse
               </button>
             )}
+            </div>
           </div>
         </div>
       </div>
-    </motion.div>
+    </motion.article>
   );
 }

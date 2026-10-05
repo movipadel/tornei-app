@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { guardStaff } from "@/lib/staffGuard";
+import { guardOperatorPermission } from "@/lib/operatorAuthorization";
 
 export const runtime = "nodejs";
 
@@ -17,7 +17,7 @@ function isExpired(date?: string | null) {
 }
 
 export async function POST(req: Request) {
-  const denied = await guardStaff();
+  const denied = await guardOperatorPermission("scanner.manage");
   if (denied) return denied;
 
   const body = await req.json().catch(() => ({}));

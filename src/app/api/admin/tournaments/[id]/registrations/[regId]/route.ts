@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { guardAdmin } from "@/lib/adminGuard";
+import { guardOperatorPermission } from "@/lib/operatorAuthorization";
 
 async function compactPositions(
   sb: ReturnType<typeof supabaseAdmin>,
@@ -32,7 +32,7 @@ async function compactPositions(
 }
 
 export async function PATCH(req: Request, ctx: { params: Promise<{ regId: string }> }) {
-  const denied = await guardAdmin(req);
+  const denied = await guardOperatorPermission("tournaments.manage");
 if (denied) return denied;
 
   const { regId } = await ctx.params;
@@ -84,7 +84,7 @@ if (denied) return denied;
 }
 
 export async function DELETE(req: Request, ctx: { params: Promise<{ regId: string }> }) {
-  const denied = await guardAdmin(req);
+  const denied = await guardOperatorPermission("tournaments.manage");
 if (denied) return denied;
 
   const { regId } = await ctx.params;

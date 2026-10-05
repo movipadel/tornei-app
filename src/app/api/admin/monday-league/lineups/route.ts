@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
-import { guardAdmin } from "@/lib/adminGuard";
+import { guardOperatorPermission } from "@/lib/operatorAuthorization";
 import { getMondayLeagueAdminActorId, mondayLeagueErrorResponse } from "@/lib/monday-league/admin-server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 export const runtime = "nodejs";
 
 export async function GET(req: Request) {
-  const denied = await guardAdmin(); if (denied) return denied;
+  const denied = await guardOperatorPermission("monday_league.manage"); if (denied) return denied;
   const matchId = new URL(req.url).searchParams.get("match_id");
   if (!matchId) return NextResponse.json({ error: "match_id richiesto" }, { status: 400 });
   const sb = supabaseAdmin();
@@ -22,7 +22,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const denied = await guardAdmin(); if (denied) return denied;
+  const denied = await guardOperatorPermission("monday_league.manage"); if (denied) return denied;
   const actorId = await getMondayLeagueAdminActorId();
   if (!actorId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const body = await req.json().catch(() => ({})); const sb = supabaseAdmin();

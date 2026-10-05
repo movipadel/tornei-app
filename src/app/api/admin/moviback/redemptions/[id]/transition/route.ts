@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { getStaffSessionOrNull, guardStaff } from "@/lib/staffGuard";
+import { getStaffSessionOrNull } from "@/lib/staffGuard";
+import { guardOperatorAnyPermission } from "@/lib/operatorAuthorization";
 import { isUuid, mapMovibackRpcError } from "@/lib/movibackContracts";
 
 export const runtime = "nodejs";
@@ -17,7 +18,7 @@ const RPC_BY_ACTION: Record<LifecycleAction, string> = {
 };
 
 export async function POST(req: Request, { params }: Params) {
-  const denied = await guardStaff();
+  const denied = await guardOperatorAnyPermission(["scanner.manage", "moviback.manage"]);
   if (denied) return denied;
 
   const session = await getStaffSessionOrNull();

@@ -4,12 +4,12 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 
-import PublicNav from "@/components/PublicNav";
 import TournamentCard, {
   PublicTournament,
 } from "@/components/tournaments/TournamentCard";
 import RegistrationDialog from "@/components/tournaments/RegistrationDialog";
 import UserLoginDialog from "@/components/UserLoginDialog";
+import styles from "./TorneiPage.module.css";
 
 type User = {
   id: string;
@@ -26,18 +26,22 @@ type MyReg = {
   p1_phone: string;
   p2_phone?: string | null;
 };
+type PublicCircuit = { id: string; name: string };
 
 const normalizePhone = (s: string) => String(s ?? "").replace(/\s+/g, "").trim();
 const isValidPhone = (p: string) => normalizePhone(p).length >= 8;
+const errorMessage = (error: unknown) => error instanceof Error ? error.message : "Errore";
+type RegistrationSearchRow = MyReg;
 
 export default function TorneiPage() {
   const [loading, setLoading] = useState(true);
   const [loadingMy, setLoadingMy] = useState(false);
 
   const [tournaments, setTournaments] = useState<PublicTournament[]>([]);
+  const [circuits, setCircuits] = useState<PublicCircuit[]>([]);
   const [user, setUser] = useState<User | null>(null);
 
-  const [phone, setPhone] = useState("");
+  const [phone] = useState("");
   const [myRegs, setMyRegs] = useState<MyReg[]>([]);
 
   const [selectedTournament, setSelectedTournament] =
@@ -74,9 +78,10 @@ export default function TorneiPage() {
     if (!silent) setLoading(true);
 
     try {
-      const [tRes, meRes] = await Promise.all([
+      const [tRes, meRes, circuitsRes] = await Promise.all([
         fetch("/api/tournaments", { cache: "no-store", signal: ac.signal }),
         fetch("/api/user/me", { cache: "no-store", signal: ac.signal }),
+        fetch("/api/circuits", { cache: "no-store", signal: ac.signal }),
       ]);
 
       const tJson = await tRes.json().catch(() => ({}));
@@ -86,9 +91,11 @@ export default function TorneiPage() {
 
       const meJson = await meRes.json().catch(() => ({}));
       setUser(meJson.user ?? null);
-    } catch (e: any) {
-      if (e?.name === "AbortError") return;
-      if (!silent) toast.error(e?.message ?? "Errore");
+      const circuitsJson = await circuitsRes.json().catch(() => ({}));
+      if (circuitsRes.ok) setCircuits((circuitsJson.data ?? []) as PublicCircuit[]);
+    } catch (e: unknown) {
+      if (e instanceof DOMException && e.name === "AbortError") return;
+      if (!silent) toast.error(errorMessage(e));
     } finally {
       if (!silent) setLoading(false);
     }
@@ -114,7 +121,7 @@ export default function TorneiPage() {
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json.error || "Errore ricerca");
 
-      const rows = (json.data ?? []) as any[];
+      const rows = (json.data ?? []) as RegistrationSearchRow[];
 
       const exact = rows.filter((r) => {
         const p1 = normalizePhone(r.p1_phone ?? "");
@@ -131,8 +138,8 @@ export default function TorneiPage() {
           p2_phone: r.p2_phone ?? null,
         }))
       );
-    } catch (e: any) {
-      toast.error(e?.message ?? "Errore");
+    } catch (e: unknown) {
+      toast.error(errorMessage(e));
     } finally {
       setLoadingMy(false);
     }
@@ -162,8 +169,8 @@ export default function TorneiPage() {
 
       await searchMy(p);
       await loadAll();
-    } catch (e: any) {
-      toast.error(e?.message ?? "Errore");
+    } catch (e: unknown) {
+      toast.error(errorMessage(e));
     }
   }
 
@@ -206,7 +213,6 @@ export default function TorneiPage() {
 
       if (listTimerRef.current) window.clearInterval(listTimerRef.current);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -218,141 +224,52 @@ export default function TorneiPage() {
 
   if (loading) {
   return (
-    <div
-      className="base44-home-wrap"
-      style={{
-        minHeight: "100dvh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background:
-          "linear-gradient(180deg, #030712 0%, #07111f 42%, #0f172a 100%)",
-      }}
-    >
+    <div className={styles.page}>
+      <div className={styles.loading} role="status" aria-label="Caricamento tornei">
       <Loader2 className="w-8 h-8 animate-spin" style={{ color: "#818cf8" }} />
+      </div>
     </div>
   );
 }
 
   return (
-    <div
-  className="base44-home-wrap"
-  style={{
-    minHeight: "100dvh",
-    background:
-      "linear-gradient(180deg, #030712 0%, #07111f 42%, #0f172a 100%)",
-  }}
->
-      <PublicNav />
-
-      <div
-  className="base44-home-container"
-  style={{
-    paddingTop: 6,
-  }}
->
-        <section
-  style={{
-    position: "relative",
-    marginBottom: 22,
-    padding: "24px 20px 22px",
-    borderRadius: 28,
-    overflow: "hidden",
-    color: "white",
-    background:
-      "linear-gradient(135deg, rgba(255,255,255,0.075), rgba(255,255,255,0.035))",
-    border: "1px solid rgba(255,255,255,0.09)",
-    boxShadow: "0 18px 42px rgba(0,0,0,0.20)",
-    backdropFilter: "blur(14px)",
-  }}
->
-  <div
-    aria-hidden
-    style={{
-      position: "absolute",
-      inset: "-90px -60px auto -60px",
-      height: 260,
-      background:
-        "radial-gradient(circle at 15% 0%, rgba(14,165,233,0.26), transparent 34%), radial-gradient(circle at 85% 20%, rgba(124,58,237,0.30), transparent 38%)",
-      pointerEvents: "none",
-    }}
-  />
-
-  <div style={{ position: "relative", zIndex: 1 }}>
-    <div
-      style={{
-        width: 54,
-        height: 34,
-        backgroundImage: "url('/home/movi-logo.png')",
-        backgroundSize: "contain",
-        backgroundRepeat: "no-repeat",
-        backgroundPosition: "left center",
-        opacity: 0.92,
-      }}
-    />
-
-    <div
-      style={{
-        marginTop: 8,
-        fontSize: "clamp(30px, 7vw, 40px)",
-        fontWeight: 850,
-        lineHeight: 1,
-        letterSpacing: -1.1,
-        color: "#ffffff",
-      }}
-    >
-      Tornei MOVI
-    </div>
-
-    <div
-      style={{
-        marginTop: 10,
-        color: "rgba(255,255,255,0.62)",
-        fontWeight: 560,
-        fontSize: 14,
-        lineHeight: 1.35,
-        maxWidth: 420,
-      }}
-    >
-      Gestisci le tue iscrizioni e segui i live.
-    </div>
-  </div>
-</section>
+    <main className={styles.page}>
+      <div className={styles.container}>
+        <header className={styles.hero}>
+          <h1>I Tornei della Padelleria</h1>
+          <p>Partecipa e gestisci le tue iscrizioni.</p>
+        </header>
+        <div className={styles.sectionHead}>
+          <h2>Prossimi tornei</h2>
+          <span>{tournaments.length} {tournaments.length === 1 ? "torneo" : "tornei"}</span>
+        </div>
 
         {loadingMy ? (
-          <div style={{ display: "flex", justifyContent: "center", padding: "18px 0" }}>
+          <div className={styles.loading} role="status" aria-label="Aggiornamento iscrizioni">
             <Loader2 className="w-6 h-6 animate-spin" style={{ color: "#818cf8" }} />
           </div>
         ) : null}
 
         {tournaments.length === 0 ? (
-  <div
-    style={{
-      textAlign: "center",
-      padding: "42px 18px",
-      borderRadius: 24,
-      background: "rgba(255,255,255,0.055)",
-      border: "1px solid rgba(255,255,255,0.09)",
-      backdropFilter: "blur(14px)",
-    }}
-  >
-    <div style={{ fontWeight: 850, color: "rgba(255,255,255,0.92)" }}>
+  <div className={styles.empty}>
+    <div><strong>
       Nessun torneo disponibile
-    </div>
-    <div style={{ color: "rgba(255,255,255,0.52)", marginTop: 6 }}>
+    </strong>
+    <span>
       Controlla più tardi
-    </div>
+    </span></div>
   </div>
 ) : (
-          <div className="base44-grid">
+          <div className={styles.grid}>
             {tournaments.map((t) => {
               const status = statusForTournament(t.id);
               const allowed = canUserJoinTournament(t);
 
               return (
-                <div key={t.id} id={`tournament-${t.id}`} tabIndex={-1}>
+                <div className={styles.focusTarget} key={t.id} id={`tournament-${t.id}`} tabIndex={-1}>
                 <TournamentCard
                   tournament={t}
+                  circuitName={circuits.find((circuit) => circuit.id === t.circuit_id)?.name}
                   hasLive={!!t.hasLive}
                   status={status}
                   onRegister={(tt) => {
@@ -425,6 +342,6 @@ export default function TorneiPage() {
 }}
         />
       </div>
-    </div>
+    </main>
   );
 }

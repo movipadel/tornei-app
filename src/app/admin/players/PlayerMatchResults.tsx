@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { matchTypes, windows } from "@/lib/moviRequests";
 import { playerMatchingWeekdays, type PlayerMatchResult } from "@/lib/playerMatching";
+import { playingSideLabel } from "@/lib/playingSide";
 import s from "./players.module.css";
 
 const levelLabels: Record<string, string> = { principiante: "Principiante", intermedio: "Intermedio", avanzato: "Avanzato" };
@@ -19,10 +20,11 @@ export default function PlayerMatchResults({ results, emptyMessage = "Nessun can
         <span><b>Club</b>{candidate.preferredClubs.length ? candidate.preferredClubs.join(", ") : "Nessuna restrizione"}</span>
         <span><b>Disponibilità</b>{candidate.availability.length ? candidate.availability.slice(0, 4).map(slot => `${playerMatchingWeekdays[slot.weekday - 1]} · ${windows[slot.time_window]}`).join("; ") : "Non indicata"}</span>
         <span><b>Partita</b>{candidate.preferredMatchTypes.length ? candidate.preferredMatchTypes.map(type => matchTypes[type as keyof typeof matchTypes]).join(", ") : "Non indicata"}</span>
+        <span><b>Lato</b>{playingSideLabel(candidate.preferredSide)}</span>
         <span><b>Last minute</b>{lastMinuteLabel(candidate.availableLastMinute)}</span>
       </div>
       <details className={s.explanation}><summary>Come è calcolato il punteggio</summary><div className={s.scoreGrid}>
-        <Score label="Livello" part={candidate.scoreParts.level}/><Score label="Disponibilità" part={candidate.scoreParts.availability}/><Score label="Club" part={candidate.scoreParts.club}/><Score label="Tipo partita" part={candidate.scoreParts.matchType}/><Score label="Last minute" part={candidate.scoreParts.lastMinute}/>
+        <Score label="Livello" part={candidate.scoreParts.level}/><Score label="Disponibilità" part={candidate.scoreParts.availability}/><Score label="Club" part={candidate.scoreParts.club}/><Score label="Tipo partita" part={candidate.scoreParts.matchType}/><Score label="Lato" part={candidate.scoreParts.side}/><Score label="Last minute" part={candidate.scoreParts.lastMinute}/>
       </div></details>
       <Link className={s.openAction} href={`/admin/players/${candidate.id}`}>Apri giocatore</Link>
     </article>)}</div>

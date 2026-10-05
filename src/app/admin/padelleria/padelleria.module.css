@@ -15,3 +15,5 @@
 .upload{border-color:var(--admin-border-strong);background:rgba(15,23,42,.45)}.link{color:var(--admin-accent)}
 .page :focus-visible{outline-color:rgba(var(--admin-accent-rgb),.68)}
 @media(max-width:640px){.page{padding:0 0 24px}.header{margin-bottom:18px}.toolbar{gap:7px}.button,.secondary{min-height:44px}}
+.checkField{display:grid;gap:2px}.checkField>.muted{padding-left:28px}.inlineError{color:var(--admin-danger-text);font-size:13px;font-weight:650}
+.generatedCta,.legacyCta{display:grid;gap:6px;padding:12px 14px;border:1px solid var(--admin-border);border-radius:12px;background:var(--admin-panel-soft);color:var(--admin-muted);font-size:13px}.generatedCta code,.legacyCta code{overflow-wrap:anywhere;color:var(--admin-text);font-family:ui-monospace,SFMono-Regular,Consolas,monospace}.legacyCta{border-color:var(--admin-warning-border);background:var(--admin-warning-bg)}.legacyCta strong{color:var(--admin-warning-text)}

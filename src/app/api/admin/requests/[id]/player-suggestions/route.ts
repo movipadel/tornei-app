@@ -1,23 +1,18 @@
-import { getStaffSessionFromCookie } from "@/lib/staffSession";
-import { giocaMatchingContext, giocaRequestToMatchingCriteria, supportsGiocaMatching } from "@/lib/giocaMatching";
+import { giocaMatchingContext, giocaRequestToMatchingCriteria, mergeGiocaMatchResults, supportsGiocaMatching } from "@/lib/giocaMatching";
 import { isUuid } from "@/lib/padelleria";
-import { editorialAdmin, editorialJson } from "@/lib/padelleriaServer";
+import { editorialOperator, editorialJson } from "@/lib/padelleriaServer";
 import { findPlayerMatches } from "@/lib/playerMatchingServer";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request, context: { params: Promise<{ id: string }> }) {
-  return editorialAdmin(req, async () => {
+  return editorialOperator(req, 'requests.manage', async () => {
     const { id } = await context.params;
     if (!isUuid(id)) return editorialJson({ error: "ID richiesta non valido" }, 400);
-    const session = await getStaffSessionFromCookie();
-    const active = await supabaseAdmin().rpc("player_identity_admin", { p_actor: session!.sid });
-    if (active.error) return editorialJson({ error: "Admin attivo richiesto" }, 403);
-
     const sb = supabaseAdmin();
     const requestResult = await sb.from("movi_requests")
-      .select("id,user_id,request_type,status,clubs,requested_date,time_window,level,match_type")
+      .select("id,user_id,request_type,status,clubs,requested_date,time_window,level,match_type,playing_side")
       .eq("id", id)
       .maybeSingle();
     if (requestResult.error) throw new Error("Richiesta non disponibile");
@@ -33,7 +28,7 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
       .maybeSingle();
     if (owner.error) throw new Error("Identità del richiedente non verificabile");
     const criteria = giocaRequestToMatchingCriteria(requestResult.data as never, owner.data?.id ?? null);
-    const data = await findPlayerMatches(criteria);
-    return editorialJson({ data, context: giocaMatchingContext(criteria), threshold: 50, limit: 20, normalized: true });
+    const data = mergeGiocaMatchResults(await Promise.all(criteria.map(item => findPlayerMatches(item))));
+    return editorialJson({ data, context: giocaMatchingContext(criteria, requestResult.data.match_type), threshold: 50, limit: 20, normalized: true });
   });
 }

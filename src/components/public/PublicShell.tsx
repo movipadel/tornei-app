@@ -23,7 +23,10 @@ export default function PublicShell({ children }: { children: React.ReactNode })
   return <PublicShellProvider>
     <div className={styles.root} data-public-ui-root>
       <a href="#public-main-content" className={styles.skipLink}>Vai al contenuto</a>
-      <PublicHeader stickySentinelId="public-sticky-sentinel" />
+      <PublicHeader
+        stickySentinelId="public-sticky-sentinel"
+        slot={pathname === "/" ? <div id="public-home-header-slot" /> : undefined}
+      />
       <div id="public-main-content" className={styles.shellContent} tabIndex={-1}>{children}</div>
       <PublicBottomNav demo={pathname === "/dev/public-ui"} />
     </div>

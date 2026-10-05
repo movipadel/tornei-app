@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { guardAdmin } from "@/lib/adminGuard";
+import { guardOperatorPermission } from "@/lib/operatorAuthorization";
 
 export const runtime = "nodejs";
 
 const CLUBS = ["CENTALLO", "COSTIGLIOLE", "MANTA", "SALUZZO", "REVELLO"];
 
 export async function GET() {
-  const denied = await guardAdmin();
+  const denied = await guardOperatorPermission("moviback.manage");
   if (denied) return denied;
 
   const sb = supabaseAdmin();

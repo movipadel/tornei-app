@@ -1,7 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { jwtVerify } from "jose";
 import { copyResponseCookies, refreshSupabaseAuth } from "@/lib/supabase/authProxy";
+import { resolveOperatorFromSession } from "@/lib/operatorResolver";
+import { delegatedAdminPagePermission } from "@/lib/operatorRouteAccess";
 
+// This project uses src/app, so Next 16 discovers the proxy at src/proxy.ts.
 const STAFF_COOKIE_NAME = process.env.STAFF_COOKIE_NAME ?? "staff_session";
 const encoder = new TextEncoder();
 
@@ -16,7 +19,8 @@ async function verifyStaffToken(token?: string) {
   try {
     const { payload } = await jwtVerify(token, secret);
     const role = String(payload.role ?? "");
-    return role === "admin" || role === "staff" ? { role } : null;
+    const sid = String(payload.sid ?? "");
+    return sid && (role === "admin" || role === "staff") ? { sid, role } : null;
   } catch {
     return null;
   }
@@ -31,13 +35,19 @@ export async function proxy(request: NextRequest) {
   if (pathname.startsWith("/admin/login") || pathname.startsWith("/staff/login")) return authResponse;
 
   const session = await verifyStaffToken(request.cookies.get(STAFF_COOKIE_NAME)?.value);
-  if (!session) {
+  let operator = null;
+  try {
+    operator = session ? await resolveOperatorFromSession(session) : null;
+  } catch (error) {
+    console.error("Operator proxy resolution failed", error);
+  }
+  if (!operator) {
     const url = request.nextUrl.clone();
     url.pathname = isStaffPath ? "/staff/login" : "/admin/login";
     url.searchParams.set("next", pathname);
     return copyResponseCookies(authResponse, NextResponse.redirect(url));
   }
-  if (isAdminPath && session.role !== "admin") {
+  if (isAdminPath && operator.role !== "admin" && !delegatedAdminPagePermission(pathname)) {
     const url = request.nextUrl.clone();
     url.pathname = "/staff";
     return copyResponseCookies(authResponse, NextResponse.redirect(url));

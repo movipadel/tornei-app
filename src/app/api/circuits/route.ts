@@ -11,7 +11,7 @@ export async function GET() {
   const { data: circuits, error: circuitsErr } = await perf.db(() =>
     sb
       .from("circuits")
-      .select("id,name,slug,tournament_type,status,rules_url,created_at,updated_at")
+      .select("id,name,slug,tournament_type,status,home_image_url,rules_url,created_at,updated_at")
       .in("status", ["active", "closed"])
       .order("updated_at", { ascending: false })
   );
@@ -97,6 +97,7 @@ export async function GET() {
     slug: c.slug,
     tournament_type: c.tournament_type,
     status: c.status,
+    home_image_url: c.home_image_url ?? null,
     rules_url: c.rules_url ?? null,
     ranking_groups_count: groupCountByCircuit.get(c.id) ?? 0,
     played_stages_count: stageKeysByCircuit.get(c.id)?.size ?? 0,

@@ -1,0 +1,17 @@
+.page { min-height: 100%; padding: 18px max(var(--public-gutter),env(safe-area-inset-right)) 56px max(var(--public-gutter),env(safe-area-inset-left)); background: radial-gradient(circle at 86% 3%,rgba(16,16,255,.15),transparent 30rem),radial-gradient(circle at 8% 30%,rgba(215,106,187,.07),transparent 24rem),var(--public-bg); color: var(--public-text); }
+.container { width: min(100%,980px); margin-inline: auto; display: grid; gap: 16px; }
+.hero { position: relative; overflow: hidden; display: grid; gap: 7px; padding: 22px; border: 1px solid var(--public-border); border-radius: 20px; background: linear-gradient(135deg,var(--public-surface-1),var(--public-overlay)); }
+.hero:after { content:""; position:absolute; inset:auto 0 0; height:2px; background:linear-gradient(90deg,var(--public-cyan),var(--public-royal),var(--public-magenta)); opacity:.8; }
+.hero h1 { margin: 0; font-size: clamp(30px,7vw,42px); line-height: 1.05; letter-spacing: -.035em; }
+.hero p { margin:0; color:var(--public-text-secondary); line-height:1.5; }
+.sectionHead { display:flex; align-items:end; justify-content:space-between; gap:16px; padding-top:4px; }
+.sectionHead h2 { margin:0; font-size:clamp(22px,5vw,27px); letter-spacing:-.025em; }
+.sectionHead span { color:var(--public-text-secondary); font-size:13px; }
+.grid { display:grid; gap:16px; }
+.focusTarget { min-width:0; border-radius:20px; scroll-margin:110px; }
+.focusTarget:focus { outline:3px solid var(--public-cyan); outline-offset:5px; }
+.focusTarget:focus>article>div { border-color:var(--public-cyan); box-shadow:0 0 0 1px rgba(103,223,255,.35),0 18px 48px rgba(0,0,0,.32); }
+.loading,.empty { min-height:180px; display:grid; place-items:center; text-align:center; border:1px solid var(--public-border); border-radius:18px; background:var(--public-surface-1); color:var(--public-text-secondary); padding:24px; }
+.empty strong { display:block; margin-bottom:5px; color:var(--public-text); font-size:18px; }
+@media (min-width:900px){ .page{padding-top:28px}.container{gap:20px}.hero{padding:28px}.grid{gap:20px} }
+@media (max-width:340px){ .page{padding-inline:12px}.hero{padding:18px}.sectionHead{align-items:start;flex-direction:column;gap:3px} }

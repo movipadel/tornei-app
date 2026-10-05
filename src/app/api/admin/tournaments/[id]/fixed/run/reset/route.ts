@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { guardAdmin } from "@/lib/adminGuard";
+import { guardOperatorPermission } from "@/lib/operatorAuthorization";
 
 export const runtime = "nodejs";
 
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
-  const denied = await guardAdmin(req);
+  const denied = await guardOperatorPermission("tournaments.manage");
 if (denied) return denied;
 
 

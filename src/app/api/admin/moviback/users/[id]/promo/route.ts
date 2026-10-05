@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { guardAdmin } from "@/lib/adminGuard";
+import { guardOperatorPermission } from "@/lib/operatorAuthorization";
 
 export const runtime = "nodejs";
 
@@ -11,7 +11,7 @@ type Params = {
 };
 
 export async function POST(req: Request, { params }: Params) {
-  const denied = await guardAdmin();
+  const denied = await guardOperatorPermission("moviback.manage");
   if (denied) return denied;
   const origin = req.headers.get("origin");
   if (origin && origin !== new URL(req.url).origin) return NextResponse.json({ error: "Origine non consentita" }, { status: 403 });
@@ -90,7 +90,7 @@ export async function POST(req: Request, { params }: Params) {
 }
 
 export async function DELETE(_req: Request, { params }: Params) {
-  const denied = await guardAdmin();
+  const denied = await guardOperatorPermission("moviback.manage");
   if (denied) return denied;
   const origin = _req.headers.get("origin");
   if (origin && origin !== new URL(_req.url).origin) return NextResponse.json({ error: "Origine non consentita" }, { status: 403 });

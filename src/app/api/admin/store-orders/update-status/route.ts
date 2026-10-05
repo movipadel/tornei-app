@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { guardAdmin } from "@/lib/adminGuard";
+import { guardOperatorPermission } from "@/lib/operatorAuthorization";
 
 export const runtime = "nodejs";
 
 export async function POST(req: Request) {
-  const denied = await guardAdmin();
+  const denied = await guardOperatorPermission("store.manage");
   if (denied) return denied;
 
   await req.json().catch(() => ({}));

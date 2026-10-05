@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { generateBaraondaSchedule } from "@/lib/baraonda/generateSchedule";
-import { guardAdmin } from "@/lib/adminGuard";
+import { guardOperatorPermission } from "@/lib/operatorAuthorization";
 
 export const runtime = "nodejs";
 
@@ -12,7 +12,7 @@ type ParticipantRow = {
 };
 
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
-  const denied = await guardAdmin(req);
+  const denied = await guardOperatorPermission("tournaments.manage");
 if (denied) return denied;
 
   const sb = supabaseAdmin();

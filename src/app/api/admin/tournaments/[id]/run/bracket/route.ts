@@ -1,7 +1,7 @@
 // src/app/api/admin/tournaments/[id]/run/bracket/route.ts
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { guardAdmin } from "@/lib/adminGuard";
+import { guardOperatorPermission } from "@/lib/operatorAuthorization";
 import { buildFixedPairsSixBracketPlan } from "@/lib/fixedPairsSixBracket";
 
 export const runtime = "nodejs";
@@ -97,7 +97,7 @@ function sortSeeds(a: any, b: any) {
 }
 
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
-  const denied = await guardAdmin();
+  const denied = await guardOperatorPermission("tournaments.manage");
   if (denied) return denied;
 
   const { id: tournamentId } = await ctx.params;

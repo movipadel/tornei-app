@@ -1,10 +1,10 @@
 import { randomUUID } from 'node:crypto';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { CONTENT_BUCKET, imageExtension, isUuid, videoUrl } from '@/lib/padelleria';
-import { editorialAdmin, editorialJson, existingContent } from '@/lib/padelleriaServer';
+import { editorialOperator, editorialJson, existingContent } from '@/lib/padelleriaServer';
 export const runtime='nodejs';
 type Context={params:Promise<{id:string}>};
-export async function POST(req:Request,ctx:Context){return editorialAdmin(req,async()=>{
+export async function POST(req:Request,ctx:Context){return editorialOperator(req,'padelleria.manage',async()=>{
   const id=(await ctx.params).id;
   if(!await existingContent(id))return editorialJson({error:'Contenuto non trovato'},404);
   const sb=supabaseAdmin();
@@ -37,7 +37,7 @@ export async function POST(req:Request,ctx:Context){return editorialAdmin(req,as
   }
   return editorialJson({data},201);
 });}
-export async function PATCH(req:Request,ctx:Context){return editorialAdmin(req,async()=>{
+export async function PATCH(req:Request,ctx:Context){return editorialOperator(req,'padelleria.manage',async()=>{
   const id=(await ctx.params).id;
   if(!await existingContent(id))return editorialJson({error:'Contenuto non trovato'},404);
   const body=await req.json();
@@ -45,7 +45,7 @@ export async function PATCH(req:Request,ctx:Context){return editorialAdmin(req,a
   const {error}=await supabaseAdmin().rpc('padelleria_reorder_media',{p_content_id:id,p_ids:body.ids});
   return error?editorialJson({error:'Ordine non salvato: ricarica il contenuto'},409):editorialJson({ok:true});
 });}
-export async function DELETE(req:Request,ctx:Context){return editorialAdmin(req,async()=>{
+export async function DELETE(req:Request,ctx:Context){return editorialOperator(req,'padelleria.manage',async()=>{
   const id=(await ctx.params).id;
   if(!await existingContent(id))return editorialJson({error:'Contenuto non trovato'},404);
   const body=await req.json();

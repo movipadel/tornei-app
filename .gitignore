@@ -21,3 +21,9 @@ yarn-error.log*
 # dev tools / test locali
 src/lib/baraonda-v2/dev/
 tsconfig.tsbuildinfo
+
+# local certification / browser evidence
+/.artifacts/
+/artifacts/profile-ui/
+/docs/rebranding/references/verification/
+*.bak

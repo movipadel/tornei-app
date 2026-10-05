@@ -19,7 +19,7 @@ export async function findPlayerMatches(criteria: PlayerMatchCriteria) {
   if (!ids.length) return [];
 
   const [profiles, adminProfiles, availability, cases] = await Promise.all([
-    sb.from("player_profiles").select("player_identity_id,descriptive_level,preferred_clubs,available_other_clubs,preferred_match_types,available_last_minute").in("player_identity_id", ids),
+    sb.from("player_profiles").select("player_identity_id,descriptive_level,preferred_side,preferred_clubs,available_other_clubs,preferred_match_types,available_last_minute").in("player_identity_id", ids),
     sb.from("player_admin_profiles").select("player_identity_id,movi_level").in("player_identity_id", ids),
     sb.from("player_profile_availability").select("player_identity_id,weekday,time_window").in("player_identity_id", ids),
     sb.from("player_identity_cases").select("player_ids").in("status", ["open", "in_review"]).overlaps("player_ids", ids),
@@ -41,6 +41,7 @@ export async function findPlayerMatches(criteria: PlayerMatchCriteria) {
     const profile = shared.get(player.id);
     const sharedProfile = profile ? {
       descriptive_level: profile.descriptive_level,
+      preferred_side: profile.preferred_side,
       preferred_clubs: profile.preferred_clubs,
       available_other_clubs: profile.available_other_clubs,
       preferred_match_types: profile.preferred_match_types,

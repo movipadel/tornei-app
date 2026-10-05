@@ -1,1 +1,103 @@
-.stack{display:grid;gap:18px}.stack fieldset{border:1px solid #dbe2ea;border-radius:16px;padding:16px;margin:0}.stack legend{font-weight:800;padding:0 6px}.stack p{font-size:13px;color:#64748b;margin:4px 0 12px}.options{display:flex;flex-wrap:wrap;gap:9px}.options label{display:flex;align-items:center;gap:7px;border:1px solid #dbe2ea;border-radius:999px;padding:8px 11px;background:#fff;font-size:14px}.options input,.schedule input{width:17px;height:17px;accent-color:#4f46e5}.tri{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:14px;font-size:14px}.tri select{border:1px solid #cbd5e1;border-radius:10px;padding:9px;background:#fff}.schedule{display:grid;grid-template-columns:minmax(88px,1.2fr) repeat(4,minmax(52px,1fr));align-items:center;gap:7px;font-size:11px;text-align:center}.scheduleRow{display:contents}.scheduleRow span{text-align:left;font-size:13px;font-weight:650}.scheduleRow label{padding:8px 0;border-radius:8px;background:#f8fafc}@media(max-width:620px){.schedule{overflow-x:auto;grid-template-columns:88px repeat(4,64px)}.tri{align-items:flex-start;flex-direction:column}}
+.stack { display: grid; gap: 18px; }
+.stack fieldset { border: 1px solid #dbe2ea; border-radius: 16px; padding: 16px; margin: 0; min-width: 0; }
+.stack legend { font-weight: 800; padding: 0 6px; }
+.stack p { font-size: 13px; color: #64748b; margin: 4px 0 12px; }
+.options { display: flex; flex-wrap: wrap; gap: 9px; }
+.options label { display: flex; align-items: center; gap: 7px; border: 1px solid #dbe2ea; border-radius: 999px; padding: 8px 11px; background: #fff; font-size: 14px; }
+.options input, .schedule input { width: 17px; height: 17px; accent-color: #4f46e5; }
+.sideOptions { align-items: stretch; }
+.sideOptions label, .clearChoice { min-height: 44px; }
+.clearChoice { border: 1px solid #dbe2ea; border-radius: 999px; padding: 8px 11px; background: transparent; color: inherit; font: inherit; cursor: pointer; }
+.clearChoice:disabled { opacity: .55; cursor: not-allowed; }
+.clearChoice:focus-visible { outline: 3px solid #4f46e5; outline-offset: 3px; }
+.tri { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px; font-size: 14px; }
+.tri select { border: 1px solid #cbd5e1; border-radius: 10px; padding: 9px; background: #fff; }
+.schedule { display: grid; grid-template-columns: minmax(88px, 1.2fr) repeat(4, minmax(52px, 1fr)); align-items: center; gap: 7px; font-size: 11px; text-align: center; }
+.scheduleRow { display: contents; }
+.scheduleRow span { text-align: left; font-size: 13px; font-weight: 650; }
+.scheduleRow label { padding: 8px 0; border-radius: 8px; background: #f8fafc; }
+
+.public { gap: 14px; color: var(--public-text); }
+.public fieldset {
+  border-color: var(--public-border);
+  border-radius: 14px;
+  padding: 16px;
+  background: var(--public-overlay);
+}
+.public legend { color: var(--public-text); font-weight: 650; }
+.public p { color: var(--public-text-secondary); }
+.public .options label {
+  min-height: 44px;
+  border-color: var(--public-border);
+  background: var(--public-surface-1);
+  color: var(--public-text-secondary);
+  cursor: pointer;
+}
+.public .options label:hover { border-color: var(--public-control); color: var(--public-text); }
+.public .options label:has(input:checked) {
+  border-color: color-mix(in srgb, var(--public-cyan) 64%, var(--public-border));
+  background: color-mix(in srgb, var(--public-cyan) 10%, var(--public-surface-1));
+  color: var(--public-text);
+}
+.public .options input, .public .schedule input { flex: 0 0 auto; width: 18px; height: 18px; accent-color: var(--public-royal); }
+.public .clearChoice { border-color: var(--public-border); background: var(--public-surface-1); color: var(--public-text-secondary); }
+.public .clearChoice:hover:not(:disabled) { border-color: var(--public-control); color: var(--public-text); }
+.public .clearChoice:focus-visible { outline-color: color-mix(in srgb, var(--public-cyan) 74%, white); }
+.public .tri { color: var(--public-text-secondary); }
+.public .tri select {
+  min-width: 164px;
+  min-height: 44px;
+  border-color: var(--public-control);
+  background: var(--public-bg);
+  color: var(--public-text);
+  font: inherit;
+  color-scheme: dark;
+}
+.public .tri select option { background: var(--public-surface-1); color: var(--public-text); }
+.public .schedule { overflow: visible; }
+.public .schedule > strong { min-width: 0; color: var(--public-text-secondary); line-height: 1.2; overflow-wrap: anywhere; }
+.public .scheduleRow span { min-width: 0; color: var(--public-text); overflow-wrap: anywhere; }
+.public .scheduleRow label {
+  min-width: 0;
+  min-height: 44px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--public-border);
+  background: var(--public-surface-1);
+  cursor: pointer;
+}
+.public .scheduleRow label:hover { border-color: var(--public-control); }
+.public :where(input, select):focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--public-cyan) 74%, white);
+  outline-offset: 3px;
+}
+.public fieldset:disabled { opacity: 1; }
+.public fieldset:disabled :where(label, select) { cursor: not-allowed; }
+.public fieldset:disabled .options label,
+.public fieldset:disabled .scheduleRow label,
+.public fieldset:disabled .tri select {
+  border-color: #52617c;
+  background: #303a50;
+  color: #c6cede;
+}
+
+@media (max-width: 620px) {
+  .schedule { overflow-x: auto; grid-template-columns: 88px repeat(4, 64px); }
+  .tri { align-items: flex-start; flex-direction: column; }
+  .public fieldset { padding: 13px 10px; }
+  .public .tri { gap: 7px; }
+  .public .tri select { width: 100%; }
+  .public .schedule {
+    grid-template-columns: minmax(58px, .95fr) repeat(4, minmax(0, 1fr));
+    gap: 5px;
+    font-size: 9px;
+  }
+  .public .scheduleRow span { font-size: 11px; }
+  .public .scheduleRow label { min-height: 44px; }
+}
+
+@media (max-width: 350px) {
+  .public fieldset { padding-inline: 8px; }
+  .public .schedule { grid-template-columns: 54px repeat(4, minmax(0, 1fr)); gap: 4px; font-size: 8px; }
+  .public .scheduleRow span { font-size: 10px; }
+}

@@ -6,6 +6,7 @@ import {
   type AvailabilitySlot,
   type SharedPlayerProfile,
 } from "@/lib/playerProfile";
+import { isPlayingSide, type PlayingSide } from "./playingSide";
 
 export const playerMatchingWeekdays = [
   "Lunedì",
@@ -32,6 +33,7 @@ export type PlayerMatchCriteria = {
   weekday: number | null;
   timeWindow: TimeWindow | null;
   matchType: MatchType | null;
+  playingSide: PlayingSide | null;
   lastMinute: boolean;
   excludePlayerId: string | null;
 };
@@ -65,6 +67,7 @@ export type PlayerMatchResult = {
   preferredClubs: string[];
   availability: AvailabilitySlot[];
   preferredMatchTypes: string[];
+  preferredSide: PlayingSide | null;
   availableLastMinute: boolean | null;
   identityWarning: boolean;
   matchedClub: string | null;
@@ -74,6 +77,7 @@ export type PlayerMatchResult = {
     availability: PlayerMatchScorePart;
     club: PlayerMatchScorePart;
     matchType: PlayerMatchScorePart;
+    side: PlayerMatchScorePart;
     lastMinute: PlayerMatchScorePart;
   };
 };
@@ -106,7 +110,7 @@ function parseUuid(value: unknown) {
 export function parsePlayerMatchCriteria(value: unknown): PlayerMatchCriteria {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Criteri non validi");
   const body = value as Record<string, unknown>;
-  const allowed = new Set(["club", "target_level_numeric", "target_level_descriptive", "weekday", "time_window", "match_type", "last_minute", "exclude_player_id"]);
+  const allowed = new Set(["club", "target_level_numeric", "target_level_descriptive", "weekday", "time_window", "match_type", "playing_side", "last_minute", "exclude_player_id"]);
   if (Object.keys(body).some((key) => !allowed.has(key))) throw new Error("Campi di ricerca non validi");
   if (typeof body.club !== "string" || !playerProfileClubs.includes(body.club as never)) throw new Error("Club non valido");
   const numeric = body.target_level_numeric === null || body.target_level_numeric === undefined ? null : body.target_level_numeric;
@@ -117,6 +121,8 @@ export function parsePlayerMatchCriteria(value: unknown): PlayerMatchCriteria {
   if (!Number.isInteger(body.weekday) || (body.weekday as number) < 1 || (body.weekday as number) > 7) throw new Error("Giorno non valido");
   if (typeof body.time_window !== "string" || !playerProfileWindows.includes(body.time_window as never)) throw new Error("Fascia oraria non valida");
   if (typeof body.match_type !== "string" || !playerMatchingRequestedTypes.includes(body.match_type as never)) throw new Error("Tipo partita non valido");
+  const playingSide = body.playing_side === null || body.playing_side === undefined ? null : body.playing_side;
+  if (playingSide !== null && !isPlayingSide(playingSide)) throw new Error("Lato di gioco non valido");
   if (typeof body.last_minute !== "boolean") throw new Error("Indicazione last minute non valida");
   return {
     clubs: [body.club as PlayerMatchCriteria["clubs"][number]],
@@ -125,6 +131,7 @@ export function parsePlayerMatchCriteria(value: unknown): PlayerMatchCriteria {
     weekday: body.weekday as number,
     timeWindow: body.time_window as TimeWindow,
     matchType: body.match_type as MatchType,
+    playingSide,
     lastMinute: body.last_minute,
     excludePlayerId: parseUuid(body.exclude_player_id),
   };
@@ -197,6 +204,16 @@ function scoreLastMinute(candidate: PlayerMatchCandidate, criteria: PlayerMatchC
   return { score: 5, max: 10, detail: "Disponibilità last minute non indicata" };
 }
 
+function scoreSide(candidate: PlayerMatchCandidate, criteria: PlayerMatchCriteria): PlayerMatchScorePart {
+  if (criteria.playingSide === null) return { score: 0, max: 0, detail: "Lato richiesta non indicato" };
+  if (criteria.playingSide === "any") return { score: 0, max: 0, detail: "Lato richiesta indifferente" };
+  const candidateSide = candidate.profile.preferred_side;
+  if (candidateSide === null) return { score: 5, max: 10, detail: "Lato candidato non indicato" };
+  if (candidateSide === "any") return { score: 7, max: 10, detail: "Disponibile su entrambi i lati" };
+  if (candidateSide !== criteria.playingSide) return { score: 10, max: 10, detail: "Lato complementare" };
+  return { score: 2, max: 10, detail: "Stesso lato preferito" };
+}
+
 export function scorePlayerMatch(candidate: PlayerMatchCandidate, criteria: PlayerMatchCriteria): ScoredCandidate | null {
   if (candidate.status !== "active" || candidate.id === criteria.excludePlayerId) return null;
   const level = scoreLevel(candidate, criteria);
@@ -205,8 +222,9 @@ export function scorePlayerMatch(candidate: PlayerMatchCandidate, criteria: Play
   if (!level || !club || !matchType) return null;
   const availability = scoreAvailability(candidate, criteria);
   const lastMinute = scoreLastMinute(candidate, criteria);
-  const raw = level.part.score + availability.part.score + club.part.score + matchType.score + lastMinute.score;
-  const max = level.part.max + availability.part.max + club.part.max + matchType.max + lastMinute.max;
+  const side = scoreSide(candidate, criteria);
+  const raw = level.part.score + availability.part.score + club.part.score + matchType.score + side.score + lastMinute.score;
+  const max = level.part.max + availability.part.max + club.part.max + matchType.max + side.max + lastMinute.max;
   const score = max === 0 ? 0 : Math.round((raw / max) * 100);
   return {
     id: candidate.id,
@@ -219,11 +237,12 @@ export function scorePlayerMatch(candidate: PlayerMatchCandidate, criteria: Play
     preferredClubs: candidate.profile.preferred_clubs,
     availability: candidate.profile.availability,
     preferredMatchTypes: candidate.profile.preferred_match_types,
+    preferredSide: candidate.profile.preferred_side,
     availableLastMinute: candidate.profile.available_last_minute,
     identityWarning: candidate.identityWarning,
     matchedClub: club.matchedClub,
     score,
-    scoreParts: { level: level.part, availability: availability.part, club: club.part, matchType, lastMinute },
+    scoreParts: { level: level.part, availability: availability.part, club: club.part, matchType, side, lastMinute },
     numericDistance: level.distance,
     availabilityConfidence: availability.confidence,
   };
@@ -252,6 +271,7 @@ export function rankPlayerMatches(candidates: PlayerMatchCandidate[], criteria: 
     preferredClubs: candidate.preferredClubs,
     availability: candidate.availability,
     preferredMatchTypes: candidate.preferredMatchTypes,
+    preferredSide: candidate.preferredSide,
     availableLastMinute: candidate.availableLastMinute,
     identityWarning: candidate.identityWarning,
     matchedClub: candidate.matchedClub,

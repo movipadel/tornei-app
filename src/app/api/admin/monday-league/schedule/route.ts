@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
-import { guardAdmin } from "@/lib/adminGuard";
+import { guardOperatorPermission } from "@/lib/operatorAuthorization";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 export const runtime = "nodejs";
 
 export async function GET(request: Request) {
-  const denied = await guardAdmin(); if (denied) return denied;
+  const denied = await guardOperatorPermission("monday_league.manage"); if (denied) return denied;
   const sb = supabaseAdmin();
   const { data: season } = await sb.from("league_seasons").select("id,name,timezone,status").neq("status", "archived").order("created_at", { ascending: false }).limit(1).maybeSingle();
   if (!season) return NextResponse.json({ data: null });

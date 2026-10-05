@@ -3,11 +3,12 @@ export const CONTENT_BUCKET = 'padelleria-content-media';
 export type ContentKind = 'succede' | 'e_successo';
 export type ContentInput = {
   kind: ContentKind; status: 'draft' | 'published'; title: string; excerpt: string; body: string;
-  featured: boolean; sort_order: number; cta_label: string | null; cta_url: string | null;
+  featured: boolean; delete_on_expiry: boolean; sort_order: number; cta_label: string | null; cta_url: string | null;
   occurred_at: string | null; visible_from: string | null; visible_until: string | null;
 };
 export type ContentMedia = { id: string; content_id: string; media_type: 'image' | 'video'; role: 'cover' | 'gallery' | 'video'; caption: string; sort_order: number; url: string | null; external_url: string | null };
 export type ContentItem = ContentInput & { id: string; published_at: string | null; created_at: string; updated_at: string; media: ContentMedia[] };
+export type PublicContentDetail = Pick<ContentItem,'id'|'kind'|'title'|'excerpt'|'body'|'occurred_at'|'published_at'|'cta_label'|'cta_url'|'media'>;
 export const isUuid = (v: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
 export function safeCta(value: string) {
   if (/[\u0000-\u0020\\]/.test(value)) return false;
@@ -43,14 +44,16 @@ export function parseContent(value: unknown): ContentInput {
     return new Date(v).toISOString();
   };
   if (!['succede','e_successo'].includes(String(b.kind)) || !['draft','published'].includes(String(b.status))) throw new Error('Tipo o stato non valido');
-  if (typeof b.featured !== 'boolean' || !Number.isInteger(b.sort_order) || Math.abs(Number(b.sort_order)) > 100000) throw new Error('Ordine o evidenza non validi');
+  if (typeof b.featured !== 'boolean' || typeof b.delete_on_expiry !== 'boolean' || !Number.isInteger(b.sort_order) || Math.abs(Number(b.sort_order)) > 100000) throw new Error('Ordine, evidenza o scadenza non validi');
   const label = b.cta_label === null ? '' : text('cta_label',100);
   const url = b.cta_url === null ? '' : text('cta_url',2000);
   if (Boolean(label) !== Boolean(url) || (url && !safeCta(url))) throw new Error('CTA: testo e URL HTTPS o percorso interno richiesti insieme');
   const from=date('visible_from'), until=date('visible_until');
   if (b.kind === 'e_successo' && (from || until)) throw new Error('È successo non prevede finestre di scadenza');
+  if (b.kind === 'e_successo' && b.delete_on_expiry) throw new Error('Elimina alla scadenza è disponibile solo per Succede');
+  if (b.delete_on_expiry && !until) throw new Error('Imposta una data di fine per eliminare automaticamente il contenuto.');
   if (from && until && from > until) throw new Error('La fine visibilità precede l’inizio');
-  return {kind:b.kind as ContentKind,status:b.status as ContentInput['status'],title:text('title',180,true),excerpt:text('excerpt',500),body:text('body',30000),featured:b.featured,sort_order:Number(b.sort_order),cta_label:label||null,cta_url:url||null,occurred_at:date('occurred_at'),visible_from:from,visible_until:until};
+  return {kind:b.kind as ContentKind,status:b.status as ContentInput['status'],title:text('title',180,true),excerpt:text('excerpt',500),body:text('body',30000),featured:b.featured,delete_on_expiry:b.delete_on_expiry,sort_order:Number(b.sort_order),cta_label:label||null,cta_url:url||null,occurred_at:date('occurred_at'),visible_from:from,visible_until:until};
 }
 export function visible(c: Pick<ContentItem,'kind'|'status'|'visible_from'|'visible_until'>, now=Date.now()) {
   return c.status==='published' && (c.kind==='e_successo' || ((!c.visible_from || Date.parse(c.visible_from)<=now) && (!c.visible_until || now<=Date.parse(c.visible_until))));

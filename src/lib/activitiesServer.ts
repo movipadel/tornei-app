@@ -3,9 +3,11 @@ import {ownsCircuitResult} from '@/lib/playerIdentity';
 import {supabaseAdmin} from '@/lib/supabaseAdmin';
 import {buildPublicCircuitRanking} from '@/lib/circuitPublicRanking';
 import {getPublicLeagueSnapshot} from '@/lib/monday-league/public-read-model';
-import {romeDay,userRequestDTO,matchTypes,trainingTypes,goals,type RequestRow} from '@/lib/moviRequests';
+import {formatRequestValues,romeDay,userRequestDTO,matchTypes,trainingTypes,goals,type RequestRow} from '@/lib/moviRequests';
 import type {Activity} from '@/lib/activities';
 import {romeToUtc} from '@/lib/padelleria';
+import {resolvePlayerIdentityScope} from '@/lib/playerIdentityServer';
+import {playingSideLabel} from '@/lib/playingSide';
 const CAP=500;
 function checked<T>(r:{data:T[]|null;error:unknown},max=CAP):T[]{if(r.error||!r.data||r.data.length>max)throw new Error('Activity source unavailable or over safe bound');return r.data;}
 const norm=(v:string|null)=>String(v??'').trim().toLowerCase();
@@ -14,10 +16,7 @@ const base=(type:Activity['type'],id:string):Activity=>({id:`${type}:${id}`,type
 type Registration={id:string;tournament_id:string;is_reserve:boolean;name:string;category:string;level:string|null;date:string;time:string;location:string;closed_at:string|null};
 export async function composeActivities(userId:string):Promise<Activity[]>{
  const sb=supabaseAdmin(),today=romeDay(),now=new Date().toISOString();
- const scope=await sb.rpc('movi_activity_identity_scope',{p_user_id:userId});if(scope.error)throw new Error('Identity unavailable');
- const ids=scope.data.user_ids as string[],keys=scope.data.player_keys as string[];
- const linked=checked(await sb.from('player_identities').select('id').in('account_user_id',ids).neq('status','merged').limit(CAP+1));
- const playerIds=linked.map(p=>p.id);
+ const {userIds:ids,legacyKeys:keys,playerIds}=await resolvePlayerIdentityScope(userId);
  const filters=[keys.length?`and(player_identity_id.is.null,player_key.in.(${keys.join(',')}))`:null,playerIds.length?`player_identity_id.in.(${playerIds.join(',')})`:null].filter(Boolean).join(',');
  const [rq,regs,rosters,ownResults]=await Promise.all([
   sb.from('movi_requests').select('*').in('user_id',ids).order('created_at',{ascending:false}).limit(CAP+1),
@@ -26,7 +25,7 @@ export async function composeActivities(userId:string):Promise<Activity[]>{
   filters?sb.from('circuit_results').select('ranking_group_id,player_key,player_name,player_identity_id').or(filters).limit(CAP+1):Promise.resolve({data:[],error:null}),
  ]);
  const requests=checked(rq) as RequestRow[],registrations=checked(regs) as Registration[],members=checked(rosters),personalResults=checked(ownResults);
- const items:Activity[]=requests.map(r=>{const dto=userRequestDTO(r);return {...base(r.request_type,r.id),tab:['completed','cancelled'].includes(r.status)?'history':'upcoming',title:r.request_type==='gioca'?'Cerco una partita':trainingTypes[r.training_type!],subtitle:dto.summary,status:r.status,status_label:dto.status_label,date:r.requested_date,club:r.clubs.join(', ')||'Indifferente',level:r.level,primary_meta:r.request_type==='gioca'?`${matchTypes[r.match_type!]} · ${r.has_partner?'Hai già un compagno':'Cerchi anche il compagno'}`:goals[r.training_goal!],secondary_meta:r.preferred_time_text,cta_label:'Vedi richiesta',cta_href:`/le-mie-attivita/richiesta/${r.id}`,can_cancel:r.user_id===userId&&dto.can_cancel,sort_at:['completed','cancelled'].includes(r.status)?r.completed_at??r.cancelled_at??r.updated_at:r.requested_date??'9999'};});
+ const items:Activity[]=requests.map(r=>{const dto=userRequestDTO(r),side=`Lato: ${playingSideLabel(r.playing_side)}`;return {...base(r.request_type,r.id),tab:['completed','cancelled'].includes(r.status)?'history':'upcoming',title:r.request_type==='gioca'?'Cerco una partita':formatRequestValues(r.training_type,trainingTypes),subtitle:dto.summary,status:r.status,status_label:dto.status_label,date:r.requested_date,club:r.clubs.join(', ')||'Indifferente',level:r.level,primary_meta:r.request_type==='gioca'?`${formatRequestValues(r.match_type,matchTypes)} · ${r.has_partner?'Hai già un compagno':'Cerchi anche il compagno'} · ${side}`:`${formatRequestValues(r.training_goal,goals)} · ${side}`,secondary_meta:r.preferred_time_text,cta_label:'Vedi richiesta',cta_href:`/le-mie-attivita/richiesta/${r.id}`,can_cancel:r.user_id===userId&&dto.can_cancel,sort_at:['completed','cancelled'].includes(r.status)?r.completed_at??r.cancelled_at??r.updated_at:r.requested_date??'9999'};});
  const tids=[...new Set(registrations.map(r=>r.tournament_id))];
  const runs=tids.length?checked(await sb.from('tournament_runs').select('id,tournament_id,status').in('tournament_id',tids).limit(CAP+1)):[];
  const finished=runs.filter(r=>r.status==='completed'),runids=finished.map(r=>r.id);

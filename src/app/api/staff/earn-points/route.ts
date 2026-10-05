@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { getStaffSessionOrNull } from "@/lib/staffGuard";
+import { OperatorAccessDenied, requireOperatorPermission } from "@/lib/operatorAuthorization";
 import { readMovibackEligibility } from "@/lib/movibackEligibilityServer";
 
 export const runtime = "nodejs";
@@ -205,7 +205,13 @@ function promoTargetMatches(promo: any, membership: any, nowParts: ReturnType<ty
 export async function POST(req: Request) {
   const origin = req.headers.get("origin");
   if (origin && origin !== new URL(req.url).origin) return NextResponse.json({ error: "Origine non consentita" }, { status: 403 });
-  const session = await getStaffSessionOrNull();
+  let session;
+  try {
+    session = await requireOperatorPermission("scanner.manage");
+  } catch (error) {
+    if (!(error instanceof OperatorAccessDenied)) throw error;
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   if (
     !session?.sid ||

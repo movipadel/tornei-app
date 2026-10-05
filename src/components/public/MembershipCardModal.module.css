@@ -1,0 +1,140 @@
+.modal { width: min(620px, calc(100vw - 32px)); }
+
+.card {
+  position: relative;
+  isolation: isolate;
+  min-height: 300px;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 28px;
+  overflow: hidden;
+  padding: clamp(22px, 5vw, 34px);
+  border: 1px solid rgba(85, 219, 255, .72);
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at 80% 16%, rgba(20, 80, 255, .42), transparent 34%),
+    radial-gradient(circle at 72% 78%, rgba(215, 52, 185, .2), transparent 29%),
+    linear-gradient(135deg, #071329 0%, #071a3c 48%, #090d22 100%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.14), 0 18px 48px rgba(0, 23, 77, .5), 0 0 30px rgba(16, 105, 255, .16);
+}
+.brandMark {
+  position: absolute;
+  z-index: 0;
+  width: 62%;
+  height: auto;
+  right: -13%;
+  top: 18%;
+  pointer-events: none;
+  user-select: none;
+  opacity: .12;
+  transform: rotate(-8deg);
+  filter: saturate(.9) brightness(1.18);
+}
+.glow {
+  position: absolute;
+  z-index: 1;
+  width: 8px;
+  height: 8px;
+  right: 29%;
+  top: 43%;
+  border-radius: 50%;
+  background: #f35bd4;
+  box-shadow: 0 0 9px #f35bd4, 0 0 28px #c623ff, 0 0 70px rgba(32, 114, 255, .72);
+}
+
+.brandRow, .identity, .cardFooter { position: relative; z-index: 2; }
+.brandRow { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
+.logo { width: min(230px, 53%); height: auto; object-fit: contain; }
+.membershipLabel {
+  max-width: 110px;
+  color: #8fdfff;
+  font-size: 12px;
+  line-height: 1.25;
+  font-weight: 750;
+  letter-spacing: .14em;
+  text-align: right;
+  text-transform: uppercase;
+}
+
+.identity { align-self: center; display: grid; justify-items: start; gap: 13px; min-width: 0; }
+.name {
+  max-width: 100%;
+  color: #fff;
+  font-size: clamp(25px, 5.2vw, 36px);
+  line-height: 1.06;
+  font-weight: 780;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+  text-shadow: 0 3px 18px rgba(0,0,0,.35);
+}
+.missingName { color: #c8d4e9; font-size: 18px; font-weight: 650; }
+.codeBlock { display: grid; gap: 3px; }
+.codeBlock span { color: #8fb6dc; font-size: 11px; font-weight: 650; letter-spacing: .08em; text-transform: uppercase; }
+.codeBlock b { color: #5ddfff; font-size: 16px; line-height: 1.25; font-weight: 720; letter-spacing: .045em; overflow-wrap: anywhere; }
+
+.cardFooter { display: flex; align-items: flex-end; justify-content: space-between; gap: 18px; }
+.activeStatus {
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 13px;
+  border: 1px solid rgba(58, 230, 154, .72);
+  border-radius: 999px;
+  background: rgba(5, 82, 63, .42);
+  color: #63f0b1;
+  font-size: 13px;
+  font-weight: 760;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+}
+.activeStatus > span { width: 8px; height: 8px; border-radius: 50%; background: currentColor; box-shadow: 0 0 11px currentColor; }
+.payoff { display: inline-flex; align-items: flex-end; gap: 8px; color: #dcecff; font-size: 12px; font-weight: 650; letter-spacing: .13em; text-transform: uppercase; text-align: right; }
+.payoff i { width: 24px; height: 3px; margin-bottom: 4px; transform: rotate(-12deg); border-radius: 999px; background: #e749c6; box-shadow: 0 0 9px rgba(231,73,198,.6); }
+
+.unavailable {
+  min-height: 210px;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 10px;
+  padding: 28px;
+  border: 1px solid rgba(113,133,167,.58);
+  border-radius: 22px;
+  background: linear-gradient(145deg, rgba(18, 34, 62, .94), rgba(8, 15, 32, .96));
+  text-align: center;
+}
+.unavailableMark { width: 40px; height: 4px; border-radius: 999px; background: linear-gradient(90deg, #1b70ff, #59dfff, #d34bb5); }
+.unavailable h3 { margin: 4px 0 0; color: #f7f9ff; font-size: 20px; }
+.unavailable p { max-width: 420px; margin: 0; color: #b6c4dc; line-height: 1.5; }
+
+.actions { display: flex; justify-content: stretch; margin-top: 18px; }
+.actions button { width: 100%; min-height: 48px; }
+
+@media (max-width: 520px) {
+  .modal { width: 100vw; }
+  .card { min-height: 270px; gap: 21px; padding: 21px 18px; border-radius: 20px; }
+  .brandRow { gap: 12px; }
+  .logo { width: min(205px, 58%); }
+  .brandMark { width: 68%; right: -22%; top: 23%; opacity: .11; }
+  .membershipLabel { max-width: 90px; font-size: 10px; }
+  .name { font-size: clamp(24px, 8vw, 31px); }
+  .cardFooter { align-items: center; }
+  .payoff { max-width: 132px; font-size: 9px; line-height: 1.4; }
+}
+
+@media (max-width: 350px) {
+  .card { min-height: 254px; padding: 18px 15px; }
+  .logo { width: 56%; }
+  .brandMark { width: 74%; right: -28%; top: 25%; }
+  .membershipLabel { font-size: 9px; }
+  .name { font-size: 23px; }
+  .codeBlock b { font-size: 14px; }
+  .activeStatus { min-height: 34px; padding-inline: 10px; font-size: 11px; }
+  .payoff { max-width: 106px; letter-spacing: .09em; }
+}
+
+@media (forced-colors: active) {
+  .card, .unavailable, .activeStatus { border: 1px solid CanvasText; }
+  .activeStatus > span { background: CanvasText; }
+}

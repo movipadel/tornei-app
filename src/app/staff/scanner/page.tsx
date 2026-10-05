@@ -69,7 +69,7 @@ function StaffScannerContent() {
 
   if (mode === "reward") {
     const rewardCode = prizeToken || raw;
-    window.location.href = `/staff?reward=${encodeURIComponent(rewardCode)}`;
+    window.location.href = `/staff/operations?reward=${encodeURIComponent(rewardCode)}`;
     return;
   }
 
@@ -87,7 +87,7 @@ function StaffScannerContent() {
     return;
   }
 
-  window.location.href = `/staff?code=${encodeURIComponent(code)}`;
+  window.location.href = `/staff/operations?code=${encodeURIComponent(code)}`;
 }
 
   return (

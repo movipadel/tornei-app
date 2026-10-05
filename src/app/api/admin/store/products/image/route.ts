@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { guardAdmin } from "@/lib/adminGuard";
+import { guardOperatorPermission } from "@/lib/operatorAuthorization";
 
 export const runtime = "nodejs";
 
@@ -15,7 +15,7 @@ function safeFileName(name: string) {
 }
 
 export async function POST(req: Request) {
-  const denied = await guardAdmin();
+  const denied = await guardOperatorPermission("store.manage");
   if (denied) return denied;
 
   const form = await req.formData().catch(() => null);

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { guardAdmin } from "@/lib/adminGuard";
+import { guardOperatorPermission } from "@/lib/operatorAuthorization";
 
 export const runtime = "nodejs";
 
@@ -18,7 +18,7 @@ export async function PATCH(
   req: Request,
   ctx: { params: Promise<{ id: string }> }
 ) {
-  const denied = await guardAdmin();
+  const denied = await guardOperatorPermission("store.manage");
   if (denied) return denied;
 
   const { id } = await ctx.params;
@@ -70,7 +70,7 @@ export async function DELETE(
   _req: Request,
   ctx: { params: Promise<{ id: string }> }
 ) {
-  const denied = await guardAdmin();
+  const denied = await guardOperatorPermission("store.manage");
   if (denied) return denied;
 
   const { id } = await ctx.params;

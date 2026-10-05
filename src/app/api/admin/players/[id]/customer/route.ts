@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { guardAdmin } from "@/lib/adminGuard";
+import { getCurrentOperator, guardOperatorPermission } from "@/lib/operatorAuthorization";
 import { computeMovibackEligibility, isSupportedTaxCode, normalizeTaxCode } from "@/lib/movibackEligibility";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
@@ -7,14 +7,17 @@ export const dynamic = "force-dynamic";
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const denied = await guardAdmin(); if (denied) return denied;
+  const denied = await guardOperatorPermission("players.manage"); if (denied) return denied;
+  const operator = await getCurrentOperator();
   const { id } = await params;
   if (!uuid.test(id)) return NextResponse.json({ error: "Giocatore non valido" }, { status: 400 });
   const sb = supabaseAdmin();
   const playerResult = await sb.from("player_identities").select("id,full_name,normalized_phone,gender,account_user_id,status").eq("id", id).maybeSingle();
   if (playerResult.error || !playerResult.data) return NextResponse.json({ error: "Giocatore non trovato" }, { status: 404 });
   const player = playerResult.data;
-  const casePromise = sb.from("player_identity_cases").select("id,case_type,status,updated_at").in("status", ["open", "in_review"]).contains("player_ids", [id]).order("updated_at", { ascending: false }).limit(5);
+  const casePromise = operator?.role === "admin"
+    ? sb.from("player_identity_cases").select("id,case_type,status,updated_at").in("status", ["open", "in_review"]).contains("player_ids", [id]).order("updated_at", { ascending: false }).limit(5)
+    : Promise.resolve({ data: [], error: null });
   if (!player.account_user_id) {
     const cases = await casePromise;
     return NextResponse.json({ data: { player, account: null, account_drift: null, open_cases: cases.data ?? [], membership: null, membership_count: 0, eligibility: null, certificate: null, certificates: [], points_balance: 0, transactions: [], redemptions: [], active_promo: null } });
@@ -29,7 +32,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   if (accountResult.error || membershipsResult.error || certificatesResult.error) return NextResponse.json({ error: "Customer Hub non disponibile" }, { status: 503 });
   const memberships = membershipsResult.data ?? [], membership = memberships.length === 1 ? memberships[0] : null, certificates = certificatesResult.data ?? [];
   const eligibility = computeMovibackEligibility({ memberships, certificates, accountActive: accountResult.data?.identity_status === "active" });
-  let transactions: any[] = [], redemptions: any[] = [], activePromo: any = null, pointsBalance = 0;
+  let transactions: unknown[] = [], redemptions: unknown[] = [], activePromo: unknown = null, pointsBalance = 0;
   if (membership) {
     const now = new Date().toISOString();
     const [txResult, redemptionsResult, promoResult, balance] = await Promise.all([
@@ -48,7 +51,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 }
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const denied = await guardAdmin(); if (denied) return denied;
+  const denied = await guardOperatorPermission("players.manage"); if (denied) return denied;
   const origin = req.headers.get("origin"); if (origin && origin !== new URL(req.url).origin) return NextResponse.json({ error: "Origine non consentita" }, { status: 403 });
   const { id } = await params, body = await req.json().catch(() => ({})), taxCode = normalizeTaxCode(body.tax_code);
   if (!isSupportedTaxCode(taxCode)) return NextResponse.json({ error: "Codice fiscale non valido: usa da 11 a 16 caratteri senza spazi" }, { status: 400 });

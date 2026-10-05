@@ -2,11 +2,11 @@ import { randomUUID } from 'node:crypto';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { imageExtension } from '@/lib/padelleria';
 import { PARTNER_BUCKET } from '@/lib/partners';
-import { editorialAdmin, editorialJson } from '@/lib/padelleriaServer';
+import { editorialOperator, editorialJson } from '@/lib/padelleriaServer';
 import { existingPartner, partnerDTO } from '@/lib/partnersServer';
 export const runtime='nodejs';
 type Context={params:Promise<{id:string}>};
-export async function POST(req:Request,ctx:Context){return editorialAdmin(req,async()=>{
+export async function POST(req:Request,ctx:Context){return editorialOperator(req,'partners.manage',async()=>{
  const id=(await ctx.params).id,p=await existingPartner(id);if(!p)return editorialJson({error:'Partner non trovato'},404);
  if(Number(req.headers.get('content-length')??0)>6*1024*1024)throw new Error('Richiesta troppo grande');
  const f=await req.formData(),file=f.get('file'),role=f.get('role');
@@ -18,7 +18,7 @@ export async function POST(req:Request,ctx:Context){return editorialAdmin(req,as
  if(error||!data){await sb.storage.from(PARTNER_BUCKET).remove([path]);return editorialJson({error:'Partner modificato altrove: ricarica e riprova'},409);}
  return editorialJson({data:(await partnerDTO([data]))[0]},201);
 });}
-export async function DELETE(req:Request,ctx:Context){return editorialAdmin(req,async()=>{
+export async function DELETE(req:Request,ctx:Context){return editorialOperator(req,'partners.manage',async()=>{
  const id=(await ctx.params).id,p=await existingPartner(id);if(!p)return editorialJson({error:'Partner non trovato'},404);
  const b=await req.json();if(!['logo','cover'].includes(b.role)||Object.keys(b).some(k=>k!=='role'))throw new Error('Indica soltanto logo o cover; percorsi non accettati');
  const {data,error}=await supabaseAdmin().from('movi_partners').update({[`${b.role}_path`]:null}).eq('id',id).eq('updated_at',p.updated_at).is('deleted_at',null).select('*').maybeSingle();

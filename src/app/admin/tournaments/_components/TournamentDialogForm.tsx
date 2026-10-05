@@ -92,15 +92,15 @@ const [circuitsLoading, setCircuitsLoading] = useState(false);
     if (tournament) {
       setForm({
         name: tournament.name ?? "",
-        type: (tournament.type as any) ?? "Baraonda",
-        category: (tournament.category as any) ?? "Maschile",
-        level: (tournament.level as any) ?? "intermedio",
+        type: (tournament.type as FormState["type"]) ?? "Baraonda",
+        category: (tournament.category as FormState["category"]) ?? "Maschile",
+        level: (tournament.level as FormState["level"]) ?? "intermedio",
         date: tournament.date ?? "",
         time: tournament.time ?? "",
         location: tournament.location ?? "Movi Club Centallo",
         max_participants: tournament.max_participants ?? 16,
-        show_participants: Boolean((tournament as any).show_participants),
-        circuit_id: (tournament as any).circuit_id ?? null,
+        show_participants: Boolean(tournament.show_participants),
+        circuit_id: tournament.circuit_id ?? null,
       });
     } else {
       setForm(DEFAULTS);
@@ -124,10 +124,10 @@ const [circuitsLoading, setCircuitsLoading] = useState(false);
       if (!cancelled) {
         setCircuits(Array.isArray(json.data) ? json.data : []);
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       if (!cancelled) {
         setCircuits([]);
-        toast.error(e?.message ?? "Errore caricamento circuiti");
+        toast.error(e instanceof Error ? e.message : "Errore caricamento circuiti");
       }
     } finally {
       if (!cancelled) setCircuitsLoading(false);
@@ -211,14 +211,14 @@ useEffect(() => {
         body: JSON.stringify(payload),
       });
 
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error((json as any).error || "Errore salvataggio");
+      const json = await res.json().catch(() => ({})) as { error?: string };
+      if (!res.ok) throw new Error(json.error || "Errore salvataggio");
 
       toast.success(isEdit ? "Torneo aggiornato" : "Torneo creato");
       await onSaved();
       onClose();
-    } catch (e: any) {
-      toast.error(e?.message ?? "Errore");
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Errore");
     } finally {
       setSaving(false);
     }
@@ -308,7 +308,7 @@ useEffect(() => {
                   <select
                     className="base44-input"
                     value={form.type}
-                    onChange={(e) => setForm({ ...form, type: e.target.value as any })}
+                    onChange={(e) => setForm({ ...form, type: e.target.value as FormState["type"] })}
                     style={{ fontSize: 16 }}
                   >
                     {typeOptions.map((o) => (
@@ -324,7 +324,7 @@ useEffect(() => {
                   <select
                     className="base44-input"
                     value={form.category}
-                    onChange={(e) => setForm({ ...form, category: e.target.value as any })}
+                    onChange={(e) => setForm({ ...form, category: e.target.value as FormState["category"] })}
                     style={{ fontSize: 16 }}
                   >
                     <option value="Maschile">Maschile</option>
@@ -341,7 +341,7 @@ useEffect(() => {
                 <select
                   className="base44-input"
                   value={form.level}
-                  onChange={(e) => setForm({ ...form, level: e.target.value as any })}
+                  onChange={(e) => setForm({ ...form, level: e.target.value as FormState["level"] })}
                   style={{ fontSize: 16 }}
                 >
                   <option value="principiante">Principiante</option>

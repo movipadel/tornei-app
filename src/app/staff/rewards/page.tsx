@@ -1,9 +1,9 @@
 import { redirect } from "next/navigation";
 import { RewardRequestsQueue } from "@/components/moviback/RewardRequestsQueue";
-import { getStaffSessionFromCookie } from "@/lib/staffSession";
+import { getCurrentOperator } from "@/lib/operatorAuthorization";
 
 export default async function StaffRewardRequestsPage() {
-  const session = await getStaffSessionFromCookie();
+  const session = await getCurrentOperator();
   if (!session) redirect("/staff/login");
   return <RewardRequestsQueue />;
 }

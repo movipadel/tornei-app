@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getStaffSessionFromCookie } from "@/lib/staffSession";
+import { OperatorAccessDenied, requireOperatorPermission } from "@/lib/operatorAuthorization";
 import { isUuid, mapMovibackRpcError } from "@/lib/movibackContracts";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
@@ -77,8 +77,11 @@ export async function runStoreFulfillmentCommand(
   orderId: string,
   action: StoreFulfillmentAction
 ) {
-  const session = await getStaffSessionFromCookie();
-  if (!session || session.role !== "admin") {
+  let session;
+  try {
+    session = await requireOperatorPermission("store.manage");
+  } catch (error) {
+    if (!(error instanceof OperatorAccessDenied)) throw error;
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

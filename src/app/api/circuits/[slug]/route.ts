@@ -1,6 +1,7 @@
 import { buildPublicCircuitRanking } from '@/lib/circuitPublicRanking';
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { createRuntimePerf } from "@/lib/runtimePerf";
+import { sortPublicCircuitStageResults } from "@/lib/circuitStageResults";
 
 export const runtime = "nodejs";
 
@@ -30,6 +31,7 @@ type PublicResultRow = {
 };
 
 type PublicStage = {
+  source_tournament_id: string | null;
   tournament_name: string;
   tournament_type: string;
   tournament_date: string | null;
@@ -43,6 +45,17 @@ type UpcomingStage = {
   time: string | null;
   location: string | null;
   registrations_open: boolean;
+};
+
+type FutureTournamentRow = {
+  id: string;
+  name: string | null;
+  category: string | null;
+  level: string | null;
+  date: string | null;
+  time: string | null;
+  location: string | null;
+  registrations_open: boolean | null;
 };
 
 type PublicRankingGroup = {
@@ -80,7 +93,7 @@ export async function GET(
       sb
         .from("circuits")
         .select(
-          "id,name,slug,tournament_type,status,hero_logo_url,hero_logo_2_url,hero_logo_3_url,hero_subtitle,theme_key,created_at,updated_at"
+          "id,name,slug,tournament_type,status,hero_logo_url,hero_logo_2_url,hero_logo_3_url,hero_subtitle,theme_key,rules_url,created_at,updated_at"
         )
         .eq("slug", slug)
         .single()
@@ -168,6 +181,7 @@ export async function GET(
 
         if (!stageMap.has(stageKey)) {
           stageMap.set(stageKey, {
+            source_tournament_id: row.source_tournament_id,
             tournament_name: String(row.tournament_name ?? "Tappa"),
             tournament_type: String(row.tournament_type ?? ""),
             tournament_date: row.tournament_date ?? null,
@@ -184,29 +198,20 @@ export async function GET(
 
       const played_stages: PublicStage[] = Array.from(stageMap.values()).map((stage) => ({
         ...stage,
-        results: [...stage.results].sort((a, b) => {
-          if (b.points !== a.points) return b.points - a.points;
-          if (a.placement == null && b.placement == null) {
-            return a.player_name.localeCompare(b.player_name, "it");
-          }
-          if (a.placement == null) return 1;
-          if (b.placement == null) return -1;
-          if (a.placement !== b.placement) return a.placement - b.placement;
-          return a.player_name.localeCompare(b.player_name, "it");
-        }),
+        results: sortPublicCircuitStageResults(stage.results),
       }));
 
       const groupCategory = normalizeValue(group.category);
       const groupLevel = normalizeValue(group.level);
 
-      const upcoming_stages: UpcomingStage[] = (futureTournaments ?? [])
+      const upcoming_stages: UpcomingStage[] = ((futureTournaments ?? []) as FutureTournamentRow[])
         .filter((t) => {
-          const tournamentCategory = normalizeValue((t as any).category);
-          const tournamentLevel = normalizeValue((t as any).level);
+          const tournamentCategory = normalizeValue(t.category);
+          const tournamentLevel = normalizeValue(t.level);
 
           return tournamentCategory === groupCategory && tournamentLevel === groupLevel;
         })
-        .map((t: any) => ({
+        .map((t) => ({
           id: String(t.id),
           name: String(t.name ?? "Tappa"),
           date: t.date ?? null,
@@ -237,12 +242,13 @@ export async function GET(
     hero_logo_3_url: circuit.hero_logo_3_url ?? null,
     hero_subtitle: circuit.hero_subtitle ?? null,
     theme_key: circuit.theme_key ?? null,
+    rules_url: circuit.rules_url ?? null,
   },
   ranking_groups: rankingGroups,
 });
-  } catch (e: any) {
+  } catch (error: unknown) {
     return perf.json(
-      { error: e?.message ?? "Errore interno" },
+      { error: error instanceof Error ? error.message : "Errore interno" },
       { status: 500 }
     );
   } finally {

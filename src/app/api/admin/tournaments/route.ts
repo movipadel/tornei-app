@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { guardAdmin } from "@/lib/adminGuard";
+import { guardOperatorAnyPermission, guardOperatorPermission } from "@/lib/operatorAuthorization";
 
 export const runtime = "nodejs";
 
 type LegacyType = "Baraonda" | "Coppie fisse";
 type LegacyCategory = "Maschile" | "Femminile" | "Misto" | "Libero";
+type TournamentBody = Record<string, unknown>;
 
 const TYPE_UI_TO_DB: Record<string, LegacyType> = {
   baraonda: "Baraonda",
@@ -25,7 +26,7 @@ const CATEGORY_UI_TO_DB: Record<string, LegacyCategory> = {
   Libero: "Libero",
 };
 
-function parseDateTimeFromBody(body: any): { date: string; time: string } {
+function parseDateTimeFromBody(body: TournamentBody): { date: string; time: string } {
   // Nuovo (Base44 style): date + time
   const d = typeof body?.date === "string" ? body.date.trim() : "";
   const t = typeof body?.time === "string" ? body.time.trim() : "";
@@ -52,7 +53,7 @@ function parseDateTimeFromBody(body: any): { date: string; time: string } {
   };
 }
 
-function parseMaxParticipants(body: any): number {
+function parseMaxParticipants(body: TournamentBody): number {
   if (body?.max_participants !== undefined && body?.max_participants !== null) {
     const n = Number(body.max_participants);
     return Number.isFinite(n) ? n : 0;
@@ -112,8 +113,8 @@ async function validateCircuitCompatibility(params: {
   }
 }
 
-export async function GET(req: Request) {
-  const denied = await guardAdmin(req);
+export async function GET() {
+  const denied = await guardOperatorAnyPermission(["tournaments.manage", "communications.manage"]);
   if (denied) return denied;
 
 
@@ -164,17 +165,17 @@ for (const tid of ids) {
   for (const tid of ids) latestTsByTournament[tid] = 0;
 
   for (const r of runs ?? []) {
-  const tid = String((r as any).tournament_id ?? "");
+  const tid = String(r.tournament_id ?? "");
   if (!tid || !runInfoByTournament[tid]) continue;
 
   runInfoByTournament[tid].has_run = true;
   runInfoByTournament[tid].runs_count += 1;
 
-  const ts = (r as any).created_at ? new Date((r as any).created_at).getTime() : 0;
+  const ts = r.created_at ? new Date(r.created_at).getTime() : 0;
   if (ts >= (latestTsByTournament[tid] ?? 0)) {
     latestTsByTournament[tid] = ts;
-    runInfoByTournament[tid].active_run_id = String((r as any).id);
-    runInfoByTournament[tid].run_status = (r as any).status ?? null;
+    runInfoByTournament[tid].active_run_id = String(r.id);
+    runInfoByTournament[tid].run_status = r.status ?? null;
   }
 }
 
@@ -214,10 +215,10 @@ for (const tid of ids) {
 }
 
 export async function POST(req: Request) {
-  const denied = await guardAdmin(req);
+  const denied = await guardOperatorPermission("tournaments.manage");
 if (denied) return denied;
 
-  const body = await req.json().catch(() => ({}));
+  const body = await req.json().catch(() => ({})) as TournamentBody;
 
   const name = String(body?.name ?? "").trim();
   if (!name) return NextResponse.json({ error: "Nome obbligatorio" }, { status: 400 });
@@ -260,14 +261,14 @@ try {
     category,
     level,
   });
-} catch (e: any) {
+} catch (e: unknown) {
   return NextResponse.json(
-    { error: e?.message ?? "Circuito non compatibile con il torneo" },
+    { error: e instanceof Error ? e.message : "Circuito non compatibile con il torneo" },
     { status: 400 }
   );
 }
 
-  const payload: any = {
+  const payload: Record<string, unknown> = {
   name,
   type,
   category,

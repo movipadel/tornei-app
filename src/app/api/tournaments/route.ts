@@ -1,5 +1,6 @@
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { createRuntimePerf } from "@/lib/runtimePerf";
+import { getHomeTournamentWindow } from "@/lib/homeTournamentWindow";
 
 export const runtime = "nodejs";
 
@@ -15,16 +16,18 @@ function todayRomeISODate() {
   return new Date().toLocaleDateString("en-CA", { timeZone: "Europe/Rome" });
 }
 
-export async function GET(_req: Request) {
+export async function GET(req: Request) {
   const perf = createRuntimePerf("/api/tournaments");
   try {
   const sb = supabaseAdmin();
 
   const todayRome = todayRomeISODate();
+  const homeScope = new URL(req.url).searchParams.get("scope") === "home";
+  const homeWindow = getHomeTournamentWindow(todayRome);
 
   // 1) Lista tornei (solo oggi+futuro)
-  const { data: tournaments, error: tErr } = await perf.db(() =>
-    sb.from("tournaments")
+  const { data: tournaments, error: tErr } = await perf.db(() => {
+    let query = sb.from("tournaments")
     .select(
       `
       id,
@@ -45,15 +48,19 @@ export async function GET(_req: Request) {
       updated_at
     `
     )
-    .gte("date", todayRome)
-    .order("date", { ascending: true })
-      .order("time", { ascending: true })
-  );
+      .gte("date", homeScope ? homeWindow.start : todayRome);
+
+    if (homeScope) query = query.lte("date", homeWindow.end);
+
+    return query
+      .order("date", { ascending: true })
+      .order("time", { ascending: true });
+  });
 
   if (tErr) return perf.json({ error: tErr.message }, { status: 500 });
 
   // ... resto invariato
-  const list = (tournaments ?? []) as any[];
+  const list = tournaments ?? [];
   const ids = list.map((t) => String(t.id));
 
   // 2) hasLive ...
@@ -70,7 +77,7 @@ export async function GET(_req: Request) {
     if (rErr) return perf.json({ error: rErr.message }, { status: 500 });
 
     for (const r of runs ?? []) {
-      hasLiveByTournamentId.set(String((r as any).tournament_id), true);
+      hasLiveByTournamentId.set(String(r.tournament_id), true);
     }
   }
 

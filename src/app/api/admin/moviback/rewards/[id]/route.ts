@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { guardAdmin } from "@/lib/adminGuard";
+import { guardOperatorPermission } from "@/lib/operatorAuthorization";
 import { isUuid, type MovibackFulfillmentType } from "@/lib/movibackContracts";
 import { validateRewardFulfillment } from "@/lib/movibackRewardAdmin";
 
@@ -13,7 +13,7 @@ type Params = {
 };
 
 export async function PATCH(req: Request, { params }: Params) {
-  const denied = await guardAdmin();
+  const denied = await guardOperatorPermission("moviback.manage");
   if (denied) return denied;
 
   const { id } = await params;
@@ -104,7 +104,7 @@ export async function PATCH(req: Request, { params }: Params) {
 }
 
 export async function DELETE(_req: Request, { params }: Params) {
-  const denied = await guardAdmin();
+  const denied = await guardOperatorPermission("moviback.manage");
   if (denied) return denied;
 
   const { id } = await params;

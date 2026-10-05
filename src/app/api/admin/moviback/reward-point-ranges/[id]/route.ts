@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { guardAdmin } from "@/lib/adminGuard";
+import { guardOperatorPermission } from "@/lib/operatorAuthorization";
 
 export const runtime = "nodejs";
 
@@ -8,7 +8,7 @@ export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const denied = await guardAdmin();
+  const denied = await guardOperatorPermission("moviback.manage");
   if (denied) return denied;
 
   const { id } = await params;
@@ -67,7 +67,7 @@ export async function DELETE(
   _req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const denied = await guardAdmin();
+  const denied = await guardOperatorPermission("moviback.manage");
   if (denied) return denied;
 
   const { id } = await params;

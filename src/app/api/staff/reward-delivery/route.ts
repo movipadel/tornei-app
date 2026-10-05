@@ -1,7 +1,8 @@
 import crypto from "crypto";
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { getStaffSessionOrNull, guardStaff } from "@/lib/staffGuard";
+import { getStaffSessionOrNull } from "@/lib/staffGuard";
+import { guardOperatorPermission } from "@/lib/operatorAuthorization";
 import {
   isUuid,
   mapMovibackRpcError,
@@ -120,7 +121,7 @@ async function loadRedemption(
 }
 
 export async function POST(req: Request) {
-  const denied = await guardStaff();
+  const denied = await guardOperatorPermission("scanner.manage");
   if (denied) return denied;
 
   const session = await getStaffSessionOrNull();

@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
-import { guardAdmin } from "@/lib/adminGuard";
+import { guardOperatorPermission } from "@/lib/operatorAuthorization";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 export const runtime = "nodejs";
 
 export async function GET() {
-  const denied = await guardAdmin();
+  const denied = await guardOperatorPermission("monday_league.manage");
   if (denied) return denied;
   const sb = supabaseAdmin();
   const { data: season, error } = await sb

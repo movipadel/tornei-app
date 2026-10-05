@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
-import { guardAdmin } from "@/lib/adminGuard";
+import { guardOperatorPermission } from "@/lib/operatorAuthorization";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 export const runtime = "nodejs";
 
 export async function GET(req: Request) {
-  const denied = await guardAdmin();
+  const denied = await guardOperatorPermission("monday_league.manage");
   if (denied) return denied;
   const q = new URL(req.url).searchParams.get("q")?.trim().slice(0, 80) ?? "";
   if (q.length < 2) return NextResponse.json({ data: [] });

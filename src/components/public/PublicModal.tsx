@@ -7,19 +7,21 @@ import styles from "./PublicUI.module.css";
 type PublicModalProps = {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  onCloseAutoFocus?: React.ComponentPropsWithoutRef<typeof Dialog.Content>["onCloseAutoFocus"];
+  contentClassName?: string;
   trigger?: React.ReactNode;
-  title: string;
+  title: React.ReactNode;
   description?: string;
   children: React.ReactNode;
 };
 
-export function PublicModal({ open, onOpenChange, trigger, title, description, children }: PublicModalProps) {
+export function PublicModal({ open, onOpenChange, onCloseAutoFocus, contentClassName = "", trigger, title, description, children }: PublicModalProps) {
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       {trigger ? <Dialog.Trigger asChild>{trigger}</Dialog.Trigger> : null}
       <Dialog.Portal>
         <Dialog.Overlay className={styles.modalOverlay} />
-        <Dialog.Content className={styles.modalContent}>
+        <Dialog.Content className={`${styles.modalContent} ${contentClassName}`} onCloseAutoFocus={onCloseAutoFocus}>
           <div className={styles.modalHead}>
             <div>
               <Dialog.Title className={styles.modalTitle}>{title}</Dialog.Title>

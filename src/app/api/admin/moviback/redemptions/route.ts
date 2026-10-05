@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { guardStaff } from "@/lib/staffGuard";
+import { guardOperatorAnyPermission } from "@/lib/operatorAuthorization";
 
 export const runtime = "nodejs";
 
@@ -31,7 +31,7 @@ function availableActions(redemption: {
 }
 
 export async function GET(req: Request) {
-  const denied = await guardStaff();
+  const denied = await guardOperatorAnyPermission(["scanner.manage", "moviback.manage"]);
   if (denied) return denied;
 
   const url = new URL(req.url);

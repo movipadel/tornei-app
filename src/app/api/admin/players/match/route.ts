@@ -1,20 +1,15 @@
-import { guardAdmin } from "@/lib/adminGuard";
-import { getStaffSessionFromCookie } from "@/lib/staffSession";
+import { guardOperatorPermission } from "@/lib/operatorAuthorization";
 import { editorialJson } from "@/lib/padelleriaServer";
 import { parsePlayerMatchCriteria } from "@/lib/playerMatching";
 import { findPlayerMatches } from "@/lib/playerMatchingServer";
-import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
-  const denied = await guardAdmin(req);
+  const denied = await guardOperatorPermission("players.manage");
   if (denied) return denied;
   const origin = req.headers.get("origin");
   if (origin && origin !== new URL(req.url).origin) return editorialJson({ error: "Origine non consentita" }, 403);
-  const session = await getStaffSessionFromCookie();
-  const active = await supabaseAdmin().rpc("player_identity_admin", { p_actor: session!.sid });
-  if (active.error) return editorialJson({ error: "Admin attivo richiesto" }, 403);
   try {
     const criteria = parsePlayerMatchCriteria(await req.json().catch(() => null));
     const data = await findPlayerMatches(criteria);

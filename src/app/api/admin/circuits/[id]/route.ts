@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { guardAdmin } from "@/lib/adminGuard";
+import { guardOperatorPermission } from "@/lib/operatorAuthorization";
 
 export const runtime = "nodejs";
 
@@ -39,6 +39,7 @@ type CircuitPayload = {
   slug: string;
   tournament_type: TournamentType;
   status: CircuitStatus;
+  home_image_url: string | null;
   hero_logo_url: string | null;
   hero_logo_2_url: string | null;
   hero_logo_3_url: string | null;
@@ -83,7 +84,12 @@ function parseOptionalText(value: unknown): string | null {
   return trimmed ? trimmed : null;
 }
 
-function parsePayload(body: any): CircuitPayload {
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" ? value as Record<string, unknown> : {};
+}
+
+function parsePayload(input: unknown): CircuitPayload {
+  const body = asRecord(input);
   const name = String(body?.name ?? "").trim();
   const slugRaw = String(body?.slug ?? "").trim();
   const slug = normalizeSlug(slugRaw || name);
@@ -91,6 +97,7 @@ function parsePayload(body: any): CircuitPayload {
   const tournament_type = String(body?.tournament_type ?? "").trim() as TournamentType;
   const status = String(body?.status ?? "draft").trim() as CircuitStatus;
 
+  const home_image_url = parseOptionalText(body?.home_image_url);
   const hero_logo_url = parseOptionalText(body?.hero_logo_url);
   const hero_logo_2_url = parseOptionalText(body?.hero_logo_2_url);
   const hero_logo_3_url = parseOptionalText(body?.hero_logo_3_url);
@@ -107,7 +114,8 @@ function parsePayload(body: any): CircuitPayload {
   if (!VALID_STATUS.has(status)) throw new Error("Stato circuito non valido");
   if (!ranking_groups.length) throw new Error("Seleziona almeno una classifica categoria/livello");
 
-  const normalizedGroups: RankingGroupInput[] = ranking_groups.map((g: any) => {
+  const normalizedGroups: RankingGroupInput[] = ranking_groups.map((value: unknown) => {
+    const g = asRecord(value);
     const category = String(g?.category ?? "").trim() as Category;
     const level = String(g?.level ?? "").trim() as Level;
 
@@ -132,7 +140,8 @@ function parsePayload(body: any): CircuitPayload {
 
   const normalizedRules: PointsRuleInput[] = [];
 
-  for (const raw of points_rules) {
+  for (const value of points_rules) {
+    const raw = asRecord(value);
     const min_admissions = parsePositiveInt(raw?.min_admissions);
     const max_admissions = parsePositiveInt(raw?.max_admissions);
     const rule_type = String(raw?.rule_type ?? "").trim() as RuleType;
@@ -203,6 +212,7 @@ function parsePayload(body: any): CircuitPayload {
     slug,
     tournament_type,
     status,
+    home_image_url,
     hero_logo_url,
     hero_logo_2_url,
     hero_logo_3_url,
@@ -259,7 +269,7 @@ async function replaceCircuitRelations(
 }
 
 export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }) {
-  const denied = await guardAdmin(req);
+  const denied = await guardOperatorPermission("circuits.manage");
   if (denied) return denied;
 
   const { id } = await ctx.params;
@@ -268,7 +278,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
   const { data: circuit, error: circuitErr } = await sb
     .from("circuits")
     .select(
-      "id,name,slug,tournament_type,status,hero_logo_url,hero_logo_2_url,hero_logo_3_url,hero_subtitle,theme_key,rules_url,created_at,updated_at"
+      "id,name,slug,tournament_type,status,home_image_url,hero_logo_url,hero_logo_2_url,hero_logo_3_url,hero_subtitle,theme_key,rules_url,created_at,updated_at"
     )
     .eq("id", id)
     .single();
@@ -324,7 +334,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
 }
 
 export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }> }) {
-  const denied = await guardAdmin(req);
+  const denied = await guardOperatorPermission("circuits.manage");
   if (denied) return denied;
 
   const { id } = await ctx.params;
@@ -352,6 +362,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
         slug: payload.slug,
         tournament_type: payload.tournament_type,
         status: payload.status,
+        home_image_url: payload.home_image_url,
         hero_logo_url: payload.hero_logo_url,
         hero_logo_2_url: payload.hero_logo_2_url,
         hero_logo_3_url: payload.hero_logo_3_url,
@@ -375,16 +386,16 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     if (updatedErr) throw new Error(updatedErr.message);
 
     return NextResponse.json({ data: updated });
-  } catch (e: any) {
+  } catch (error: unknown) {
     return NextResponse.json(
-      { error: e?.message ?? "Errore aggiornamento circuito" },
+      { error: error instanceof Error ? error.message : "Errore aggiornamento circuito" },
       { status: 400 }
     );
   }
 }
 
 export async function DELETE(req: Request, ctx: { params: Promise<{ id: string }> }) {
-  const denied = await guardAdmin(req);
+  const denied = await guardOperatorPermission("circuits.manage");
   if (denied) return denied;
 
   const { id } = await ctx.params;

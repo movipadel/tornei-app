@@ -195,7 +195,7 @@
 
 /* Radix mounts this editor beside the Admin root. The mirrored Admin theme
    attribute keeps this one portal visually consistent without global styling. */
-.admin-circuit-dialog[data-admin-theme="dark"]{--admin-surface:#0f172a;--admin-surface-2:#1e293b;--admin-border:rgba(148,163,184,.3);--admin-text:#f8fafc;--admin-muted:#b5c0d0;--admin-accent-soft:rgba(139,92,246,.16);--admin-accent-border:rgba(139,92,246,.43);--admin-accent-text:#ddd6fe;background:var(--admin-surface)!important;color:var(--admin-text)!important;border-color:var(--admin-border)!important;color-scheme:dark}
+.admin-circuit-dialog[data-admin-theme="dark"]{--admin-surface:#0f172a;--admin-surface-2:#1e293b;--admin-border:rgba(148,163,184,.3);--admin-border-strong:rgba(148,163,184,.48);--admin-text:#f8fafc;--admin-muted:#b5c0d0;--admin-subtle:#94a3b8;--admin-accent:#8b5cf6;--admin-accent-soft:rgba(139,92,246,.16);--admin-accent-border:#a78bfa;--admin-accent-text:#ddd6fe;--admin-danger-bg:rgba(127,29,29,.3);--admin-danger-border:rgba(248,113,113,.58);--admin-danger-text:#fecaca;background:var(--admin-surface)!important;color:var(--admin-text)!important;border-color:var(--admin-border)!important;color-scheme:dark}
 .admin-circuit-dialog[data-admin-theme="dark"] :where(input,select,textarea){background:#020617!important;color:var(--admin-text)!important;border-color:rgba(148,163,184,.38)!important}
 .admin-circuit-dialog[data-admin-theme="dark"] :where(input,textarea)::placeholder{color:#8795aa!important;opacity:1}
 .admin-circuit-dialog[data-admin-theme="dark"] :where(section,article,form,div,button,span)[style*="background: white"],
@@ -211,6 +211,22 @@
 .admin-circuit-dialog[data-admin-theme="dark"] :where(section,article,form,div,button,span)[style*="rgb(226, 232, 240)"]{border-color:var(--admin-border)!important}
 .admin-circuit-dialog[data-admin-theme="dark"] button[style*="background: rgb(22, 163, 74)"],
 .admin-circuit-dialog[data-admin-theme="dark"] button[style*="background: #16a34a"]{background:#16a34a!important;color:#fff!important}
+
+/* Circuit Home image controls live in the dialog portal, outside .admin-ui. */
+.admin-circuit-dialog[data-admin-theme="light"]{--admin-surface:#fff;--admin-surface-2:#edf2f7;--admin-border:rgba(71,85,105,.24);--admin-border-strong:rgba(71,85,105,.46);--admin-text:#0f172a;--admin-muted:#475569;--admin-subtle:#64748b;--admin-accent:#6d28d9;--admin-accent-soft:#f5f3ff;--admin-accent-border:#8b5cf6;--admin-danger-bg:#fff1f2;--admin-danger-border:#f43f5e;--admin-danger-text:#9f1239}
+.admin-circuit-dialog .admin-circuit-home-image{background:var(--admin-surface-2)!important;border-color:var(--admin-border-strong)!important;color:var(--admin-text)!important;box-shadow:none!important}
+.admin-circuit-dialog .admin-circuit-home-image__title{color:var(--admin-text)!important}
+.admin-circuit-dialog .admin-circuit-home-image__helper{color:var(--admin-muted)!important}
+.admin-circuit-dialog .admin-circuit-home-image__action{position:relative;display:inline-flex;align-items:center;justify-content:center;min-height:42px;padding:.55rem .85rem;border:1px solid var(--admin-border-strong)!important;border-radius:.75rem;background:var(--admin-surface)!important;color:var(--admin-text)!important;font:inherit;font-weight:750;line-height:1.2;cursor:pointer;transition:background-color .16s ease,border-color .16s ease,color .16s ease,box-shadow .16s ease,transform .08s ease}
+.admin-circuit-dialog .admin-circuit-home-image__action:hover:not(:disabled):not([data-disabled="true"]){background:var(--admin-accent-soft)!important;border-color:var(--admin-accent-border)!important;color:var(--admin-text)!important}
+.admin-circuit-dialog .admin-circuit-home-image__action:active:not(:disabled):not([data-disabled="true"]){transform:translateY(1px);background:var(--admin-accent-soft)!important;border-color:var(--admin-accent)!important}
+.admin-circuit-dialog .admin-circuit-home-image__action:focus-visible,
+.admin-circuit-dialog .admin-circuit-home-image__action:focus-within{outline:3px solid var(--admin-accent-border);outline-offset:3px;box-shadow:0 0 0 2px var(--admin-surface)}
+.admin-circuit-dialog .admin-circuit-home-image__action--remove{border-color:var(--admin-danger-border)!important;background:var(--admin-danger-bg)!important;color:var(--admin-danger-text)!important}
+.admin-circuit-dialog .admin-circuit-home-image__action--remove:hover:not(:disabled){border-color:var(--admin-danger-text)!important;background:var(--admin-danger-bg)!important;color:var(--admin-danger-text)!important}
+.admin-circuit-dialog .admin-circuit-home-image__action:disabled,
+.admin-circuit-dialog .admin-circuit-home-image__action[data-disabled="true"]{border-color:var(--admin-border)!important;background:var(--admin-surface-2)!important;color:var(--admin-subtle)!important;cursor:not-allowed;opacity:.72}
+.admin-circuit-dialog .admin-circuit-home-image__file-input{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 
 /* Store Orders: reinforce the information hierarchy instead of letting every
    translucent dark control collapse into the same washed-out gray. */

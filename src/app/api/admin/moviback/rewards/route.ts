@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { guardAdmin } from "@/lib/adminGuard";
+import { guardOperatorPermission } from "@/lib/operatorAuthorization";
 import { isUuid, type MovibackFulfillmentType } from "@/lib/movibackContracts";
 import { validateRewardFulfillment } from "@/lib/movibackRewardAdmin";
 
@@ -10,7 +10,7 @@ export const runtime = "nodejs";
  * GET → lista premi
  */
 export async function GET() {
-  const denied = await guardAdmin();
+  const denied = await guardOperatorPermission("moviback.manage");
   if (denied) return denied;
 
   const sb = supabaseAdmin();
@@ -31,7 +31,7 @@ export async function GET() {
  * POST → crea premio
  */
 export async function POST(req: Request) {
-  const denied = await guardAdmin();
+  const denied = await guardOperatorPermission("moviback.manage");
   if (denied) return denied;
 
   const body = await req.json().catch(() => ({}));
