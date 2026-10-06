@@ -3,13 +3,16 @@ import { createClient } from '@supabase/supabase-js';
 
 if(process.env.GIOCA_SUGGESTIONS_LOCAL_VERIFIED!=='1'||process.env.SUPABASE_URL!=='http://127.0.0.1:55421')throw new Error('Verified local Gioca suggestions runner required');
 const db=createClient(process.env.SUPABASE_URL,process.env.SUPABASE_SERVICE_ROLE_KEY,{auth:{persistSession:false}});
-const base='http://localhost:3100';
+const base=process.env.GIOCA_SUGGESTIONS_TEST_BASE_URL??'http://localhost:3100';
+if(!['http://localhost:3100','http://127.0.0.1:3101'].includes(base))throw new Error('Local Gioca suggestions URL required');
+const testOrigin=process.env.GIOCA_SUGGESTIONS_TEST_ORIGIN??base;
+if(!['http://localhost:3100','http://localhost:3101','http://127.0.0.1:3101'].includes(testOrigin))throw new Error('Local Gioca suggestions origin required');
 const id=n=>`c8603000-0000-4000-8000-${String(n).padStart(12,'0')}`;
 const cookies=response=>response.headers.getSetCookie().map(value=>value.split(';')[0]).join('; ');
 const form=new FormData();form.set('email','padelleria-admin@example.invalid');form.set('password','Padelleria-Local-2026!');
 const login=await fetch(base+'/api/admin/login',{method:'POST',body:form});assert.equal(login.status,200);const session=cookies(login);
-const post=async(path,body,cookie=session,origin=base)=>{const response=await fetch(base+path,{method:'POST',headers:{Cookie:cookie,Origin:origin,...(body?{'Content-Type':'application/json'}:{})},body:body?JSON.stringify(body):undefined});return {status:response.status,json:await response.json()};};
-const requestCall=(n,cookie=session,origin=base)=>post(`/api/admin/requests/${id(n)}/player-suggestions`,null,cookie,origin);
+const post=async(path,body,cookie=session,origin=testOrigin)=>{const response=await fetch(base+path,{method:'POST',headers:{Cookie:cookie,Origin:origin,...(body?{'Content-Type':'application/json'}:{})},body:body?JSON.stringify(body):undefined});return {status:response.status,json:await response.json()};};
+const requestCall=(n,cookie=session,origin=testOrigin)=>post(`/api/admin/requests/${id(n)}/player-suggestions`,null,cookie,origin);
 assert.equal((await requestCall(1,'')).status,401);
 assert.equal((await requestCall(1,session,'http://evil.invalid')).status,403);
 
@@ -31,7 +34,8 @@ const g=await requestCall(7);assert.equal(g.status,200);assert.ok(g.json.data.ev
 const h=await requestCall(8);assert.equal(h.status,200);assert.deepEqual(h.json.context.matchTypes,['male','mixed']);
 const manualMixed=await post('/api/admin/players/match',{club:'Manta',target_level_numeric:null,target_level_descriptive:'intermedio',weekday:5,time_window:'evening',match_type:'mixed',playing_side:'left',last_minute:false,exclude_player_id:null});assert.equal(manualMixed.status,200);
 const expected=[...new Map([...manualA.json.data,...manualMixed.json.data].filter(item=>item.id!==owner).map(item=>[item.id,item])).values()].map(item=>{const alternatives=[...manualA.json.data,...manualMixed.json.data].filter(candidate=>candidate.id===item.id&&candidate.id!==owner);return alternatives.sort((left,right)=>right.score-left.score)[0];}).sort((left,right)=>right.score-left.score||left.fullName.localeCompare(right.fullName,'it',{sensitivity:'base'})||left.id.localeCompare(right.id)).slice(0,20);assert.deepEqual(h.json.data,expected);
+const i=await requestCall(9);assert.equal(i.status,200);assert.equal(i.json.context.groupSize,3);assert.equal(i.json.context.playingSide,'left');assert.equal(i.json.context.requiredPlayerSide,'right');assert.ok(i.json.data.every(item=>item.scoreParts.side.max===10));
 assert.equal((await post('/api/admin/requests/eded7000-0000-4000-8000-000000000006/player-suggestions',null)).status,409);
 assert.equal((await post('/api/admin/requests/eded7000-0000-4000-8000-000000000004/player-suggestions',null)).status,409);
 for(const item of a.json.data)for(const forbidden of ['tax_code','certificate','moviback','points_balance','internal_notes','auth_user_id'])assert.equal(forbidden in item,false);
-console.log('Gioca suggestions HTTP acceptance passed: A-H, multi-type OR, equivalence, owner exclusion, read-only request, auth/origin and DTO privacy.');
+console.log('Gioca suggestions HTTP acceptance passed: A-I, group-three direct-side scoring, multi-type OR, equivalence, owner exclusion, read-only request, auth/origin and DTO privacy.');

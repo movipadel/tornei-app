@@ -17,11 +17,22 @@ test("Gioca and Allenati keep their routed entry points and one shared form", ()
 });
 
 test("all real request fields and exact submit payload remain present", () => {
-  for (const field of ["clubs", "date_mode", "requested_date", "time_window", "preferred_time_text", "level", "match_type", "has_partner", "training_type", "training_goal", "notes", "client_request_id"]) {
+  for (const field of ["clubs", "date_mode", "requested_date", "time_window", "preferred_time_text", "level", "match_type", "group_size", "required_player_side", "training_type", "training_goal", "notes", "client_request_id"]) {
     assert.match(form, new RegExp(field));
   }
   assert.match(form, /body: JSON\.stringify\(\{ \.\.\.data, client_request_id: key \}\)/);
   assert.match(form, /fetch\("\/api\/user\/requests"/);
+});
+
+test("Gioca keeps requester side separate from group size and missing fourth-player side", () => {
+  assert.match(form, /Con chi cerchi la partita\?/);
+  assert.match(form, /Sono da solo/);
+  assert.match(form, /Siamo in 2/);
+  assert.match(form, /Siamo in 3/);
+  assert.match(form, /Che giocatore vi manca\?/);
+  assert.match(form, /Lato di gioco/);
+  assert.match(form, /data\.group_size===3/);
+  assert.ok(form.indexOf('Che giocatore vi manca?') < form.indexOf('Lato di gioco'));
 });
 
 test("option tiles have semantic inputs, selected indicators and stable focus treatment", () => {

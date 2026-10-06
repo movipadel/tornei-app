@@ -14,7 +14,7 @@ await check(await db.from('player_profile_availability').delete().eq('player_ide
 await check(await db.from('player_profile_availability').insert({player_identity_id:ownerPlayer,weekday:5,time_window:'evening'}));
 
 const id=n=>`c8603000-0000-4000-8000-${String(n).padStart(12,'0')}`;
-const base={user_id:owner,request_type:'gioca',playing_side:'left',status:'received',date_mode:'specific',time_window:'evening',preferred_time_text:'20:00',level:'intermedio',match_type:['male'],has_partner:false,training_type:null,training_goal:null,notes:'Fixture Gioca suggestions LOCAL ONLY.',admin_notes:'',telegram_state:'disabled',telegram_error:'local_disabled'};
+const base={user_id:owner,request_type:'gioca',playing_side:'left',status:'received',date_mode:'specific',time_window:'evening',preferred_time_text:'20:00',level:'intermedio',match_type:['male'],group_size:1,required_player_side:null,training_type:null,training_goal:null,notes:'Fixture Gioca suggestions LOCAL ONLY.',admin_notes:'',telegram_state:'disabled',telegram_error:'local_disabled'};
 const rows=[
   {...base,id:id(1),client_request_id:id(1),clubs:['Manta'],requested_date:'2026-10-02'},
   {...base,id:id(2),client_request_id:id(2),clubs:['Costigliole'],requested_date:'2026-09-30',match_type:['mixed']},
@@ -24,10 +24,11 @@ const rows=[
   {...base,id:id(6),client_request_id:id(6),clubs:['Manta'],requested_date:'2026-10-02',notes:'Owner exclusion fixture LOCAL ONLY.'},
   {...base,id:id(7),client_request_id:id(7),clubs:[],date_mode:'flexible',requested_date:null,time_window:'any',level:'unknown',match_type:['any']},
   {...base,id:id(8),client_request_id:id(8),clubs:['Manta'],requested_date:'2026-10-02',match_type:['male','mixed']},
+  {...base,id:id(9),client_request_id:id(9),clubs:['Manta'],requested_date:'2026-10-02',group_size:3,required_player_side:'right',notes:'Group-three direct-side fixture LOCAL ONLY.'},
 ];
 await check(await db.from('movi_requests').delete().in('id',rows.map(row=>row.id)));
 await check(await db.from('movi_requests').insert(rows));
 await check(await db.from('movi_requests').update({status:'searching'}).eq('id',id(2)));
 await check(await db.from('movi_requests').update({status:'searching'}).eq('id',id(6)));
 await check(await db.from('movi_requests').update({status:'found'}).eq('id',id(6)));
-console.log(`Gioca suggestions LOCAL fixtures A-H ready. Owner player: ${ownerPlayer}. Request A: http://localhost:3100/admin/requests/${id(1)}`);
+console.log(`Gioca suggestions LOCAL fixtures A-I ready. Owner player: ${ownerPlayer}. Request A: http://localhost:3100/admin/requests/${id(1)}`);

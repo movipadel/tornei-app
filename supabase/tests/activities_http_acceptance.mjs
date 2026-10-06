@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';import {randomUUID} from 'node:crypto';import {createClient} from '@supabase/supabase-js';
 if(process.env.PADELLERIA_LOCAL_VERIFIED!=='1'||process.env.SUPABASE_URL!=='http://127.0.0.1:55421')throw new Error('Local runner required');
-const db=createClient(process.env.SUPABASE_URL,process.env.SUPABASE_SERVICE_ROLE_KEY,{auth:{persistSession:false}}),base='http://localhost:3100';
+const db=createClient(process.env.SUPABASE_URL,process.env.SUPABASE_SERVICE_ROLE_KEY,{auth:{persistSession:false}}),base=process.env.ACTIVITIES_TEST_BASE_URL??'http://localhost:3100';
+if(!['http://localhost:3100','http://127.0.0.1:3101'].includes(base))throw new Error('Local activities test URL required');
 async function login(n){const r=await fetch(base+'/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:`requests-demo-${n}@example.invalid`,password:'Requests-Local-2026!'})});assert.equal(r.status,200);return r.headers.getSetCookie().map(s=>s.split(';')[0]).join('; ');}
 const cookie=await login(1),other=await login(2);let checks=0;const ok=()=>checks++;
 async function req(path,session=cookie){const r=await fetch(base+path,{headers:{Cookie:session}});return {status:r.status,json:await r.json(),cache:r.headers.get('cache-control')};}

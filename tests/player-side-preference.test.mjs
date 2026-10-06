@@ -44,7 +44,7 @@ test('new requests require a single side and the form prefill never overwrites a
 
 test('side remains private to owned and operator surfaces',()=>{
   assert.match(activities,/playingSideLabel\(r\.playing_side\)/);
-  assert.match(telegram,/r\.playing_side\?\[\x60Lato:/);
+  assert.match(telegram,/r\.playing_side\?\[\x60Lato del richiedente:/);
   assert.doesNotMatch(read('src/app/api/partners/[slug]/route.ts')+read('src/app/api/tournaments/route.ts'),/preferred_side|playing_side/);
 });
 

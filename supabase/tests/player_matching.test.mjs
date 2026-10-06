@@ -14,7 +14,7 @@ const {
 }=await import('../../src/lib/playerMatching.ts');
 
 const criteria=(overrides={})=>({
-  clubs:['Manta'],targetLevelNumeric:3.5,targetLevelDescriptive:null,weekday:5,timeWindow:'evening',matchType:'male',playingSide:null,lastMinute:false,excludePlayerId:null,...overrides,
+  clubs:['Manta'],targetLevelNumeric:3.5,targetLevelDescriptive:null,weekday:5,timeWindow:'evening',matchType:'male',playingSide:null,requiredPlayerSide:null,lastMinute:false,excludePlayerId:null,...overrides,
 });
 const candidate=(overrides={})=>({
   id:'10000000-0000-4000-8000-000000000001',fullName:'Mario Rossi',normalizedPhone:'+393330000001',gender:'M',accountLinked:false,status:'active',moviLevel:3.5,identityWarning:false,
@@ -85,11 +85,23 @@ test('side is a soft 10/7/5/2 score and any or legacy request disables the dimen
   assert.notEqual(scorePlayerMatch(candidate({profile:{...candidate().profile,preferred_side:'left'}}),criteria({playingSide:'left'})),null);
 });
 
+test('group-three required side uses direct strong soft compatibility without changing requester side',()=>{
+  const directScore=preferred_side=>scorePlayerMatch(candidate({profile:{...candidate().profile,preferred_side}}),criteria({playingSide:'left',requiredPlayerSide:'right'})).scoreParts.side;
+  assert.equal(directScore('right').score,10);
+  assert.equal(directScore('any').score,8);
+  assert.equal(directScore(null).score,5);
+  assert.equal(directScore('left').score,2);
+  assert.match(directScore('right').detail,/quarto/i);
+});
+
 test('side never restores candidates rejected by existing hard constraints',()=>{
   const profile={...candidate().profile,preferred_side:'right'};
   assert.equal(scorePlayerMatch(candidate({profile,moviLevel:5}),criteria({playingSide:'left'})),null);
   assert.equal(scorePlayerMatch(candidate({profile:{...profile,preferred_clubs:['Saluzzo'],available_other_clubs:false}}),criteria({playingSide:'left'})),null);
   assert.equal(scorePlayerMatch(candidate({profile:{...profile,preferred_match_types:['female']}}),criteria({playingSide:'left'})),null);
+  assert.equal(scorePlayerMatch(candidate({profile,moviLevel:5}),criteria({playingSide:'left',requiredPlayerSide:'right'})),null);
+  assert.equal(scorePlayerMatch(candidate({profile:{...profile,preferred_clubs:['Saluzzo'],available_other_clubs:false}}),criteria({playingSide:'left',requiredPlayerSide:'right'})),null);
+  assert.equal(scorePlayerMatch(candidate({profile:{...profile,preferred_match_types:['female']}}),criteria({playingSide:'left',requiredPlayerSide:'right'})),null);
 });
 
 test('normal searches normalize 90 raw points to 100',()=>{
@@ -112,11 +124,12 @@ test('archived, merged and explicitly excluded identities never appear while no-
   assert.equal(rankPlayerMatches([active],criteria())[0].accountState,'unlinked');
 });
 
-test('parser supports numeric or descriptive targets and rejects arbitrary fields',()=>{
-  const numeric=parsePlayerMatchCriteria({club:'Manta',target_level_numeric:3.5,target_level_descriptive:null,weekday:5,time_window:'evening',match_type:'male',last_minute:false});
+test('parser supports numeric or descriptive targets, required side and rejects arbitrary fields',()=>{
+  const numeric=parsePlayerMatchCriteria({club:'Manta',target_level_numeric:3.5,target_level_descriptive:null,weekday:5,time_window:'evening',match_type:'male',required_player_side:'right',last_minute:false});
   const descriptive=parsePlayerMatchCriteria({club:'Manta',target_level_numeric:null,target_level_descriptive:'intermedio',weekday:5,time_window:'evening',match_type:'male',last_minute:false});
   assert.equal(numeric.targetLevelNumeric,3.5);
   assert.deepEqual(numeric.clubs,['Manta']);
+  assert.equal(numeric.requiredPlayerSide,'right');
   assert.equal(descriptive.targetLevelDescriptive,'intermedio');
   assert.throws(()=>parsePlayerMatchCriteria({club:'Manta',target_level_numeric:3.5,target_level_descriptive:null,weekday:5,time_window:'evening',match_type:'male',last_minute:false,tax_code:'NO'}));
 });

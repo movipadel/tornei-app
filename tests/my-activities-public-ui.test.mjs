@@ -32,6 +32,19 @@ test("real activity types share the certified card hierarchy and destinations", 
   for (const destination of ["/le-mie-attivita/richiesta/", "/tornei\?tournament=", "/circuiti/", "/monday-league"]) assert.ok(server.includes(destination));
 });
 
+test("Gioca activities expose group and fourth-player side only when applicable", async () => {
+  const [server, detail] = await Promise.all([
+    read("src/lib/activitiesServer.ts"),
+    read("src/app/le-mie-attivita/richiesta/[id]/Detail.tsx"),
+  ]);
+  assert.match(server, /groupSizeLabels\[r\.group_size\]/);
+  assert.match(server, /r\.group_size===3/);
+  assert.match(server, /Quarto:/);
+  assert.match(detail, /Gruppo:/);
+  assert.match(detail, /Quarto cercato:/);
+  assert.match(detail, /item\.group_size === 3/);
+});
+
 test("current public shell components remain delegated to PublicShell", async () => {
   const [page, shell] = await Promise.all([
     read("src/app/le-mie-attivita/page.tsx"),
