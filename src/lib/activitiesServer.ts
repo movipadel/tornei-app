@@ -3,7 +3,7 @@ import {ownsCircuitResult} from '@/lib/playerIdentity';
 import {supabaseAdmin} from '@/lib/supabaseAdmin';
 import {buildPublicCircuitRanking} from '@/lib/circuitPublicRanking';
 import {getPublicLeagueSnapshot} from '@/lib/monday-league/public-read-model';
-import {formatRequestValues,romeDay,userRequestDTO,matchTypes,trainingTypes,goals,type RequestRow} from '@/lib/moviRequests';
+import {formatRequestValues,groupSizeLabels,romeDay,userRequestDTO,matchTypes,trainingTypes,goals,type RequestRow} from '@/lib/moviRequests';
 import type {Activity} from '@/lib/activities';
 import {romeToUtc} from '@/lib/padelleria';
 import {resolvePlayerIdentityScope} from '@/lib/playerIdentityServer';
@@ -25,7 +25,7 @@ export async function composeActivities(userId:string):Promise<Activity[]>{
   filters?sb.from('circuit_results').select('ranking_group_id,player_key,player_name,player_identity_id').or(filters).limit(CAP+1):Promise.resolve({data:[],error:null}),
  ]);
  const requests=checked(rq) as RequestRow[],registrations=checked(regs) as Registration[],members=checked(rosters),personalResults=checked(ownResults);
- const items:Activity[]=requests.map(r=>{const dto=userRequestDTO(r),side=`Lato: ${playingSideLabel(r.playing_side)}`;return {...base(r.request_type,r.id),tab:['completed','cancelled'].includes(r.status)?'history':'upcoming',title:r.request_type==='gioca'?'Cerco una partita':formatRequestValues(r.training_type,trainingTypes),subtitle:dto.summary,status:r.status,status_label:dto.status_label,date:r.requested_date,club:r.clubs.join(', ')||'Indifferente',level:r.level,primary_meta:r.request_type==='gioca'?`${formatRequestValues(r.match_type,matchTypes)} · ${r.has_partner?'Hai già un compagno':'Cerchi anche il compagno'} · ${side}`:`${formatRequestValues(r.training_goal,goals)} · ${side}`,secondary_meta:r.preferred_time_text,cta_label:'Vedi richiesta',cta_href:`/le-mie-attivita/richiesta/${r.id}`,can_cancel:r.user_id===userId&&dto.can_cancel,sort_at:['completed','cancelled'].includes(r.status)?r.completed_at??r.cancelled_at??r.updated_at:r.requested_date??'9999'};});
+ const items:Activity[]=requests.map(r=>{const dto=userRequestDTO(r),side=`Lato: ${playingSideLabel(r.playing_side)}`,group=r.group_size?groupSizeLabels[r.group_size]:'Gruppo non indicato',fourth=r.group_size===3?` · Quarto: ${playingSideLabel(r.required_player_side)}`:'';return {...base(r.request_type,r.id),tab:['completed','cancelled'].includes(r.status)?'history':'upcoming',title:r.request_type==='gioca'?'Cerco una partita':formatRequestValues(r.training_type,trainingTypes),subtitle:dto.summary,status:r.status,status_label:dto.status_label,date:r.requested_date,club:r.clubs.join(', ')||'Indifferente',level:r.level,primary_meta:r.request_type==='gioca'?`${formatRequestValues(r.match_type,matchTypes)} · ${group}${fourth} · ${side}`:`${formatRequestValues(r.training_goal,goals)} · ${side}`,secondary_meta:r.preferred_time_text,cta_label:'Vedi richiesta',cta_href:`/le-mie-attivita/richiesta/${r.id}`,can_cancel:r.user_id===userId&&dto.can_cancel,sort_at:['completed','cancelled'].includes(r.status)?r.completed_at??r.cancelled_at??r.updated_at:r.requested_date??'9999'};});
  const tids=[...new Set(registrations.map(r=>r.tournament_id))];
  const runs=tids.length?checked(await sb.from('tournament_runs').select('id,tournament_id,status').in('tournament_id',tids).limit(CAP+1)):[];
  const finished=runs.filter(r=>r.status==='completed'),runids=finished.map(r=>r.id);

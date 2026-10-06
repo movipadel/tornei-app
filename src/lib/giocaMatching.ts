@@ -1,7 +1,7 @@
 import { requestClubs, type RequestRow, type RequestStatus } from "@/lib/moviRequests";
 import { PLAYER_MATCH_LIMIT, playerMatchingRequestedTypes, type PlayerMatchCriteria, type PlayerMatchResult, type TimeWindow } from "@/lib/playerMatching";
 import { playerProfileLevels, playerProfileWindows } from "@/lib/playerProfile";
-import type { PlayingSide } from "./playingSide";
+import { isPlayingSide, type PlayingSide } from "./playingSide";
 
 export const giocaMatchingStates: RequestStatus[] = ["received", "searching", "found"];
 
@@ -12,11 +12,13 @@ export type GiocaMatchingContext = {
   timeWindow: string | null;
   matchTypes: string[];
   playingSide: PlayingSide | null;
+  requiredPlayerSide: PlayingSide | null;
+  groupSize: 1 | 2 | 3;
   lastMinute: false;
   requesterExcluded: boolean;
 };
 
-type GiocaRequest = Pick<RequestRow, "request_type" | "clubs" | "requested_date" | "time_window" | "level" | "match_type" | "playing_side">;
+type GiocaRequest = Pick<RequestRow, "request_type" | "clubs" | "requested_date" | "time_window" | "level" | "match_type" | "playing_side" | "group_size" | "required_player_side">;
 
 export function weekdayFromStoredDate(value: string | null): number | null {
   if (value === null) return null;
@@ -32,6 +34,9 @@ export function giocaRequestToMatchingCriteria(request: GiocaRequest, requesterP
   if (request.level !== "unknown" && !playerProfileLevels.includes(request.level as never)) throw new Error("Livello richiesta non valido");
   if (!playerProfileWindows.includes(request.time_window as never) && request.time_window !== "any") throw new Error("Fascia richiesta non valida");
   if (!Array.isArray(request.match_type) || request.match_type.length === 0 || new Set(request.match_type).size !== request.match_type.length || request.match_type.some(type => type !== "any" && !playerMatchingRequestedTypes.includes(type as never)) || (request.match_type.includes("any") && request.match_type.length > 1)) throw new Error("Tipo partita richiesta non valido");
+  if (![1, 2, 3].includes(request.group_size as number)) throw new Error("Dimensione gruppo non valida");
+  if (request.group_size === 3 && !isPlayingSide(request.required_player_side)) throw new Error("Lato del quarto giocatore non valido");
+  if (request.group_size !== 3 && request.required_player_side !== null) throw new Error("Lato del quarto non previsto per questo gruppo");
   const base = {
     clubs: [...request.clubs] as PlayerMatchCriteria["clubs"],
     targetLevelNumeric: null,
@@ -40,12 +45,13 @@ export function giocaRequestToMatchingCriteria(request: GiocaRequest, requesterP
     timeWindow: request.time_window === "any" ? null : request.time_window as TimeWindow,
     lastMinute: false,
     playingSide: request.playing_side ?? null,
+    requiredPlayerSide: request.group_size === 3 ? request.required_player_side : null,
     excludePlayerId: requesterPlayerId,
   };
   return request.match_type.map(matchType => ({...base, matchType: matchType === "any" ? null : matchType as PlayerMatchCriteria["matchType"]}));
 }
 
-export function giocaMatchingContext(criteria: PlayerMatchCriteria[], requestedTypes: string[]): GiocaMatchingContext {
+export function giocaMatchingContext(criteria: PlayerMatchCriteria[], requestedTypes: string[], groupSize: 1 | 2 | 3): GiocaMatchingContext {
   const first=criteria[0];
   return {
     clubs: [...first.clubs],
@@ -54,6 +60,8 @@ export function giocaMatchingContext(criteria: PlayerMatchCriteria[], requestedT
     timeWindow: first.timeWindow,
     matchTypes: [...requestedTypes],
     playingSide: first.playingSide,
+    requiredPlayerSide: first.requiredPlayerSide,
+    groupSize,
     lastMinute: false,
     requesterExcluded: first.excludePlayerId !== null,
   };

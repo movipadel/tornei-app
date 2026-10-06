@@ -113,6 +113,25 @@
 .warning { border-color: color-mix(in srgb, var(--public-warning) 48%, var(--public-border)); background: rgba(115, 75, 15, .25); color: var(--public-warning); }
 .loading { min-height: 160px; display: flex; align-items: center; justify-content: center; gap: 10px; color: var(--public-text-secondary); }
 .loading svg { animation: spin .9s linear infinite; }
+.inlineLoading { min-height: 48px; display: flex; align-items: center; gap: 9px; color: var(--public-text-secondary); }
+.inlineLoading svg { animation: spin .9s linear infinite; }
+.notificationControl {
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid var(--public-control);
+  border-radius: 13px;
+  padding: 10px 13px;
+  background: var(--public-overlay);
+  cursor: pointer;
+}
+.notificationControl input { width: 22px; height: 22px; flex: 0 0 auto; accent-color: var(--public-royal); }
+.notificationControl span { min-width: 0; display: grid; gap: 3px; }
+.notificationControl strong { color: var(--public-text); font-size: 15px; }
+.notificationControl small { color: var(--public-text-secondary); font-size: 13px; line-height: 1.4; }
+.notificationControl:focus-within { outline: 3px solid color-mix(in srgb, var(--public-cyan) 74%, white); outline-offset: 3px; }
+.notificationControl:has(input:checked) { border-color: color-mix(in srgb, var(--public-cyan) 62%, var(--public-border)); background: color-mix(in srgb, var(--public-cyan) 9%, var(--public-overlay)); }
 
 .actions button:focus-visible, .activities:focus-visible {
   outline: 3px solid color-mix(in srgb, var(--public-cyan) 74%, white);
@@ -138,5 +157,5 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .loading svg { animation: none; }
+  .loading svg, .inlineLoading svg { animation: none; }
 }

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { ArrowRight, BadgeCheck, LoaderCircle, RotateCcw, Save, UserRound } from 'lucide-react';
 import PublicNav from '@/components/PublicNav';
 import PlayerProfileFields from '@/components/PlayerProfileFields';
+import NotificationPreferencesCard from '@/components/NotificationPreferencesCard';
 import { emptySharedProfile, type SharedPlayerProfile } from '@/lib/playerProfile';
 import styles from './profile.module.css';
 
@@ -114,6 +115,8 @@ export default function ProfilePage() {
             <button className={styles.secondary} type="button" onClick={() => { setForm(data.profile.shared); setMessage(''); }} disabled={saving}><RotateCcw size={17} aria-hidden />Annulla modifiche</button>
           </div>
         </form>
+
+        <NotificationPreferencesCard />
 
         <section className={styles.card} aria-labelledby="profile-rating-title">
           <div className={styles.sectionHeading}>

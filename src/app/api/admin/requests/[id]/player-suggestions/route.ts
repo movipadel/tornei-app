@@ -12,7 +12,7 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
     if (!isUuid(id)) return editorialJson({ error: "ID richiesta non valido" }, 400);
     const sb = supabaseAdmin();
     const requestResult = await sb.from("movi_requests")
-      .select("id,user_id,request_type,status,clubs,requested_date,time_window,level,match_type,playing_side")
+      .select("id,user_id,request_type,status,clubs,requested_date,time_window,level,match_type,playing_side,group_size,required_player_side")
       .eq("id", id)
       .maybeSingle();
     if (requestResult.error) throw new Error("Richiesta non disponibile");
@@ -29,6 +29,6 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
     if (owner.error) throw new Error("Identità del richiedente non verificabile");
     const criteria = giocaRequestToMatchingCriteria(requestResult.data as never, owner.data?.id ?? null);
     const data = mergeGiocaMatchResults(await Promise.all(criteria.map(item => findPlayerMatches(item))));
-    return editorialJson({ data, context: giocaMatchingContext(criteria, requestResult.data.match_type), threshold: 50, limit: 20, normalized: true });
+    return editorialJson({ data, context: giocaMatchingContext(criteria, requestResult.data.match_type, requestResult.data.group_size as 1 | 2 | 3), threshold: 50, limit: 20, normalized: true });
   });
 }

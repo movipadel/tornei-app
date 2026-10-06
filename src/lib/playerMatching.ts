@@ -34,6 +34,7 @@ export type PlayerMatchCriteria = {
   timeWindow: TimeWindow | null;
   matchType: MatchType | null;
   playingSide: PlayingSide | null;
+  requiredPlayerSide: PlayingSide | null;
   lastMinute: boolean;
   excludePlayerId: string | null;
 };
@@ -110,7 +111,7 @@ function parseUuid(value: unknown) {
 export function parsePlayerMatchCriteria(value: unknown): PlayerMatchCriteria {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Criteri non validi");
   const body = value as Record<string, unknown>;
-  const allowed = new Set(["club", "target_level_numeric", "target_level_descriptive", "weekday", "time_window", "match_type", "playing_side", "last_minute", "exclude_player_id"]);
+  const allowed = new Set(["club", "target_level_numeric", "target_level_descriptive", "weekday", "time_window", "match_type", "playing_side", "required_player_side", "last_minute", "exclude_player_id"]);
   if (Object.keys(body).some((key) => !allowed.has(key))) throw new Error("Campi di ricerca non validi");
   if (typeof body.club !== "string" || !playerProfileClubs.includes(body.club as never)) throw new Error("Club non valido");
   const numeric = body.target_level_numeric === null || body.target_level_numeric === undefined ? null : body.target_level_numeric;
@@ -123,6 +124,8 @@ export function parsePlayerMatchCriteria(value: unknown): PlayerMatchCriteria {
   if (typeof body.match_type !== "string" || !playerMatchingRequestedTypes.includes(body.match_type as never)) throw new Error("Tipo partita non valido");
   const playingSide = body.playing_side === null || body.playing_side === undefined ? null : body.playing_side;
   if (playingSide !== null && !isPlayingSide(playingSide)) throw new Error("Lato di gioco non valido");
+  const requiredPlayerSide = body.required_player_side === null || body.required_player_side === undefined ? null : body.required_player_side;
+  if (requiredPlayerSide !== null && !isPlayingSide(requiredPlayerSide)) throw new Error("Lato del giocatore cercato non valido");
   if (typeof body.last_minute !== "boolean") throw new Error("Indicazione last minute non valida");
   return {
     clubs: [body.club as PlayerMatchCriteria["clubs"][number]],
@@ -132,6 +135,7 @@ export function parsePlayerMatchCriteria(value: unknown): PlayerMatchCriteria {
     timeWindow: body.time_window as TimeWindow,
     matchType: body.match_type as MatchType,
     playingSide,
+    requiredPlayerSide,
     lastMinute: body.last_minute,
     excludePlayerId: parseUuid(body.exclude_player_id),
   };
@@ -205,6 +209,14 @@ function scoreLastMinute(candidate: PlayerMatchCandidate, criteria: PlayerMatchC
 }
 
 function scoreSide(candidate: PlayerMatchCandidate, criteria: PlayerMatchCriteria): PlayerMatchScorePart {
+  if (criteria.requiredPlayerSide !== null) {
+    if (criteria.requiredPlayerSide === "any") return { score: 0, max: 0, detail: "Lato del quarto indifferente" };
+    const candidateSide = candidate.profile.preferred_side;
+    if (candidateSide === criteria.requiredPlayerSide) return { score: 10, max: 10, detail: "Lato richiesto per il quarto" };
+    if (candidateSide === "any") return { score: 8, max: 10, detail: "Disponibile su entrambi i lati" };
+    if (candidateSide === null) return { score: 5, max: 10, detail: "Lato candidato non indicato" };
+    return { score: 2, max: 10, detail: "Lato diverso da quello richiesto" };
+  }
   if (criteria.playingSide === null) return { score: 0, max: 0, detail: "Lato richiesta non indicato" };
   if (criteria.playingSide === "any") return { score: 0, max: 0, detail: "Lato richiesta indifferente" };
   const candidateSide = candidate.profile.preferred_side;

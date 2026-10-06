@@ -15,6 +15,8 @@ type MatchingContext = {
   timeWindow: string | null;
   matchTypes: string[];
   playingSide: PlayingSide | null;
+  requiredPlayerSide: PlayingSide | null;
+  groupSize: 1 | 2 | 3;
   lastMinute: false;
   requesterExcluded: boolean;
 };
@@ -44,7 +46,8 @@ export default function RequestMatchingPanel({ id }: { id: string }) {
       <div><dt>Giorno</dt><dd>{context.weekday ? playerMatchingWeekdays[context.weekday - 1] : "Non indicato"}</dd></div>
       <div><dt>Fascia</dt><dd>{context.timeWindow ? windows[context.timeWindow as keyof typeof windows] : "Non indicato"}</dd></div>
       <div><dt>Tipo</dt><dd>{context.matchTypes.map(type => matchTypes[type as keyof typeof matchTypes]).join(" oppure ")}</dd></div>
-      <div><dt>Lato</dt><dd>{playingSideLabel(context.playingSide)}</dd></div>
+      <div><dt>Lato del richiedente</dt><dd>{playingSideLabel(context.playingSide)}</dd></div>
+      {context.groupSize === 3 ? <div><dt>Quarto cercato</dt><dd>{playingSideLabel(context.requiredPlayerSide)}</dd></div> : null}
       <div><dt>Last minute</dt><dd>Non previsto</dd></div>
       <div><dt>Richiedente</dt><dd>{context.requesterExcluded ? "Escluso tramite identità collegata" : "Identità non collegata: nessuna esclusione dedotta"}</dd></div>
     </dl></div>}

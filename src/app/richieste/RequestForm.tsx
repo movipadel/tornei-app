@@ -147,7 +147,8 @@ export default function RequestForm({ type }: { type: RequestType }) {
     level: "unknown",
     playing_side: null,
     match_type: type === "gioca" ? ["any"] : null,
-    has_partner: type === "gioca" ? false : null,
+    group_size: type === "gioca" ? 1 : null,
+    required_player_side: null,
     training_type: type === "allenati" ? ["advice"] : null,
     training_goal: type === "allenati" ? ["learn"] : null,
     notes: "",
@@ -234,12 +235,13 @@ export default function RequestForm({ type }: { type: RequestType }) {
 
         <ChoiceGroup label="Che livello?" name="level" value={data.level} options={Object.entries(levels).map(([value, label]) => ({ value, label }))} onChange={(value) => set("level", value as RequestInput["level"])} />
 
-        <ChoiceGroup label="Lato di gioco" name="playing_side" value={data.playing_side ?? ""} options={playingSides.map(value => ({ value, label: playingSideLabels[value] }))} required onChange={(value) => { sideTouched.current = true; set("playing_side", value as PlayingSide); }} />
-
         {isPlay ? <>
           <MultiChoiceGroup label="Che tipo di partita?" name="match_type" value={data.match_type ?? []} options={Object.entries(matchTypes).map(([value, label]) => ({ value, label }))} exclusiveValue="any" onChange={(value) => set("match_type", value as RequestInput["match_type"])} />
-          <ChoiceGroup label="Hai già un compagno?" name="has_partner" value={String(data.has_partner)} options={[{ value: "true", label: "Sì" }, { value: "false", label: "No" }]} onChange={(value) => set("has_partner", value === "true")} />
+          <ChoiceGroup label="Con chi cerchi la partita?" name="group_size" value={String(data.group_size)} options={[{ value: "1", label: "Sono da solo" }, { value: "2", label: "Siamo in 2" }, { value: "3", label: "Siamo in 3" }]} required onChange={(value) => { const size=Number(value) as 1|2|3; setData(current=>({...current,group_size:size,required_player_side:size===3?current.required_player_side:null})); }} />
+          {data.group_size===3?<ChoiceGroup label="Che giocatore vi manca?" name="required_player_side" value={data.required_player_side??""} options={playingSides.map(value=>({value,label:playingSideLabels[value]}))} required onChange={(value)=>set("required_player_side",value as PlayingSide)}/>:null}
+          <ChoiceGroup label="Lato di gioco" name="playing_side" value={data.playing_side ?? ""} options={playingSides.map(value => ({ value, label: playingSideLabels[value] }))} required onChange={(value) => { sideTouched.current = true; set("playing_side", value as PlayingSide); }} />
         </> : <>
+          <ChoiceGroup label="Lato di gioco" name="playing_side" value={data.playing_side ?? ""} options={playingSides.map(value => ({ value, label: playingSideLabels[value] }))} required onChange={(value) => { sideTouched.current = true; set("playing_side", value as PlayingSide); }} />
           <MultiChoiceGroup label="Che tipo di allenamento?" name="training_type" value={data.training_type ?? []} options={Object.entries(trainingTypes).map(([value, label]) => ({ value, label }))} exclusiveValue="advice" onChange={(value) => set("training_type", value as RequestInput["training_type"])} />
           <MultiChoiceGroup label="Quali sono i tuoi obiettivi?" name="training_goal" value={data.training_goal ?? []} options={Object.entries(goals).map(([value, label]) => ({ value, label }))} onChange={(value) => set("training_goal", value as RequestInput["training_goal"])} />
         </>}
