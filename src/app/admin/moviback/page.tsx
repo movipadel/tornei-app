@@ -9,6 +9,7 @@ import {
   BadgeEuro,
   Bell,
   Gift,
+  Handshake,
   Loader2,
   QrCode,
   ShieldCheck,
@@ -34,7 +35,7 @@ type DashboardData = {
     euro: number;
     count: number;
   }[];
-  latest_transactions: any[];
+  latest_transactions: { id: string; club: string | null; type: string; points_delta: number; loyalty_memberships?: { users?: { full_name?: string | null } | null } | null }[];
   alerts: {
     expiring_certificates: number;
     expired_certificates: number;
@@ -57,8 +58,8 @@ export default function AdminMoviBackPage() {
       if (!res.ok) throw new Error(json.error || "Errore caricamento dashboard");
 
       setData(json.data);
-    } catch (e: any) {
-      toast.error(e?.message || "Errore");
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Errore");
     } finally {
       setLoading(false);
     }
@@ -130,6 +131,12 @@ export default function AdminMoviBackPage() {
   title="Customer Hub"
   text="Apri clienti, identità e stato MoviBack"
 />
+                  <QuickLink
+                    href="/admin/moviback/agreements"
+                    icon={<Handshake />}
+                    title="Convenzioni"
+                    text="Gestisci accordi, codici e assegnazioni"
+                  />
                   <QuickLink
                     href="/admin/moviback/catalog"
                     icon={<Gift />}
@@ -220,7 +227,7 @@ function Kpi({
   );
 }
 
-function Card({ title, icon, children }: any) {
+function Card({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) {
   return (
     <div style={cardStyle}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
@@ -232,7 +239,7 @@ function Card({ title, icon, children }: any) {
   );
 }
 
-function QuickLink({ href, icon, title, text }: any) {
+function QuickLink({ href, icon, title, text }: { href: string; icon: React.ReactNode; title: string; text: string }) {
   return (
     <Link href={href} style={{ ...actionRow, textDecoration: "none" }}>
       <span style={{ color: "#fbbf24" }}>{icon}</span>
@@ -245,19 +252,7 @@ function QuickLink({ href, icon, title, text }: any) {
   );
 }
 
-function Placeholder({ icon, title, text }: any) {
-  return (
-    <div style={{ ...actionRow, opacity: 0.62 }}>
-      <span>{icon}</span>
-      <div>
-        <div style={{ fontWeight: 950 }}>{title}</div>
-        <div style={muted}>{text}</div>
-      </div>
-    </div>
-  );
-}
-
-function AlertRow({ label, value, danger = false }: any) {
+function AlertRow({ label, value, danger = false }: { label: string; value: number; danger?: boolean }) {
   return (
     <div style={clubRow}>
       <div style={{ fontWeight: 850 }}>{label}</div>

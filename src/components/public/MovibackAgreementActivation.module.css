@@ -1,0 +1,83 @@
+.card {
+  display: flex;
+  gap: 14px;
+  margin-bottom: 16px;
+  padding: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 24px;
+  color: #fff;
+  background: linear-gradient(135deg, rgba(20, 184, 166, 0.13), rgba(255, 255, 255, 0.045));
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.2);
+}
+
+.icon {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  place-items: center;
+  border-radius: 15px;
+  color: #5eead4;
+  background: rgba(45, 212, 191, 0.12);
+}
+
+.icon svg { width: 22px; height: 22px; }
+.content { min-width: 0; flex: 1; }
+.eyebrow { color: #5eead4; font-size: 12px; font-weight: 850; letter-spacing: 0.08em; text-transform: uppercase; }
+.title { margin: 0; color: #fff; font-size: 20px; font-weight: 900; line-height: 1.15; }
+.eyebrow + .title { margin-top: 5px; }
+.description { max-width: 620px; margin: 7px 0 0; color: rgba(255, 255, 255, 0.68); font-size: 14px; line-height: 1.45; }
+.multiplier { margin-top: 8px; color: #fbbf24; font-size: 18px; font-weight: 950; }
+.dates { margin-top: 5px; color: rgba(255, 255, 255, 0.62); font-size: 13px; font-weight: 650; }
+
+.form { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: end; margin-top: 14px; }
+.field { min-width: 0; }
+.field label { display: block; margin-bottom: 7px; color: rgba(255, 255, 255, 0.76); font-size: 13px; font-weight: 800; }
+.field input {
+  width: 100%;
+  min-height: 46px;
+  padding: 0 13px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 15px;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.07);
+  font: inherit;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.field input::placeholder { color: rgba(255, 255, 255, 0.38); text-transform: none; }
+.field input:focus-visible { outline: 3px solid rgba(45, 212, 191, 0.4); outline-offset: 2px; border-color: #5eead4; }
+.form button {
+  display: inline-flex;
+  min-height: 46px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 15px;
+  color: #06201d;
+  background: linear-gradient(135deg, #5eead4, #2dd4bf);
+  font: inherit;
+  font-weight: 900;
+  cursor: pointer;
+}
+.form button:focus-visible { outline: 3px solid rgba(255, 255, 255, 0.58); outline-offset: 3px; }
+.form button:disabled { cursor: not-allowed; opacity: 0.55; }
+.error, .success { margin: 10px 0 0; font-size: 13px; font-weight: 750; line-height: 1.4; }
+.error { color: #fda4af; }
+.success { color: #86efac; }
+.spinner { width: 18px; height: 18px; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+@media (max-width: 560px) {
+  .card { padding: 16px; gap: 11px; border-radius: 22px; }
+  .form { grid-template-columns: 1fr; }
+  .form button { width: 100%; }
+  .field input { font-size: 14px; }
+}
+
+@media (max-width: 350px) {
+  .card { display: block; }
+  .icon { margin-bottom: 12px; }
+}

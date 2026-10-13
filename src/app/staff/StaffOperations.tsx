@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Loader2, ScanLine, Wallet } from "lucide-react";
@@ -30,6 +30,7 @@ function StaffPageContent() {
   const [amount, setAmount] = useState("");
   const [club, setClub] = useState("CENTALLO");
   const [saving, setSaving] = useState(false);
+  const pendingCredit = useRef<{ fingerprint: string; key: string } | null>(null);
 
   useEffect(() => {
     const savedClub = window.localStorage.getItem("staff_club");
@@ -97,6 +98,11 @@ function StaffPageContent() {
     try {
       setSaving(true);
 
+      const fingerprint = JSON.stringify({ membership_code: code.trim(), euro_amount: value, club });
+      if (!pendingCredit.current || pendingCredit.current.fingerprint !== fingerprint) {
+        pendingCredit.current = { fingerprint, key: crypto.randomUUID() };
+      }
+
       const res = await fetch("/api/staff/earn-points", {
         method: "POST",
         headers: {
@@ -106,6 +112,7 @@ function StaffPageContent() {
           membership_code: code,
           euro_amount: value,
           club,
+          idempotency_key: pendingCredit.current.key,
         }),
       });
 
@@ -113,6 +120,8 @@ function StaffPageContent() {
       if (!res.ok) throw new Error(json.error || "Errore accredito");
 
       toast.success(`+${json.points_added} punti (${club})`);
+
+      pendingCredit.current = null;
 
       setAmount("");
       setData(null);

@@ -1,381 +1,162 @@
+import crypto from "node:crypto";
 import { NextResponse } from "next/server";
-import crypto from "crypto";
-import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { getUserIdFromCookie } from "@/lib/userAuth";
-import { sendTelegramMessage } from "@/lib/telegram";
+
 import { sendAdminPushNotification } from "@/lib/adminPush";
-import {
-  measureNotificationRequest,
-  schedulePostCommitNotifications,
-} from "@/lib/postCommitNotifications";
+import { movibackEnrollmentRateLimitKeys } from "@/lib/movibackAgreementActivation";
+import { hashMovibackAgreementCode, normalizeMovibackAgreementCode } from "@/lib/movibackAgreementCodes";
 import { calendarDaysAfter } from "@/lib/movibackEligibility";
+import { measureNotificationRequest, schedulePostCommitNotifications } from "@/lib/postCommitNotifications";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { sendTelegramMessage } from "@/lib/telegram";
+import { getUserIdFromCookie } from "@/lib/userAuth";
 
 export const runtime = "nodejs";
-
 const BUCKET = "medical-certificates";
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-function normalizeTaxCode(value: string) {
-  return String(value ?? "").trim().replace(/\s+/g, "").toUpperCase();
+type EnrollmentResult = {
+  ok?: boolean;
+  replayed?: boolean;
+  error_code?: string;
+  membership_id?: string;
+  certificate_id?: string;
+  agreement?: { name: string; multiplier: number; status: string } | null;
+};
+
+const failures: Record<string, { status: number; message: string }> = {
+  INVALID_CODE: { status: 400, message: "Codice convenzione non valido." },
+  CODE_ALREADY_USED: { status: 409, message: "Questo codice convenzione è già riservato o utilizzato." },
+  CODE_EXPIRED: { status: 410, message: "Questo codice convenzione è scaduto." },
+  CODE_REVOKED: { status: 410, message: "Questo codice convenzione non è più valido." },
+  AGREEMENT_NOT_ACTIVE: { status: 409, message: "La convenzione non è attualmente attiva." },
+  RESERVATION_CONFLICT: { status: 409, message: "Questa richiesta ha già un altro codice convenzione riservato." },
+  MEMBERSHIP_EXISTS: { status: 409, message: "Richiesta MoviBack già presente." },
+  MEMBERSHIP_CARDINALITY: { status: 409, message: "Più membership MoviBack richiedono una verifica Admin." },
+  IDEMPOTENCY_CONFLICT: { status: 409, message: "La richiesta è cambiata. Riprova l’invio." },
+  USER_NOT_ELIGIBLE: { status: 403, message: "Account non idoneo alla richiesta MoviBack." },
+  INVALID_REQUEST: { status: 400, message: "Dati della richiesta non validi." },
+};
+
+const taxCode = (value: string) => value.trim().replace(/\s+/g, "").toUpperCase();
+const validType = (value: string): value is "ASC" | "FITP" => value === "ASC" || value === "FITP";
+const validDate = (value: string) => calendarDaysAfter(value, value) === 0;
+const safeName = (value: string) => String(value || "certificato").normalize("NFD")
+  .replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9._-]/g, "-").slice(0, 120);
+
+export async function POST(request: Request) {
+  return measureNotificationRequest("/api/moviback/request-membership", () => handle(request));
 }
 
-function isValidMembershipType(value: string): value is "ASC" | "FITP" {
-  return value === "ASC" || value === "FITP";
-}
+async function handle(request: Request) {
+  const origin = request.headers.get("origin");
+  if (origin && origin !== new URL(request.url).origin) return NextResponse.json({ error: "Origine non consentita" }, { status: 403 });
+  const userId = await getUserIdFromCookie();
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const form = await request.formData().catch(() => null);
+  if (!form) return NextResponse.json({ error: "Dati non validi" }, { status: 400 });
 
-function isValidISODate(value: string) {
-  return calendarDaysAfter(value, value) === 0;
-}
-
-function safeFileName(name: string) {
-  return String(name || "certificato")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-zA-Z0-9._-]/g, "-")
-    .slice(0, 120);
-}
-
-function generateMembershipCode() {
-  return `MOVI-${crypto.randomBytes(5).toString("hex").toUpperCase()}`;
-}
-
-export async function POST(req: Request) {
-  return measureNotificationRequest("/api/moviback/request-membership", () =>
-    handlePost(req)
-  );
-}
-
-async function handlePost(req: Request) {
-  const origin = req.headers.get("origin");
-  if (origin && origin !== new URL(req.url).origin) return NextResponse.json({ error: "Origine non consentita" }, { status: 403 });
-  const uid = await getUserIdFromCookie();
-
-  if (!uid) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const sb = supabaseAdmin();
-
-  const form = await req.formData().catch(() => null);
-  if (!form) {
-    return NextResponse.json({ error: "Dati non validi" }, { status: 400 });
-  }
-
-  const taxCode = normalizeTaxCode(String(form.get("tax_code") ?? ""));
+  const normalizedTaxCode = taxCode(String(form.get("tax_code") ?? ""));
   const membershipType = String(form.get("membership_type") ?? "");
   const expiryDate = String(form.get("expiry_date") ?? "");
   const file = form.get("certificate");
+  const idempotencyKey = String(form.get("idempotency_key") ?? "").trim();
+  const hasExisting = String(form.get("has_existing_membership") ?? "false") === "true";
+  const existingType = String(form.get("existing_membership_type") ?? "");
+  const existingNumber = String(form.get("existing_membership_number") ?? "").trim().toUpperCase();
+  const rawCode = String(form.get("agreement_code") ?? "");
+  const normalizedCode = normalizeMovibackAgreementCode(rawCode);
 
-  const hasExistingMembership =
-    String(form.get("has_existing_membership") ?? "false") === "true";
-
-  const existingMembershipType = String(
-    form.get("existing_membership_type") ?? ""
-  );
-
-  const existingMembershipNumber = String(
-    form.get("existing_membership_number") ?? ""
-  )
-    .trim()
-    .toUpperCase();
-
-  if (!taxCode) {
-    return NextResponse.json({ error: "Codice fiscale obbligatorio" }, { status: 400 });
+  if (normalizedTaxCode.length < 11 || normalizedTaxCode.length > 16) return NextResponse.json({ error: "Codice fiscale non valido" }, { status: 400 });
+  if (!validType(membershipType)) return NextResponse.json({ error: "Tipo tessera non valido" }, { status: 400 });
+  if (!UUID.test(idempotencyKey)) return NextResponse.json({ error: "Identificativo richiesta non valido" }, { status: 400 });
+  if (rawCode.trim() && (!normalizedCode || normalizedCode.length > 64)) return NextResponse.json({ error: "Codice convenzione non valido.", code: "INVALID_CODE" }, { status: 400 });
+  if (hasExisting && (!validType(existingType) || existingType !== membershipType)) {
+    return NextResponse.json({ error: "Il tipo tessera dichiarato deve coincidere con la tessera selezionata" }, { status: 400 });
   }
-
-  if (taxCode.length < 11 || taxCode.length > 16) {
-    return NextResponse.json({ error: "Codice fiscale non valido" }, { status: 400 });
+  if (hasExisting && existingType === "FITP" && !existingNumber) return NextResponse.json({ error: "Numero tessera FITP obbligatorio" }, { status: 400 });
+  if (!validDate(expiryDate)) return NextResponse.json({ error: "Data scadenza certificato obbligatoria" }, { status: 400 });
+  if (!(file instanceof File)) return NextResponse.json({ error: "Certificato medico obbligatorio" }, { status: 400 });
+  if (!["application/pdf", "image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+    return NextResponse.json({ error: "Formato certificato non valido. Usa PDF, JPG, PNG o WEBP." }, { status: 400 });
   }
+  if (file.size > 8 * 1024 * 1024) return NextResponse.json({ error: "File troppo grande. Dimensione massima 8MB." }, { status: 400 });
 
-  if (!isValidMembershipType(membershipType)) {
-    return NextResponse.json({ error: "Tipo tessera non valido" }, { status: 400 });
-  }
-
-  if (hasExistingMembership) {
-    if (!isValidMembershipType(existingMembershipType)) {
-      return NextResponse.json(
-        { error: "Tipo tessera già posseduta non valido" },
-        { status: 400 }
-      );
-    }
-
-    if (existingMembershipType !== membershipType) {
-      return NextResponse.json(
-        { error: "Il tipo tessera dichiarato deve coincidere con la tessera selezionata" },
-        { status: 400 }
-      );
-    }
-
-    if (existingMembershipType === "FITP" && !existingMembershipNumber) {
-      return NextResponse.json(
-        { error: "Numero tessera FITP obbligatorio" },
-        { status: 400 }
-      );
+  const sb = supabaseAdmin();
+  if (normalizedCode) {
+    try {
+      const keys = movibackEnrollmentRateLimitKeys(request, userId);
+      const limited = await sb.rpc("consume_legacy_login_rate_limit", { p_client_key: keys.clientKey, p_identity_key: keys.identityKey });
+      if (limited.error) return NextResponse.json({ error: "Verifica del codice temporaneamente non disponibile." }, { status: 503 });
+      const limit = (limited.data ?? {}) as { allowed?: boolean; retry_after_seconds?: number };
+      if (!limit.allowed) {
+        const retry = Math.max(1, Math.ceil(Number(limit.retry_after_seconds) || 900));
+        return NextResponse.json({ error: "Troppi tentativi. Riprova più tardi." }, { status: 429, headers: { "Retry-After": String(retry) } });
+      }
+    } catch {
+      return NextResponse.json({ error: "Verifica del codice temporaneamente non disponibile." }, { status: 503 });
     }
   }
 
-  if (!isValidISODate(expiryDate)) {
-    return NextResponse.json({ error: "Data scadenza certificato obbligatoria" }, { status: 400 });
-  }
+  const filePath = `${userId}/enrollment-${idempotencyKey}-${safeName(file.name)}`;
+  const uploaded = await sb.storage.from(BUCKET).upload(filePath, Buffer.from(await file.arrayBuffer()), { contentType: file.type, upsert: false });
+  const duplicateUpload = Boolean(uploaded.error && /duplicate|already exists/i.test(uploaded.error.message));
+  if (uploaded.error && !duplicateUpload) return NextResponse.json({ error: uploaded.error.message }, { status: 500 });
 
-  if (!(file instanceof File)) {
-    return NextResponse.json({ error: "Certificato medico obbligatorio" }, { status: 400 });
-  }
-
-  const allowedTypes = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
-  if (!allowedTypes.includes(file.type)) {
-    return NextResponse.json(
-      { error: "Formato certificato non valido. Usa PDF, JPG, PNG o WEBP." },
-      { status: 400 }
-    );
-  }
-
-  const maxSize = 8 * 1024 * 1024;
-  if (file.size > maxSize) {
-    return NextResponse.json(
-      { error: "File troppo grande. Dimensione massima 8MB." },
-      { status: 400 }
-    );
-  }
-
-  const { data: existingMembershipRows, error: existingErr } = await sb
-    .from("loyalty_memberships")
-    .select("id,status,membership_code,membership_type")
-    .eq("user_id", uid)
-    .limit(2);
-
-  if (existingErr) {
-    return NextResponse.json({ error: existingErr.message }, { status: 500 });
-  }
-
-  if ((existingMembershipRows ?? []).length > 1) {
-    return NextResponse.json({ error: "Più membership MoviBack richiedono una verifica Admin", code: "MEMBERSHIP_CARDINALITY" }, { status: 409 });
-  }
-  const existingMembership = existingMembershipRows?.[0] ?? null;
-
-  if (existingMembership && existingMembership.status !== "rejected") {
-  return NextResponse.json(
-    {
-      error: "Richiesta MoviBack già presente",
-      membership: existingMembership,
-    },
-    { status: 409 }
-  );
-}
-
-  const { data: user, error: userErr } = await sb
-    .from("users")
-    .select("id")
-    .eq("id", uid)
-    .single();
-
-  if (userErr || !user) {
-    return NextResponse.json({ error: "Utente non trovato" }, { status: 404 });
-  }
-
-  const now = Date.now();
-  const cleanName = safeFileName(file.name);
-  const filePath = `${uid}/${now}-${cleanName}`;
-
-  const buffer = Buffer.from(await file.arrayBuffer());
-
-  const { error: uploadErr } = await sb.storage
-    .from(BUCKET)
-    .upload(filePath, buffer, {
-      contentType: file.type,
-      upsert: false,
-    });
-
-  if (uploadErr) {
-    return NextResponse.json({ error: uploadErr.message }, { status: 500 });
-  }
-
-  if (existingMembership?.status === "rejected") {
-  const feePoints = hasExistingMembership ? 0 : membershipType === "FITP" ? 15 : 0;
-  const feePaid = hasExistingMembership || feePoints === 0;
-  const nowIso = new Date().toISOString();
-
-  const { data: membership, error: membershipErr } = await sb
-    .from("loyalty_memberships")
-    .update({
-      status: "pending_review",
-      tax_code: taxCode,
-      membership_type: membershipType,
-      fee_points: feePoints,
-      fee_paid: feePaid,
-      has_existing_membership: hasExistingMembership,
-      existing_membership_type: hasExistingMembership
-        ? existingMembershipType
-        : null,
-      existing_membership_number:
-        hasExistingMembership && existingMembershipType === "FITP"
-          ? existingMembershipNumber
-          : null,
-      rejection_reason: null,
-      rejected_at: null,
-      updated_at: nowIso,
-    })
-    .eq("id", existingMembership.id)
-    .select(
-      "id,user_id,status,membership_code,tax_code,membership_type,fee_points,fee_paid,has_existing_membership,existing_membership_type,existing_membership_number,created_at"
-    )
-    .single();
-
-  if (membershipErr || !membership) {
-    await sb.storage.from(BUCKET).remove([filePath]);
-
-    return NextResponse.json(
-      { error: membershipErr?.message ?? "Errore reinvio richiesta" },
-      { status: 500 }
-    );
-  }
-
-  const { data: certificate, error: certErr } = await sb
-    .from("medical_certificates")
-    .insert({
-      user_id: uid,
-      file_path: filePath,
-      status: "pending_review",
-      expiry_date: expiryDate,
-    })
-    .select("id,user_id,file_path,status,uploaded_at,expiry_date")
-    .single();
-
-  if (certErr) {
-    await sb.storage.from(BUCKET).remove([filePath]);
-
-    return NextResponse.json({ error: certErr.message }, { status: 500 });
-  }
-
-  schedulePostCommitNotifications("/api/moviback/request-membership", [
-    {
-      provider: "telegram",
-      run: () =>
-        sendTelegramMessage(
-          `🔁 REINVIO RICHIESTA MOVIBACK\n\n` +
-            `👤 Utente ID: ${uid}\n` +
-            `🎫 Tessera: ${membership.membership_type}\n` +
-            `📄 Nuovo certificato caricato`
-        ),
-      failureLog: "MoviBack resubmit Telegram notify error (ignored):",
-    },
-    {
-      provider: "push",
-      run: () =>
-        sendAdminPushNotification({
-          title: "🔁 Reinvio MoviBack",
-          body: `Nuovo certificato caricato · ${membership.membership_type}`,
-          url: "/admin/moviback/requests",
-        }),
-      failureLog: "MoviBack resubmit admin push notify error (ignored):",
-    },
-  ]);
-
-
-  return NextResponse.json({
-    ok: true,
-    membership,
-    certificate,
+  const codeHash = normalizedCode ? hashMovibackAgreementCode(normalizedCode) : null;
+  const requestHash = crypto.createHash("sha256").update(JSON.stringify({
+    normalizedTaxCode, membershipType, expiryDate, hasExisting, existingType, existingNumber,
+    filePath, fileSize: file.size, fileType: file.type, codeHash,
+  })).digest("hex");
+  const feePoints = hasExisting ? 0 : membershipType === "FITP" ? 15 : 0;
+  const saved = await sb.rpc("submit_moviback_membership_request_c5", {
+    p_user_id: userId,
+    p_idempotency_key: idempotencyKey,
+    p_request_hash: requestHash,
+    p_membership_code: `MOVI-${crypto.randomBytes(5).toString("hex").toUpperCase()}`,
+    p_tax_code: normalizedTaxCode,
+    p_membership_type: membershipType,
+    p_fee_points: feePoints,
+    p_fee_paid: hasExisting || feePoints === 0,
+    p_has_existing_membership: hasExisting,
+    p_existing_membership_type: hasExisting ? existingType : null,
+    p_existing_membership_number: hasExisting && existingType === "FITP" ? existingNumber : null,
+    p_certificate_file_path: filePath,
+    p_certificate_expiry: expiryDate,
+    p_code_hash: codeHash,
   });
-}
-
-  const feePoints = hasExistingMembership ? 0 : membershipType === "FITP" ? 15 : 0;
-  const feePaid = hasExistingMembership || feePoints === 0;
-
-  let membershipCode = generateMembershipCode();
-  let membership: any = null;
-  let membershipErr: any = null;
-
-  for (let i = 0; i < 3; i++) {
-    membershipCode = generateMembershipCode();
-
-    const res = await sb
-      .from("loyalty_memberships")
-      .insert({
-        user_id: uid,
-        status: "pending_review",
-        membership_code: membershipCode,
-        tax_code: taxCode,
-        membership_type: membershipType,
-        fee_points: feePoints,
-        fee_paid: feePaid,
-        has_existing_membership: hasExistingMembership,
-        existing_membership_type: hasExistingMembership
-          ? existingMembershipType
-          : null,
-        existing_membership_number:
-          hasExistingMembership && existingMembershipType === "FITP"
-            ? existingMembershipNumber
-            : null,
-      })
-      .select(
-        "id,user_id,status,membership_code,tax_code,membership_type,fee_points,fee_paid,has_existing_membership,existing_membership_type,existing_membership_number,created_at"
-      )
-      .single();
-
-    membership = res.data;
-    membershipErr = res.error;
-
-    if (!membershipErr) break;
-
-    const msg = String(membershipErr.message ?? "").toLowerCase();
-    if (!msg.includes("duplicate") && !msg.includes("unique")) break;
+  if (saved.error) {
+    if (!duplicateUpload) await sb.storage.from(BUCKET).remove([filePath]);
+    console.error("MoviBack C5 enrollment failed", saved.error.code);
+    return NextResponse.json({ error: "Errore creazione richiesta MoviBack" }, { status: 500 });
+  }
+  const result = (saved.data ?? {}) as EnrollmentResult;
+  if (!result.ok) {
+    if (!duplicateUpload) await sb.storage.from(BUCKET).remove([filePath]);
+    const failure = failures[String(result.error_code ?? "")] ?? { status: 500, message: "Errore creazione richiesta MoviBack" };
+    return NextResponse.json({ error: failure.message, code: result.error_code }, { status: failure.status });
   }
 
-  if (membershipErr || !membership) {
-    await sb.storage.from(BUCKET).remove([filePath]);
-
-    return NextResponse.json(
-      { error: membershipErr?.message ?? "Errore creazione tessera" },
-      { status: 500 }
-    );
-  }
-
-  const { data: certificate, error: certErr } = await sb
-    .from("medical_certificates")
-    .insert({
-      user_id: uid,
-      file_path: filePath,
-      status: "pending_review",
-      expiry_date: expiryDate,
-    })
-    .select("id,user_id,file_path,status,uploaded_at,expiry_date")
-    .single();
-
-  if (certErr) {
-    await sb.storage.from(BUCKET).remove([filePath]);
-    await sb.from("loyalty_memberships").delete().eq("id", membership.id);
-
-    return NextResponse.json({ error: certErr.message }, { status: 500 });
-  }
-
-  schedulePostCommitNotifications("/api/moviback/request-membership", [
-    {
-      provider: "telegram",
-      run: () =>
-        sendTelegramMessage(
-          `🎁 NUOVA RICHIESTA MOVIBACK\n\n` +
-            `👤 Utente ID: ${uid}\n` +
-            `🎫 Tessera: ${membership.membership_type}\n` +
-            `📄 Certificato caricato\n` +
-            `📅 Scadenza: ${expiryDate}`
-        ),
-      failureLog: "MoviBack request Telegram notify error (ignored):",
-    },
-    {
-      provider: "push",
-      run: () =>
-        sendAdminPushNotification({
-          title: "🎁 Nuova richiesta MoviBack",
-          body: `Tessera ${membership.membership_type} · certificato caricato`,
-          url: "/admin/moviback/requests",
-        }),
-      failureLog: "MoviBack request admin push notify error (ignored):",
-    },
+  const [membership, certificate] = await Promise.all([
+    sb.from("loyalty_memberships").select("id,user_id,status,membership_code,tax_code,membership_type,fee_points,fee_paid,has_existing_membership,existing_membership_type,existing_membership_number,created_at").eq("id", result.membership_id!).single(),
+    sb.from("medical_certificates").select("id,user_id,file_path,status,uploaded_at,expiry_date").eq("id", result.certificate_id!).single(),
   ]);
+  if (membership.error || certificate.error) return NextResponse.json({ error: "Richiesta salvata; aggiorna la pagina." }, { status: 503 });
 
-  return NextResponse.json({
-    ok: true,
-    membership,
-    certificate,
-  });
+  if (!result.replayed) {
+    schedulePostCommitNotifications("/api/moviback/request-membership", [
+      {
+        provider: "telegram",
+        run: () => sendTelegramMessage(
+          `🎁 RICHIESTA MOVIBACK\n\n👤 Utente ID: ${userId}\n🎫 Tessera: ${membershipType}\n📄 Certificato caricato${result.agreement ? `\n🏢 Convenzione in attesa: ${result.agreement.name}` : ""}`,
+        ),
+        failureLog: "MoviBack request Telegram notify error (ignored):",
+      },
+      {
+        provider: "push",
+        run: () => sendAdminPushNotification({ title: "🎁 Richiesta MoviBack", body: `Tessera ${membershipType} · certificato caricato`, url: "/admin/moviback/requests" }),
+        failureLog: "MoviBack request admin push notify error (ignored):",
+      },
+    ]);
+  }
+  return NextResponse.json({ ok: true, replayed: Boolean(result.replayed), membership: membership.data, certificate: certificate.data, agreement: result.agreement ?? null });
 }

@@ -24,6 +24,9 @@ const eventCopy: Record<string, { subject: string; heading: string; intro: strin
   "store.order.ready": { subject: "Il tuo ordine MOVI è pronto", heading: "Il tuo ordine è pronto", intro: "Il tuo ordine MOVI è pronto." },
   "store.order.delivered": { subject: "Ordine MOVI consegnato", heading: "Ordine consegnato", intro: "Il tuo ordine MOVI risulta consegnato." },
   "store.order.cancelled": { subject: "Ordine MOVI annullato", heading: "Ordine annullato", intro: "Il tuo ordine MOVI è stato annullato." },
+  "moviback.agreement.activated": { subject: "La tua convenzione MOVI è attiva", heading: "Convenzione attiva", intro: "La tua convenzione è attiva. Da ora i nuovi accrediti MoviBack idonei utilizzeranno il moltiplicatore previsto. Il saldo e i punti già maturati non sono stati modificati." },
+  "moviback.agreement.not_activated": { subject: "La convenzione non è stata attivata", heading: "Convenzione non attivata", intro: "La tua membership MoviBack è stata approvata, ma la convenzione non è stata attivata. Nessun moltiplicatore è attivo tramite quel codice e i punti già maturati non sono stati modificati." },
+  "moviback.agreement.revoked": { subject: "La tua convenzione MOVI è terminata", heading: "Convenzione terminata", intro: "La tua membership MoviBack resta attiva e i punti già maturati rimangono invariati. I futuri accrediti idonei non useranno più il moltiplicatore di questa convenzione; potrà comunque applicarsi un’altra promozione valida secondo le regole MOVI." },
 };
 
 function escapeHtml(value: unknown) {
@@ -74,6 +77,21 @@ function rows(event: UserNotificationEvent) {
       ["Articoli", items],
       ["Totale", totals],
       ["Ritiro", label(payload.pickup_club)],
+    ];
+  }
+  if (event.domain === "moviback") {
+    const multiplier = Number(payload.multiplier ?? 0);
+    return [
+      ["Convenzione", label(payload.agreement_name)],
+      ...(event.event_type === "moviback.agreement.activated" && multiplier > 0
+        ? [["Moltiplicatore", `×${multiplier}`]]
+        : []),
+      ...(event.event_type === "moviback.agreement.activated" && payload.effective_from
+        ? [["Attiva dal", label(payload.effective_from)]]
+        : []),
+      ...(event.event_type === "moviback.agreement.activated" && payload.effective_until
+        ? [["Valida fino al", label(payload.effective_until)]]
+        : []),
     ];
   }
   return [

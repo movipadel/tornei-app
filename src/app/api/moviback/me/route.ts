@@ -24,6 +24,9 @@ export async function GET() {
       transactions: [],
       redemptions: [],
       eligibility: null,
+      active_agreement: null,
+      agreement_state: null,
+      agreement_history: [],
     });
   }
 
@@ -72,11 +75,30 @@ export async function GET() {
   const certificate = certificates?.[0] ?? null;
 
   let points = 0;
-  let transactions: any[] = [];
-  let redemptions: any[] = [];
+  let transactions: Array<Record<string, unknown>> = [];
+  let redemptions: Array<Record<string, unknown>> = [];
+  let activeAgreement: {
+    entitlement_id: string;
+    name: string;
+    multiplier: number;
+    status: string;
+    effective_from: string;
+    effective_until: string | null;
+  } | null = null;
+  let agreementState: {
+    entitlement_id: string;
+    name: string;
+    multiplier: number;
+    status: string;
+    effective_from: string | null;
+    effective_until: string | null;
+    reason: string | null;
+  } | null = null;
+  let agreementHistory: Array<Record<string, unknown>> = [];
 
   if (membership?.id) {
-    const [transactionsResult, redemptionsResult] = await Promise.all([
+    const now = new Date().toISOString();
+    const [transactionsResult, redemptionsResult, entitlementResult, agreementHistoryResult] = await Promise.all([
       perf.db(() =>
         sb
           .from("loyalty_transactions")
@@ -117,6 +139,21 @@ export async function GET() {
           .order("requested_at", { ascending: false })
           .limit(10)
       ),
+      perf.db(() =>
+        sb
+          .from("moviback_agreement_entitlements")
+          .select("id,status,effective_from,effective_until,not_activation_reason,created_at,agreement:moviback_agreements(name,multiplier)")
+          .eq("membership_id", membership.id)
+          .in("status", ["pending", "active", "not_activated"])
+          .is("revoked_at", null)
+          .order("created_at", { ascending: false })
+          .limit(10)
+      ),
+      perf.db(() =>
+        sb.rpc("get_moviback_membership_agreement_history", {
+          p_membership_id: membership.id,
+        })
+      ),
     ]);
 
     const { data: txRows, error: txErr } = transactionsResult;
@@ -148,6 +185,57 @@ export async function GET() {
       ),
       manual_code_deliverable: isQrDeliverable(redemption.status),
     }));
+
+    if (entitlementResult.error) {
+      return perf.json({ error: entitlementResult.error.message }, { status: 500 });
+    }
+    if (agreementHistoryResult.error) {
+      return perf.json({ error: agreementHistoryResult.error.message }, { status: 500 });
+    }
+    agreementHistory = Array.isArray(agreementHistoryResult.data)
+      ? agreementHistoryResult.data as Array<Record<string, unknown>>
+      : [];
+    const entitlementRows = (entitlementResult.data ?? []) as Array<{
+      id: string;
+      status: string;
+      effective_from: string | null;
+      effective_until: string | null;
+      not_activation_reason: string | null;
+      created_at: string;
+      agreement: { name: string; multiplier: number } | { name: string; multiplier: number }[] | null;
+    }>;
+    const entitlement = entitlementRows.find((row) =>
+      row.status === "active"
+      && Boolean(row.effective_from)
+      && row.effective_from! <= now
+      && (!row.effective_until || row.effective_until > now)
+    ) ?? entitlementRows.find((row) => row.status === "pending")
+      ?? entitlementRows.find((row) => row.status === "not_activated")
+      ?? null;
+    const agreement = Array.isArray(entitlement?.agreement)
+      ? entitlement?.agreement[0]
+      : entitlement?.agreement;
+    if (entitlement && agreement) {
+      agreementState = {
+        entitlement_id: entitlement.id,
+        name: agreement.name,
+        multiplier: Number(agreement.multiplier),
+        status: entitlement.status,
+        effective_from: entitlement.effective_from,
+        effective_until: entitlement.effective_until,
+        reason: entitlement.not_activation_reason,
+      };
+      if (entitlement.status === "active" && entitlement.effective_from) {
+        activeAgreement = {
+          entitlement_id: entitlement.id,
+          name: agreement.name,
+          multiplier: Number(agreement.multiplier),
+          status: entitlement.status,
+          effective_from: entitlement.effective_from,
+          effective_until: entitlement.effective_until,
+        };
+      }
+    }
   }
 
   if (certErr) {
@@ -161,6 +249,9 @@ export async function GET() {
     points,
     transactions,
     redemptions,
+    active_agreement: activeAgreement,
+    agreement_state: agreementState,
+    agreement_history: agreementHistory,
     eligibility: computeMovibackEligibility({
       memberships: membership ? [membership] : [],
       certificates: certificates ?? [],

@@ -22,6 +22,10 @@ import UserLoginDialog from "@/components/UserLoginDialog";
 import { QRCodeCanvas } from "qrcode.react";
 import { formatManualRewardCode } from "@/lib/movibackContracts";
 import { MembershipCardModal } from "@/components/public/MembershipCardModal";
+import {
+  MovibackAgreementActivation,
+  type PublicMovibackAgreement,
+} from "@/components/public/MovibackAgreementActivation";
 
 type User = {
   id: string;
@@ -65,14 +69,58 @@ type Eligibility = {
   needs_certificate_review: boolean;
 };
 
+type RewardRedemption = {
+  id: string;
+  status: string;
+  points_cost: number;
+  qr_deliverable?: boolean;
+  qr_token?: string | null;
+  manual_code?: string | null;
+  reward?: {
+    name?: string | null;
+    image_path?: string | null;
+  } | null;
+};
+
+type PublicMovibackAgreementState = {
+  entitlement_id: string;
+  name: string;
+  multiplier: number;
+  status: "pending" | "active" | "not_activated";
+  effective_from: string | null;
+  effective_until: string | null;
+  reason: string | null;
+};
+
+type PublicMovibackAgreementHistory = {
+  entitlement_id: string;
+  agreement_name: string;
+  multiplier: number;
+  status: string;
+  activation_source: string;
+  code_suffix: string | null;
+  created_at: string;
+  activated_at: string | null;
+  effective_from: string | null;
+  effective_until: string | null;
+  revoked_at: string | null;
+  revocation_reason: string | null;
+  not_activation_reason: string | null;
+  earn_count: number;
+  bonus_points: number;
+};
+
 type MoviBackMe = {
   user: User | null;
   membership: Membership | null;
   certificate: Certificate | null;
   points: number;
-  transactions: any[];
-  redemptions: any[];
+  transactions: unknown[];
+  redemptions: RewardRedemption[];
   eligibility: Eligibility | null;
+  active_agreement: PublicMovibackAgreement | null;
+  agreement_state: PublicMovibackAgreementState | null;
+  agreement_history: PublicMovibackAgreementHistory[];
 };
 
 const pageBg =
@@ -118,6 +166,10 @@ function formatDate(date?: string | null) {
   });
 }
 
+function errorMessage(error: unknown) {
+  return error instanceof Error ? error.message : "Errore";
+}
+
 function certificateIsExpired(cert: Certificate | null) {
   if (!cert?.expiry_date) return false;
   const today = new Date();
@@ -159,13 +211,16 @@ export default function MoviBackPage() {
     transactions: [],
     redemptions: [],
     eligibility: null,
+    active_agreement: null,
+    agreement_state: null,
+    agreement_history: [],
   });
 
   const [loginOpen, setLoginOpen] = useState(false);
   const [requestOpen, setRequestOpen] = useState(false);
 
   const [qrOpen, setQrOpen] = useState(false);
-  const [rewardQrOpen, setRewardQrOpen] = useState<any | null>(null);
+  const [rewardQrOpen, setRewardQrOpen] = useState<RewardRedemption | null>(null);
 
   const [taxCode, setTaxCode] = useState("");
   const [membershipType, setMembershipType] = useState<"ASC" | "FITP">("ASC");
@@ -173,11 +228,15 @@ export default function MoviBackPage() {
   const [existingMembershipNumber, setExistingMembershipNumber] = useState("");
   const [expiryDate, setExpiryDate] = useState("");
   const [certificateFile, setCertificateFile] = useState<File | null>(null);
+  const [agreementCode, setAgreementCode] = useState("");
+  const [agreementCodeError, setAgreementCodeError] = useState("");
+  const [enrollmentIdempotencyKey, setEnrollmentIdempotencyKey] = useState("");
 
   const [replaceCertOpen, setReplaceCertOpen] = useState(false);
   const [replaceExpiryDate, setReplaceExpiryDate] = useState("");
   const [replaceCertificateFile, setReplaceCertificateFile] = useState<File | null>(null);
   const [graceNoticeOpen, setGraceNoticeOpen] = useState(true);
+  const renewEnrollmentAttempt = () => setEnrollmentIdempotencyKey(crypto.randomUUID());
 
   async function loadMe() {
     try {
@@ -189,8 +248,8 @@ export default function MoviBackPage() {
       if (!res.ok) throw new Error(json.error || "Errore caricamento MoviBack");
 
       setData(json as MoviBackMe);
-    } catch (e: any) {
-      toast.error(e?.message ?? "Errore");
+    } catch (error: unknown) {
+      toast.error(errorMessage(error));
     } finally {
       setLoading(false);
     }
@@ -233,8 +292,8 @@ async function submitReplaceCertificate(e: React.FormEvent) {
     setReplaceCertificateFile(null);
 
     await loadMe();
-  } catch (e: any) {
-    toast.error(e?.message || "Errore");
+  } catch (error: unknown) {
+    toast.error(errorMessage(error));
   } finally {
     setSaving(false);
   }
@@ -268,8 +327,8 @@ async function leaveMoviBack() {
 
     toast.success("Hai abbandonato MoviBack");
     await loadMe();
-  } catch (e: any) {
-    toast.error(e?.message || "Errore");
+  } catch (error: unknown) {
+    toast.error(errorMessage(error));
   } finally {
     setSaving(false);
   }
@@ -294,8 +353,8 @@ async function reactivateMoviBack() {
 
     toast.success("MoviBack riattivato");
     await loadMe();
-  } catch (e: any) {
-    toast.error(e?.message || "Errore");
+  } catch (error: unknown) {
+    toast.error(errorMessage(error));
   } finally {
     setSaving(false);
   }
@@ -307,6 +366,7 @@ async function reactivateMoviBack() {
       return;
     }
 
+    setEnrollmentIdempotencyKey(crypto.randomUUID());
     setRequestOpen(true);
   }
 
@@ -321,6 +381,7 @@ async function reactivateMoviBack() {
 
     try {
       setSaving(true);
+      setAgreementCodeError("");
 
       const form = new FormData();
       form.set("tax_code", taxCode);
@@ -343,6 +404,8 @@ form.set(
 );
       form.set("expiry_date", expiryDate);
       form.set("certificate", certificateFile);
+      form.set("agreement_code", agreementCode);
+      form.set("idempotency_key", enrollmentIdempotencyKey || crypto.randomUUID());
 
       const res = await fetch("/api/moviback/request-membership", {
         method: "POST",
@@ -350,7 +413,14 @@ form.set(
       });
 
       const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json.error || "Errore richiesta MoviBack");
+      if (!res.ok) {
+        if (agreementCode.trim() && (
+          String(json.code ?? "").includes("CODE")
+          || String(json.code ?? "") === "AGREEMENT_NOT_ACTIVE"
+          || String(json.code ?? "") === "RESERVATION_CONFLICT"
+        )) setAgreementCodeError(String(json.error || "Codice convenzione non valido."));
+        throw new Error(json.error || "Errore richiesta MoviBack");
+      }
 
       toast.success("Richiesta MoviBack inviata");
       setRequestOpen(false);
@@ -358,10 +428,13 @@ form.set(
       setMembershipType("ASC");
       setExpiryDate("");
       setCertificateFile(null);
+      setAgreementCode("");
+      setAgreementCodeError("");
+      setEnrollmentIdempotencyKey("");
 
       await loadMe();
-    } catch (e: any) {
-      toast.error(e?.message ?? "Errore");
+    } catch (error: unknown) {
+      toast.error(errorMessage(error));
     } finally {
       setSaving(false);
     }
@@ -815,6 +888,77 @@ return (
               </div>
             </section>
 
+            <MovibackAgreementActivation
+              agreement={data.active_agreement}
+              enabled={membership?.status === "approved"}
+              onActivated={loadMe}
+            />
+
+            {data.agreement_state?.status === "pending" ? (
+              <section style={{ ...glassCard, padding: 18, color: "white", borderColor: "rgba(245,158,11,0.3)" }}>
+                <div style={{ display: "flex", gap: 13 }}>
+                  <Clock aria-hidden="true" className="w-6 h-6" style={{ color: "#fbbf24", flexShrink: 0 }} />
+                  <div>
+                    <div style={{ color: "#fbbf24", fontSize: 12, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                      Convenzione in attesa
+                    </div>
+                    <div style={{ marginTop: 4, fontSize: 19, fontWeight: 900 }}>{data.agreement_state.name}</div>
+                    <div style={{ marginTop: 4, fontWeight: 850 }}>MoviBack ×{data.agreement_state.multiplier}</div>
+                    <p style={{ margin: "8px 0 0", color: "rgba(255,255,255,0.64)", fontSize: 14, lineHeight: 1.4 }}>
+                      Si attiverà dopo l’approvazione della tua iscrizione MoviBack.
+                    </p>
+                  </div>
+                </div>
+              </section>
+            ) : null}
+
+            {data.agreement_state?.status === "not_activated" ? (
+              <section style={{ ...glassCard, padding: 18, color: "white", borderColor: "rgba(248,113,113,0.3)" }}>
+                <div style={{ display: "flex", gap: 13 }}>
+                  <AlertTriangle aria-hidden="true" className="w-6 h-6" style={{ color: "#f87171", flexShrink: 0 }} />
+                  <div>
+                    <div style={{ color: "#f87171", fontSize: 12, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                      Convenzione non attivata
+                    </div>
+                    <div style={{ marginTop: 4, fontSize: 19, fontWeight: 900 }}>{data.agreement_state.name}</div>
+                    <p style={{ margin: "8px 0 0", color: "rgba(255,255,255,0.64)", fontSize: 14, lineHeight: 1.4 }}>
+                      La tessera MoviBack è stata gestita correttamente, ma la convenzione non era più valida al momento dell’approvazione.
+                    </p>
+                  </div>
+                </div>
+              </section>
+            ) : null}
+
+            {data.agreement_history.length > 0 ? (
+              <section style={{ ...glassCard, padding: 18, color: "white" }}>
+                <div style={{ fontSize: 12, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.08em", color: "#5eead4" }}>
+                  Storico convenzioni
+                </div>
+                <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
+                  {data.agreement_history.map((item) => (
+                    <div key={item.entitlement_id} style={{ padding: 12, borderRadius: 16, border: "1px solid rgba(255,255,255,0.09)", background: "rgba(255,255,255,0.04)" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+                        <strong>{item.agreement_name} · ×{item.multiplier}</strong>
+                        <span style={{ color: "rgba(255,255,255,0.66)", fontSize: 12, fontWeight: 800 }}>{item.status}</span>
+                      </div>
+                      <div style={{ marginTop: 5, color: "rgba(255,255,255,0.62)", fontSize: 12, lineHeight: 1.45 }}>
+                        Origine: {item.activation_source}
+                        {item.code_suffix ? ` · Codice ••••${item.code_suffix}` : ""}
+                        {item.activated_at ? ` · Attivata il ${new Date(item.activated_at).toLocaleDateString("it-IT")}` : ` · Creata il ${new Date(item.created_at).toLocaleDateString("it-IT")}`}
+                        {item.effective_until ? ` · Termine ${new Date(item.effective_until).toLocaleDateString("it-IT")}` : ""}
+                      </div>
+                      {(item.not_activation_reason || item.revocation_reason) ? (
+                        <div style={{ marginTop: 5, color: "#fca5a5", fontSize: 12 }}>{item.not_activation_reason || item.revocation_reason}</div>
+                      ) : null}
+                      {item.earn_count > 0 ? (
+                        <div style={{ marginTop: 5, color: "rgba(255,255,255,0.72)", fontSize: 12 }}>{item.earn_count} accrediti · +{item.bonus_points} punti bonus convenzione</div>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              </section>
+            ) : null}
+
             {!membership ? (
               <section style={{ ...glassCard, padding: 18, color: "white" }}>
                 <div
@@ -1216,8 +1360,8 @@ return (
         >
           {redemption.reward?.image_path ? (
             <img
-              src={redemption.reward.image_path}
-              alt={redemption.reward.name}
+              src={redemption.reward.image_path ?? undefined}
+              alt={redemption.reward.name ?? "Premio MoviBack"}
               style={{
                 width: 68,
                 height: 68,
@@ -1528,7 +1672,10 @@ return (
                     <div style={labelStyle}>Codice fiscale</div>
                     <input
                       value={taxCode}
-                      onChange={(e) => setTaxCode(e.target.value.toUpperCase())}
+                      onChange={(e) => {
+                        setTaxCode(e.target.value.toUpperCase());
+                        renewEnrollmentAttempt();
+                      }}
                       required
                       style={inputStyle}
                       placeholder="RSSMRA..."
@@ -1546,7 +1693,10 @@ return (
                     >
                       <button
                         type="button"
-                        onClick={() => setMembershipType("ASC")}
+                        onClick={() => {
+                          setMembershipType("ASC");
+                          renewEnrollmentAttempt();
+                        }}
                         style={{
                           minHeight: 70,
                           borderRadius: 18,
@@ -1579,7 +1729,10 @@ return (
 
                       <button
                         type="button"
-                        onClick={() => setMembershipType("FITP")}
+                        onClick={() => {
+                          setMembershipType("FITP");
+                          renewEnrollmentAttempt();
+                        }}
                         style={{
                           minHeight: 70,
                           borderRadius: 18,
@@ -1634,6 +1787,7 @@ return (
       onChange={(e) => {
         setHasExistingMembership(e.target.checked);
         if (!e.target.checked) setExistingMembershipNumber("");
+        renewEnrollmentAttempt();
       }}
     />
 
@@ -1663,9 +1817,10 @@ return (
           <div style={labelStyle}>Numero tessera FITP</div>
           <input
             value={existingMembershipNumber}
-            onChange={(e) =>
-              setExistingMembershipNumber(e.target.value.toUpperCase())
-            }
+            onChange={(e) => {
+              setExistingMembershipNumber(e.target.value.toUpperCase());
+              renewEnrollmentAttempt();
+            }}
             required={hasExistingMembership && membershipType === "FITP"}
             style={inputStyle}
             placeholder="Inserisci numero tessera FITP"
@@ -1689,11 +1844,38 @@ return (
 </div>
 
                   <div style={{ marginTop: 13 }}>
+                    <div style={labelStyle}>Codice convenzione <span style={{ opacity: 0.62 }}>(facoltativo)</span></div>
+                    <input
+                      value={agreementCode}
+                      onChange={(event) => {
+                        setAgreementCode(event.target.value);
+                        setAgreementCodeError("");
+                        renewEnrollmentAttempt();
+                      }}
+                      style={inputStyle}
+                      placeholder="MOVI-XXXXX-XXXXX-XXXXX-XXXXX"
+                      autoComplete="off"
+                      autoCapitalize="characters"
+                      spellCheck={false}
+                      maxLength={80}
+                    />
+                    <div
+                      role={agreementCodeError ? "alert" : undefined}
+                      style={{ marginTop: 6, color: agreementCodeError ? "#fca5a5" : "rgba(255,255,255,0.55)", fontSize: 12, lineHeight: 1.35 }}
+                    >
+                      {agreementCodeError || "Se hai ricevuto un codice convenzione, inseriscilo qui."}
+                    </div>
+                  </div>
+
+                  <div style={{ marginTop: 13 }}>
                     <div style={labelStyle}>Scadenza certificato</div>
                     <input
                       type="date"
                       value={expiryDate}
-                      onChange={(e) => setExpiryDate(e.target.value)}
+                      onChange={(e) => {
+                        setExpiryDate(e.target.value);
+                        renewEnrollmentAttempt();
+                      }}
                       required
                       style={inputStyle}
                     />
@@ -1740,9 +1922,10 @@ return (
                         type="file"
                         accept=".pdf,image/jpeg,image/png,image/webp"
                         style={{ display: "none" }}
-                        onChange={(e) =>
-                          setCertificateFile(e.target.files?.[0] ?? null)
-                        }
+                        onChange={(e) => {
+                          setCertificateFile(e.target.files?.[0] ?? null);
+                          renewEnrollmentAttempt();
+                        }}
                       />
                     </label>
                   </div>

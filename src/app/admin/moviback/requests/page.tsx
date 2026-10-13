@@ -22,7 +22,17 @@ type Row = {
     expiry_date?: string | null;
     file_path?: string;
   } | null;
+  pending_convention: {
+    status: "pending" | "not_activated";
+    not_activation_reason: string | null;
+    agreement: { name: string; multiplier: number } | { name: string; multiplier: number }[] | null;
+    code: { code_suffix: string; status: string } | { code_suffix: string; status: string }[] | null;
+  } | null;
 };
+
+function message(error: unknown) {
+  return error instanceof Error ? error.message : "Errore";
+}
 
 export default function RequestsPage() {
   const [data, setData] = useState<Row[]>([]);
@@ -43,8 +53,8 @@ export default function RequestsPage() {
       if (!res.ok) throw new Error(json.error || "Errore caricamento richieste");
 
       setData(json.data || []);
-    } catch (e: any) {
-      toast.error(e?.message || "Errore");
+    } catch (error: unknown) {
+      toast.error(message(error));
     } finally {
       setLoading(false);
     }
@@ -77,12 +87,18 @@ export default function RequestsPage() {
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json.error || "Errore salvataggio");
 
-      toast.success(action === "approve" ? "Richiesta approvata" : "Richiesta rifiutata");
+      toast.success(
+        action === "approve"
+          ? json.convention_status === "not_activated"
+            ? "Membership approvata; convenzione non attivata"
+            : "Richiesta approvata"
+          : "Richiesta rifiutata",
+      );
       await load();
       setRejectTarget(null);
 setRejectionReason("");
-    } catch (e: any) {
-      toast.error(e?.message || "Errore");
+    } catch (error: unknown) {
+      toast.error(message(error));
     } finally {
       setSavingId(null);
     }
@@ -107,8 +123,8 @@ setRejectionReason("");
       if (!res.ok) throw new Error(json.error || "Errore apertura certificato");
 
       window.open(json.url, "_blank", "noopener,noreferrer");
-    } catch (e: any) {
-      toast.error(e?.message || "Errore");
+    } catch (error: unknown) {
+      toast.error(message(error));
     }
   }
 
@@ -235,6 +251,34 @@ setRejectionReason("");
                     {new Date(r.created_at).toLocaleDateString("it-IT")}
                   </div>
                 </div>
+
+                    {r.pending_convention ? (() => {
+                      const agreement = Array.isArray(r.pending_convention.agreement)
+                        ? r.pending_convention.agreement[0]
+                        : r.pending_convention.agreement;
+                      const code = Array.isArray(r.pending_convention.code)
+                        ? r.pending_convention.code[0]
+                        : r.pending_convention.code;
+                      return (
+                        <div style={{
+                          marginTop: 10,
+                          padding: "10px 12px",
+                          borderRadius: 14,
+                          background: "rgba(14,165,233,0.11)",
+                          border: "1px solid rgba(56,189,248,0.24)",
+                          color: "rgba(255,255,255,0.84)",
+                          fontSize: 13,
+                          lineHeight: 1.4,
+                        }}>
+                          <div style={{ fontWeight: 900 }}>Convenzione riservata</div>
+                          <div>{agreement?.name ?? "Convenzione"} · MoviBack ×{agreement?.multiplier ?? "—"}</div>
+                          <div style={{ color: "rgba(255,255,255,0.58)", fontSize: 12 }}>
+                            Entitlement: {r.pending_convention.status}
+                            {code?.code_suffix ? ` · Codice …${code.code_suffix} (${code.status})` : ""}
+                          </div>
+                        </div>
+                      );
+                    })() : null}
 
                 <div style={certBox}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
