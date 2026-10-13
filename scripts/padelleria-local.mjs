@@ -2,7 +2,7 @@ import { execFileSync, spawn } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync, readdirSync, unlinkSync } from 'node:fs';
 import { resolve } from 'node:path';
 const mode=process.argv[2];
-if(!['operator-permissions-editor-migrate','operator-permissions-editor-sql-test','operator-permissions-editor-api-test','operator-permissions-dashboard-api-test','operator-permissions-domain-migrate','operator-permissions-domain-sql-test','operator-permissions-domain-api-test','operator-permissions-migrate','operator-permissions-sql-test','operator-permissions-api-test','padelleria-detail-api-test','padelleria-lifecycle-migrate','padelleria-lifecycle-sql-test','padelleria-lifecycle-api-test','circuit-phase2-fixtures','circuit-phase2-api-test','gioca-suggestions-fixtures','gioca-suggestions-api-test','profile-migrate','profile-fixtures','profile-sql-test','profile-api-test','identity-migrate','identity-fixtures','identity-sql-test','identity-api-test','identity-analyze','activities-migrate','activities-fixtures','activities-api-test','activities-sql-test','requests-migrate','requests-sql-test','requests-fixtures','requests-api-test','partners-migrate','partners-sql-test','partners-fixtures','partners-api-test','check','migrate','sql-test','fixtures','api-test','dev','dev-3101','dev-3102','build','start','start-3101','start-3102'].includes(mode))throw new Error('Unsupported local mode');
+if(!['moviback-c7-email-api-test','operator-permissions-editor-migrate','operator-permissions-editor-sql-test','operator-permissions-editor-api-test','operator-permissions-dashboard-api-test','operator-permissions-domain-migrate','operator-permissions-domain-sql-test','operator-permissions-domain-api-test','operator-permissions-migrate','operator-permissions-sql-test','operator-permissions-api-test','padelleria-detail-api-test','padelleria-lifecycle-migrate','padelleria-lifecycle-sql-test','padelleria-lifecycle-api-test','circuit-phase2-fixtures','circuit-phase2-api-test','gioca-suggestions-fixtures','gioca-suggestions-api-test','profile-migrate','profile-fixtures','profile-sql-test','profile-api-test','identity-migrate','identity-fixtures','identity-sql-test','identity-api-test','identity-analyze','activities-migrate','activities-fixtures','activities-api-test','activities-sql-test','requests-migrate','requests-sql-test','requests-fixtures','requests-api-test','partners-migrate','partners-sql-test','partners-fixtures','partners-api-test','check','migrate','sql-test','fixtures','api-test','dev','dev-3101','dev-3102','build','start','start-3101','start-3102'].includes(mode))throw new Error('Unsupported local mode');
 if(existsSync('supabase/.temp/project-ref'))throw new Error('STOP: linked project');
 const status=JSON.parse(execFileSync(process.execPath,['node_modules/supabase/dist/supabase.js','status','-o','json'],{encoding:'utf8'}));
 if(status.API_URL!=='http://127.0.0.1:55421'||status.DB_URL!=='postgresql://postgres:postgres@127.0.0.1:55422/postgres'||status.STUDIO_URL!=='http://127.0.0.1:55423'||status.MAILPIT_URL!=='http://127.0.0.1:55424'||status.linked_project)throw new Error('STOP: unexpected Supabase targets');
@@ -14,13 +14,15 @@ Object.assign(env,{
   RESEND_API_KEY:'re_local_disabled',NEXT_TELEMETRY_DISABLED:'1',__NEXT_PROCESSED_ENV:'true',PGPASSWORD:'postgres',CRON_SECRET:'padelleria-local-only-cron-secret-2026',
   PADELLERIA_TEST_BASE_URL:['padelleria-lifecycle-api-test','padelleria-detail-api-test'].includes(mode)?'http://127.0.0.1:3101':'http://127.0.0.1:3100',
   NODE_ENV:mode.startsWith('dev')?'development':'production',PADELLERIA_LOCAL_VERIFIED:'1',MOVI_REQUEST_TELEGRAM_MODE:'disabled',LEGACY_RATE_LIMIT_TRUST_PROXY_HEADERS:'true',
-  PLAYER_MATCHING_LOCAL_VERIFIED:'1',GIOCA_SUGGESTIONS_LOCAL_VERIFIED:'1',
+  PLAYER_MATCHING_LOCAL_VERIFIED:'1',GIOCA_SUGGESTIONS_LOCAL_VERIFIED:'1',USER_EMAIL_LOCAL_VERIFIED:'1',USER_EMAIL_TRANSPORT:'local',
+  USER_EMAIL_TEST_BASE_URL:mode==='moviback-c7-email-api-test'?'http://127.0.0.1:3101':mode.endsWith('-3102')?'http://127.0.0.1:3102':mode.endsWith('-3101')?'http://127.0.0.1:3101':'http://127.0.0.1:3100',
   OPERATOR_EDITOR_TEST_BASE_URL:'http://localhost:3102',
 });
 console.log('Verified LOCAL ONLY: API 55421 / DB 55422 / Studio 55423 / Mailpit 55424; unlinked; repository .env files bypassed.');
 const psql='C:/Program Files/PostgreSQL/17/bin/psql.exe';
 const dbArgs=['-h','127.0.0.1','-p','55422','-U','postgres','-d','postgres','-v','ON_ERROR_STOP=1'];
 if(mode==='check')process.exit(0);
+if(mode==='moviback-c7-email-api-test'){execFileSync(process.execPath,['supabase/tests/moviback_corporate_conventions_notifications_http_acceptance.mjs'],{env,stdio:'inherit'});process.exit(0);}
 if(mode==='operator-permissions-editor-migrate'){
  const found=execFileSync(psql,[...dbArgs,'-At','-c',"select to_regprocedure('public.admin_update_operator(uuid,uuid,timestamp with time zone,text,text,text,boolean,text[],text)') is not null"],{env,encoding:'utf8'}).trim();
  if(found==='t')throw new Error('Operator editor schema already exists; do not replay migration');
