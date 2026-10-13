@@ -1,0 +1,13 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import test from "node:test";
+const migration=readFileSync(new URL("../migrations/20261024100000_moviback_corporate_conventions_admin.sql",import.meta.url),"utf8");
+const routes=["../../src/app/api/admin/moviback/agreements/route.ts","../../src/app/api/admin/moviback/agreements/[id]/route.ts","../../src/app/api/admin/moviback/agreements/[id]/codes/generate/route.ts","../../src/app/api/admin/moviback/agreements/[id]/assign/route.ts","../../src/app/api/admin/moviback/entitlements/[id]/revoke/route.ts"].map(path=>readFileSync(new URL(path,import.meta.url),"utf8")).join("\n");
+const css=readFileSync(new URL("../../src/app/admin/moviback/agreements/agreements.module.css",import.meta.url),"utf8");
+test("C3 persists batch metadata and hashes, never plaintext",()=>{assert.match(migration,/moviback_agreement_code_batches/);assert.doesNotMatch(migration,/plaintext_code\s+text/i);assert.match(migration,/jsonb_array_elements\(p_codes\)/);});
+test("all C3 mutations append the certified event vocabulary",()=>{for(const event of ["agreement_created","agreement_updated","code_batch_generated","code_revoked","entitlement_assigned","entitlement_revoked"])assert.match(migration,new RegExp(event));});
+test("single current entitlement covers scheduled and active",()=>assert.match(migration,/status IN \('scheduled','active'\).*revoked_at IS NULL/s));
+test("C3 RPCs remain service-role only",()=>{assert.match(migration,/FROM PUBLIC,anon,authenticated/);assert.match(migration,/TO service_role/);});
+test("every write route enforces moviback.manage",()=>{assert.ok((routes.match(/requireOperatorPermission\("moviback\.manage"\)/g)??[]).length>=5);});
+test("generation replay cannot reconstruct plaintext",()=>{assert.match(migration,/plaintext_recoverable',false/);assert.match(routes,/Batch già creato/);});
+test("Admin layout retains 44px targets and bounded mobile overflow",()=>{assert.match(css,/min-height:44px/);assert.match(css,/@media\(max-width:767px\)/);assert.match(css,/overflow:auto/);assert.match(css,/minmax\(min\(100%,/);});
