@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports -- synchronous CommonJS bootstrap must prime Next before loading its CLI */
 // Prime Next's environment loader with an empty directory. Never load repository .env files.
 const fs = require('node:fs');
 const os = require('node:os');
