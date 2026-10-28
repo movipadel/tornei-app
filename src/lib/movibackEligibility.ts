@@ -18,6 +18,8 @@ export type MovibackMembership = {
   id: string;
   status: string;
   tax_code: string | null;
+  approved_at?: string | null;
+  created_at?: string | null;
   health_data_consent_at?: string | null;
 };
 
@@ -40,6 +42,26 @@ export type MovibackEligibility = {
 
 export const STANDBY_EARN_MESSAGE =
   "MoviBack in stand-by: certificato medico scaduto da oltre 60 giorni. Aggiorna il certificato per riattivare l’accumulo punti.";
+
+export const CERTIFICATE_ENFORCEMENT_CUTOVER_UTC = "2026-10-28T15:13:45Z";
+const certificateEnforcementCutover = Date.parse(CERTIFICATE_ENFORCEMENT_CUTOVER_UTC);
+
+function isBeforeCertificateEnforcementCutover(value: string | null | undefined) {
+  if (!value) return false;
+  const timestamp = Date.parse(value);
+  return Number.isFinite(timestamp) && timestamp < certificateEnforcementCutover;
+}
+
+export function isLegacyPendingCertificateCompatible(
+  membership: MovibackMembership,
+  latestCertificate: MovibackCertificate | null,
+  approvedCertificate: MovibackCertificate | null,
+) {
+  if (membership.status !== "approved" || approvedCertificate) return false;
+  if (latestCertificate?.status !== "pending_review") return false;
+  return isBeforeCertificateEnforcementCutover(latestCertificate.uploaded_at)
+    && isBeforeCertificateEnforcementCutover(membership.approved_at ?? membership.created_at);
+}
 
 export function normalizeTaxCode(value: unknown) {
   return String(value ?? "").trim().replace(/\s+/g, "").toUpperCase();
@@ -149,6 +171,22 @@ export function computeMovibackEligibility(input: {
     return result(membership.status, latest?.status ?? "none", "blocked", "MEMBERSHIP_NOT_APPROVED", "Membership MoviBack non attiva.", { latest_certificate_id: latestId });
   }
   if (!latestApproved) {
+    if (isLegacyPendingCertificateCompatible(membership, latest, latestApproved)) {
+      return result(
+        membership.status,
+        "pending_review",
+        "pending_review",
+        "LEGACY_CERTIFICATE_PENDING",
+        "Tessera legacy attiva. Il certificato resta in attesa di revisione Admin.",
+        {
+          can_earn_points: true,
+          can_redeem: true,
+          can_use_card: true,
+          latest_certificate_id: latestId,
+          needs_certificate_review: true,
+        },
+      );
+    }
     const pending = latest?.status === "pending_review" || latest?.status === "uploaded";
     return result(membership.status, latest?.status ?? "none", pending ? "pending_review" : "blocked", pending ? "CERTIFICATE_PENDING" : "CERTIFICATE_MISSING", pending ? "Certificato in attesa di revisione Admin." : "Certificato medico approvato non presente.", { latest_certificate_id: latestId, needs_certificate_upload: !latest || latest?.status === "rejected", needs_certificate_review: pending });
   }

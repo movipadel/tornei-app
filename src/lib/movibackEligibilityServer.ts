@@ -4,7 +4,7 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 export async function readMovibackEligibility(options: { userId?: string; membershipId?: string; currentDate?: string; membershipStatusOverride?: string }) {
   const sb = supabaseAdmin();
-  let query = sb.from("loyalty_memberships").select("id,user_id,status,tax_code,health_data_consent_at");
+  let query = sb.from("loyalty_memberships").select("id,user_id,status,tax_code,approved_at,created_at,health_data_consent_at");
   if (options.membershipId) query = query.eq("id", options.membershipId);
   else query = query.eq("user_id", options.userId!);
   const membershipResult = await query;

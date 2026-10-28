@@ -59,7 +59,9 @@ test("MoviBack keeps the existing personal QR renderer outside the membership ca
     read("src/components/public/PublicBottomNav.tsx"),
   ]);
   assert.match(page, /<MembershipCardModal/);
+  assert.match(page, /data\.eligibility\?\.can_use_card === true \? \(/);
   assert.match(page, /<QRCodeCanvas\s+value=\{`mb:\$\{membership\.membership_code\}`\}/);
+  assert.match(nav, /data\.eligibility\?\.can_use_card !== true/);
   assert.match(nav, /<QRCodeCanvas value=\{demo \? qr\.code : `mb:\$\{qr\.code\}`\}/);
   assert.doesNotMatch(card, /QRCodeCanvas|mb:/);
 });

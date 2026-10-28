@@ -1204,22 +1204,24 @@ return (
             </button>
           )}
         />
-        <button
-          type="button"
-          onClick={() => setQrOpen(true)}
-          style={{
-            width: "100%",
-            minHeight: 52,
-            borderRadius: 18,
-            border: 0,
-            background: "linear-gradient(135deg,#14b8a6,#0ea5e9)",
-            color: "white",
-            fontWeight: 900,
-            fontSize: 15,
-          }}
-        >
-          Mostra QR
-        </button>
+        {data.eligibility?.can_use_card === true ? (
+          <button
+            type="button"
+            onClick={() => setQrOpen(true)}
+            style={{
+              width: "100%",
+              minHeight: 52,
+              borderRadius: 18,
+              border: 0,
+              background: "linear-gradient(135deg,#14b8a6,#0ea5e9)",
+              color: "white",
+              fontWeight: 900,
+              fontSize: 15,
+            }}
+          >
+            Mostra QR
+          </button>
+        ) : null}
       </div>
     </div>
   </section>

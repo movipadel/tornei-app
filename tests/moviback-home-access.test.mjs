@@ -41,6 +41,8 @@ test("membership card and shared QR remain separate and unchanged on Home", asyn
   assert.match(home, />La mia tessera<\/button>/);
   assert.match(home, /OPEN_PUBLIC_QR_EVENT/);
   assert.match(home, /membershipCode: moviBack\.membershipCode \?\? undefined/);
+  assert.match(home, /const canUseCard = approved && moviBackJson\?\.eligibility\?\.can_use_card === true/);
+  assert.match(home, /membershipCode: canUseCard/);
 });
 
 test("existing MoviBack page remains the authoritative auth and enrollment flow", async () => {

@@ -29,7 +29,7 @@ export function PublicBottomNav({ demo = false }: { demo?: boolean }) {
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.error || "QR non disponibile");
       if (!data.user) { setQr({ kind: "guest" }); return; }
-      if (data.membership?.status !== "approved" || !data.membership?.membership_code) { setQr({ kind: "unavailable" }); return; }
+      if (data.membership?.status !== "approved" || data.eligibility?.can_use_card !== true || !data.membership?.membership_code) { setQr({ kind: "unavailable" }); return; }
       setQr({ kind: "ready", code: String(data.membership.membership_code) });
     } catch { setQr({ kind: "error" }); }
   }
@@ -77,7 +77,7 @@ export function PublicBottomNav({ demo = false }: { demo?: boolean }) {
         >
           {qr.kind === "loading" || qr.kind === "idle" ? <PublicState kind="loading" title="Caricamento QR" message="Recupero della tessera in corso." /> : null}
           {qr.kind === "guest" ? <PublicState kind="empty" title="Accedi per vedere il QR" message="Il QR personale è disponibile dopo l’accesso." action={<Link href="/accedi" className={`${styles.button} ${styles.primary}`}>Accedi</Link>} /> : null}
-          {qr.kind === "unavailable" ? <PublicState kind="warning" title="Tessera non disponibile" message="Il QR compare quando la tessera MoviBack è approvata." action={<Link href="/moviback" className={`${styles.button} ${styles.secondary}`}>Vai a MoviBack</Link>} /> : null}
+          {qr.kind === "unavailable" ? <PublicState kind="warning" title="Tessera non disponibile" message="Il QR compare quando la tessera MoviBack è utilizzabile." action={<Link href="/moviback" className={`${styles.button} ${styles.secondary}`}>Vai a MoviBack</Link>} /> : null}
           {qr.kind === "error" ? <PublicState kind="error" title="QR non disponibile" message="Controlla la connessione e riprova." action={<PublicButton variant="secondary" onClick={() => void loadQr()}>Riprova</PublicButton>} /> : null}
           {qr.kind === "ready" && qr.code ? <div className={styles.qrPanel}><div className={styles.qrCanvas}><QRCodeCanvas value={demo ? qr.code : `mb:${qr.code}`} size={240} /></div><strong>{demo ? "DEMO LOCALE" : qr.code}</strong><span className={styles.meta}>{demo ? "Contenuto dimostrativo, non scansionabile in produzione." : "Mostra alla segreteria per accumulare punti"}</span></div> : null}
         </PublicModal>

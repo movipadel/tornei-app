@@ -4,7 +4,7 @@ import test from "node:test";
 
 const read = (path) => readFileSync(new URL(path, import.meta.url), "utf8");
 const migration = read("../migrations/20261023100000_moviback_corporate_conventions_foundation.sql");
-const creditTimeHotfix = read("../migrations/20261029100000_moviback_credit_post_lock_event_time.sql");
+const legacyCompatibilityHotfix = read("../migrations/20261030100000_moviback_legacy_certificate_compatibility.sql");
 const route = read("../../src/app/api/staff/earn-points/route.ts");
 const staffUi = read("../../src/app/staff/StaffOperations.tsx");
 
@@ -34,14 +34,25 @@ test("structured commercial ledger remains additive and balance remains the ledg
 test("C2 owns locking, DB time, promo/agreement max selection and the only structured earn insert", () => {
   assert.match(migration, /CREATE OR REPLACE FUNCTION public\.credit_moviback_points/);
   assert.match(migration, /WHERE membership_code = btrim\(p_membership_code\)[\s\S]*FOR UPDATE/);
-  assert.match(creditTimeHotfix, /FOR UPDATE;[\s\S]*v_event_at := clock_timestamp\(\)/);
-  assert.doesNotMatch(creditTimeHotfix, /v_event_at := transaction_timestamp\(\)/);
+  assert.match(legacyCompatibilityHotfix, /FOR UPDATE;[\s\S]*v_event_at := clock_timestamp\(\)/);
+  assert.doesNotMatch(legacyCompatibilityHotfix, /v_event_at := transaction_timestamp\(\)/);
   assert.match(migration, /v_effective_multiplier := greatest\(1,v_promo_multiplier,v_agreement_multiplier\)/);
   assert.match(migration, /applicable promo wins ties/);
   assert.match(migration, /'earn','club_payment'/);
   assert.match(migration, /'moviback-credit-v1'/);
   assert.match(migration, /v_event_at < e\.effective_until/);
   assert.match(migration, /v_event_at < e\.revoked_at/);
+});
+
+test("legacy certificate compatibility is frozen, function-only and preserves prospective incentive resolution", () => {
+  assert.match(legacyCompatibilityHotfix, /CREATE OR REPLACE FUNCTION public\.credit_moviback_points/);
+  assert.match(legacyCompatibilityHotfix, /2026-10-28T15:13:45Z/);
+  assert.match(legacyCompatibilityHotfix, /v_certificate\.status='pending_review'/);
+  assert.match(legacyCompatibilityHotfix, /v_certificate\.uploaded_at < v_certificate_enforcement_cutover/);
+  assert.match(legacyCompatibilityHotfix, /coalesce\(v_membership\.approved_at,v_membership\.created_at\) < v_certificate_enforcement_cutover/);
+  assert.match(legacyCompatibilityHotfix, /v_effective_multiplier := greatest\(1,v_promo_multiplier,v_agreement_multiplier\)/);
+  assert.doesNotMatch(legacyCompatibilityHotfix, /UPDATE public\.(?:loyalty_memberships|medical_certificates)/);
+  assert.doesNotMatch(legacyCompatibilityHotfix, /ALTER TABLE|CREATE TABLE|ADD COLUMN/i);
 });
 
 test("idempotency is membership-owner scoped and concurrent requests return the committed result", () => {

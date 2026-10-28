@@ -21,12 +21,15 @@ test('eligibility-sensitive operations use their canonical authority',()=>{
   'ENTITLEMENT_CARDINALITY',
  ]) assert.match(staffCreditRoute,new RegExp(errorCode));
 
- const creditMigration=read('supabase/migrations/20261029100000_moviback_credit_post_lock_event_time.sql');
+ const creditMigration=read('supabase/migrations/20261030100000_moviback_legacy_certificate_compatibility.sql');
  assert.match(creditMigration,/CREATE OR REPLACE FUNCTION public\.credit_moviback_points/i);
  assert.match(creditMigration,/FROM public\.loyalty_memberships[\s\S]*?FOR UPDATE/i);
  assert.match(creditMigration,/MOVIBACK_CREDIT_ACCOUNT_INACTIVE/);
  assert.match(creditMigration,/MOVIBACK_CREDIT_MEMBERSHIP_NOT_APPROVED/);
  assert.match(creditMigration,/MOVIBACK_CREDIT_CERTIFICATE_STANDBY/);
+ assert.match(creditMigration,/2026-10-28T15:13:45Z/);
+ assert.match(creditMigration,/v_certificate\.status='pending_review'/);
+ assert.match(creditMigration,/coalesce\(v_membership\.approved_at,v_membership\.created_at\) < v_certificate_enforcement_cutover/);
  assert.match(creditMigration,/MOVIBACK_CREDIT_ENTITLEMENT_CARDINALITY/);
  assert.ok(
   creditMigration.indexOf('v_event_at := clock_timestamp();') > creditMigration.indexOf('FOR UPDATE;'),
@@ -41,6 +44,38 @@ test('eligibility-sensitive operations use their canonical authority',()=>{
   read('supabase/migrations/20261026100000_moviback_corporate_conventions_new_member.sql'),
   /CREATE OR REPLACE FUNCTION public\.review_moviback_membership_c5/i,
  );
+});
+
+test('legacy compatibility remains centralized across card, QR, redemption and Admin projections',()=>{
+ const eligibility=read('src/lib/movibackEligibility.ts');
+ assert.match(eligibility,/CERTIFICATE_ENFORCEMENT_CUTOVER_UTC = "2026-10-28T15:13:45Z"/);
+ assert.match(eligibility,/LEGACY_CERTIFICATE_PENDING/);
+ assert.match(eligibility,/can_earn_points: true/);
+ assert.match(eligibility,/can_redeem: true/);
+ assert.match(eligibility,/can_use_card: true/);
+
+ const reader=read('src/lib/movibackEligibilityServer.ts');
+ assert.match(reader,/approved_at,created_at/);
+ const adminPlayers=read('src/app/api/admin/players/route.ts');
+ assert.match(adminPlayers,/approved_at,created_at/);
+
+ const redemption=read('src/app/api/moviback/rewards/redeem/route.ts');
+ assert.equal((redemption.match(/readMovibackEligibility\(\{ userId: uid \}\)/g)??[]).length,2);
+ assert.equal((redemption.match(/if \(!eligibility\.can_redeem\)/g)??[]).length,2);
+
+ const nav=read('src/components/public/PublicBottomNav.tsx');
+ assert.match(nav,/data\.eligibility\?\.can_use_card !== true/);
+ const home=read('src/app/page.tsx');
+ assert.match(home,/const canUseCard = approved && moviBackJson\?\.eligibility\?\.can_use_card === true/);
+ assert.match(home,/membershipCode: canUseCard/);
+ const moviback=read('src/app/moviback/page.tsx');
+ assert.match(moviback,/data\.eligibility\?\.can_use_card === true \? \(/);
+});
+
+test('Store membership authority remains unchanged by the certificate hotfix',()=>{
+ const store=read('src/app/api/store/orders/route.ts');
+ assert.match(store,/membershipRow\.status !== "approved"/);
+ assert.doesNotMatch(store,/LEGACY_CERTIFICATE_PENDING|CERTIFICATE_ENFORCEMENT_CUTOVER/);
 });
 
 test('standby separates earning from redemption and card use',()=>{

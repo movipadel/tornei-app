@@ -48,7 +48,7 @@ export async function GET(req: Request) {
     ids.length ? sb.from("player_profiles").select("player_identity_id,descriptive_level,preferred_clubs,available_other_clubs,preferred_match_types,available_last_minute").in("player_identity_id", ids) : Promise.resolve({ data: [], error: null }),
     ids.length ? sb.from("player_admin_profiles").select("player_identity_id,movi_level").in("player_identity_id", ids) : Promise.resolve({ data: [], error: null }),
     ids.length ? sb.from("player_profile_availability").select("player_identity_id").in("player_identity_id", ids) : Promise.resolve({ data: [], error: null }),
-    userIds.length ? sb.from("loyalty_memberships").select("id,user_id,status,tax_code,health_data_consent_at").in("user_id", userIds) : Promise.resolve({ data: [], error: null }),
+    userIds.length ? sb.from("loyalty_memberships").select("id,user_id,status,tax_code,approved_at,created_at,health_data_consent_at").in("user_id", userIds) : Promise.resolve({ data: [], error: null }),
     userIds.length ? sb.from("medical_certificates").select("id,user_id,status,expiry_date,uploaded_at").in("user_id", userIds).order("uploaded_at", { ascending: false }) : Promise.resolve({ data: [], error: null }),
     operator?.role === "admin" && ids.length ? sb.from("player_identity_cases").select("id,player_ids,status").in("status", ["open", "in_review"]).overlaps("player_ids", ids) : Promise.resolve({ data: [], error: null }),
   ]);

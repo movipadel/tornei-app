@@ -144,10 +144,11 @@ export default function HomePage() {
       const moviBackJson = await moviBackRes.json().catch(() => ({}));
       if (moviBackRes.ok) {
         const approved = moviBackJson?.membership?.status === "approved";
+        const canUseCard = approved && moviBackJson?.eligibility?.can_use_card === true;
         setMoviBack({
           points: approved && Number.isFinite(Number(moviBackJson.points)) ? Number(moviBackJson.points) : null,
           membershipStatus: moviBackJson?.membership?.status ?? null,
-          membershipCode: approved && moviBackJson?.membership?.membership_code ? String(moviBackJson.membership.membership_code) : null,
+          membershipCode: canUseCard && moviBackJson?.membership?.membership_code ? String(moviBackJson.membership.membership_code) : null,
           membership: moviBackJson?.membership ? {
             status: moviBackJson.membership.status,
             membership_code: moviBackJson.membership.membership_code ?? null,
