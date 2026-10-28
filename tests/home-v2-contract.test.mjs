@@ -172,7 +172,7 @@ test("Monday League Home block uses the public fail-closed read model", async ()
   assert.doesNotMatch(home, /mondayLeagueHero\.(eyebrow|title|seasonName)\}/);
   assert.match(css, /\.leagueBanner \{[^}]*width: 100%[^}]*height: clamp\(184px, 18vw, 196px\)[^}]*monday-league-home-banner\.png[^}]*background-size: cover/);
   assert.match(css, /\.leagueBannerLink:focus-visible \{[^}]*outline: 3px solid var\(--public-cyan\)/);
-  assert.match(css, /@media \(max-width: 620px\)[\s\S]*\.leagueBanner \{[^}]*height: clamp\(140px, 38vw, 150px\)[^}]*align-items: flex-end/);
+  assert.match(css, /@media \(max-width: 620px\)[\s\S]*\.leagueBanner \{[^}]*height: auto[^}]*min-height: 44px[^}]*aspect-ratio: 2172 \/ 383[^}]*background-size: contain/);
   assert.equal(banner.subarray(1, 4).toString("ascii"), "PNG");
   assert.equal(banner.readUInt32BE(16), 2172);
   assert.equal(banner.readUInt32BE(20), 383);

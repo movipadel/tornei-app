@@ -27,11 +27,11 @@ test("Home keeps active state non-actionable and renders honest membership state
   assert.match(home, /<StatusBadge tone=\{moviBackStatus\.tone\}>\{moviBackStatus\.label\}<\/StatusBadge>/);
 });
 
-test("Premi and Storico no longer provide hidden enrollment access", async () => {
+test("Premi and Gestione no longer provide hidden enrollment access", async () => {
   const home = await read("src/app/page.tsx");
 
   assert.match(home, /canRedeemMoviBackRewards[\s\S]*?href="\/moviback\/premi"[\s\S]*?aria-disabled="true"[\s\S]*?>Premi<\/span>/);
-  assert.match(home, /hasUsableMoviBack[\s\S]*?href="\/moviback"[\s\S]*?>Storico<\/Link>[\s\S]*?aria-disabled="true"[\s\S]*?>Storico<\/span>/);
+  assert.match(home, /hasUsableMoviBack[\s\S]*?href="\/moviback"[\s\S]*?>Gestione<\/Link>[\s\S]*?aria-disabled="true"[\s\S]*?>Gestione<\/span>/);
 });
 
 test("membership card and shared QR remain separate and unchanged on Home", async () => {

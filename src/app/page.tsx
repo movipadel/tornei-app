@@ -288,8 +288,8 @@ export default function HomePage() {
             ? <Link className={home.miniAction} href="/moviback/premi"><Ticket size={19} aria-hidden />Premi</Link>
             : <span className={`${home.miniAction} ${home.miniActionDisabled}`} aria-disabled="true"><Ticket size={19} aria-hidden />Premi</span>}
           {hasUsableMoviBack
-            ? <Link className={home.miniAction} href="/moviback"><History size={19} aria-hidden />Storico</Link>
-            : <span className={`${home.miniAction} ${home.miniActionDisabled}`} aria-disabled="true"><History size={19} aria-hidden />Storico</span>}
+            ? <Link className={home.miniAction} href="/moviback"><History size={19} aria-hidden />Gestione</Link>
+            : <span className={`${home.miniAction} ${home.miniActionDisabled}`} aria-disabled="true"><History size={19} aria-hidden />Gestione</span>}
           <MembershipCardModal user={user} membership={moviBack.membership} eligibility={moviBack.eligibility} trigger={<button className={home.miniAction} type="button"><WalletCards size={19} aria-hidden />La mia tessera</button>} />
         </div>
       </PublicCard>}</section>
