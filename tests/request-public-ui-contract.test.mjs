@@ -84,3 +84,10 @@ test("mobile and desktop rules keep one scrollable centered modal", () => {
   assert.match(css, /@media\(max-width:340px\)/);
   assert.doesNotMatch(css, /position:sticky/);
 });
+
+test("mobile Gioca and Allenati copy uses the shared readable type scale", () => {
+  assert.match(form, /className=\{styles\.intro\}/);
+  assert.match(css, /@media\(max-width:520px\)[\s\S]*\.intro\{font-size:15px;line-height:1\.5\}/);
+  assert.match(css, /@media\(max-width:520px\)[\s\S]*\.fieldset legend,[^}]*font-size:15px;line-height:1\.35/);
+  assert.match(css, /@media\(max-width:520px\)[\s\S]*\.choice\{font-size:14px;line-height:1\.3\}/);
+});

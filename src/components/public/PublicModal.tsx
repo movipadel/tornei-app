@@ -11,7 +11,7 @@ type PublicModalProps = {
   contentClassName?: string;
   trigger?: React.ReactNode;
   title: React.ReactNode;
-  description?: string;
+  description?: React.ReactNode;
   children: React.ReactNode;
 };
 

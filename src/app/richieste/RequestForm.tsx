@@ -216,7 +216,7 @@ export default function RequestForm({ type }: { type: RequestType }) {
       onOpenChange={(open) => { if (!open) close(); }}
       contentClassName={styles.requestDialog}
       title={<span className={styles.dialogTitle}>{isPlay ? <UsersRound size={26} aria-hidden /> : <Dumbbell size={26} aria-hidden />}{title}</span>}
-      description={done ? undefined : description}
+      description={done ? undefined : <span className={styles.intro}>{description}</span>}
     >
       {done ? <SuccessState type={type} onClose={close} /> : <form className={styles.form} onSubmit={submit}>
         <ClubChoices value={data.clubs} onChange={(clubs) => set("clubs", clubs)} />

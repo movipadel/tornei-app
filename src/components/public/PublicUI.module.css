@@ -33,7 +33,7 @@
   left: 16px;
   top: calc(8px + env(safe-area-inset-top));
   z-index: 200;
-  transform: translateY(-180%);
+  transform: translateY(calc(-100% - 16px - env(safe-area-inset-top)));
   border-radius: 8px;
   background: var(--public-cyan);
   color: var(--public-text-inverse);

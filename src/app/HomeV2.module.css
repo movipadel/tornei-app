@@ -163,10 +163,21 @@
   .serviceGrid { grid-template-columns: repeat(4, 1fr); }
 }
 @media (max-width: 620px) {
-  .balanceRow { grid-template-columns: auto minmax(0, 1fr); }
-  .balanceRow > :last-child { grid-column: 1 / -1; justify-self: start; }
+  .moviback { gap: 10px; padding: 14px 16px; }
+  .movibackTop { gap: 10px; }
+  .qrAction { padding-inline: 4px; }
+  .balanceRow { grid-template-columns: 44px minmax(0, 1fr); gap: 6px 10px; }
+  .balanceIcon { width: 44px; height: 44px; grid-row: 1 / 3; }
+  .balanceIcon svg { width: 24px; height: 24px; }
+  .balanceRow > :last-child { grid-column: 2; justify-self: start; }
+  .balanceRowAccess .balanceIcon { grid-row: 1; }
   .balanceRowAccess .membershipState { width: 100%; }
   .movibackAccessCta { width: 100%; }
+  .points { gap: 5px; margin-top: 0; font-size: 30px; }
+  .points small, .pointsLabel { font-size: 12px; }
+  .movibackLinks { gap: 6px; }
+  .miniAction { min-height: 44px; gap: 5px; padding: 7px 5px; font-size: 13px; }
+  .miniAction svg { width: 17px; height: 17px; }
   .tournamentCard { min-height: 230px; }
   .tournamentScrim { background: linear-gradient(90deg, rgba(4,8,20,.94) 0%, rgba(4,8,20,.79) 68%, rgba(4,8,20,.55) 100%), linear-gradient(0deg, rgba(4,8,20,.42), transparent 55%); }
   .tournamentBody { min-height: 230px; grid-template-columns: minmax(0, 1fr) auto; align-content: end; align-items: end; gap: 9px; padding: 14px; }
@@ -178,7 +189,7 @@
   .metaLine { gap: 4px; margin-top: 7px; font-size: 12px; line-height: 1.35; }
   .tournamentAction { align-self: end; }
   .tournamentAction button { min-height: 44px; }
-  .leagueBanner { height: auto; min-height: 44px; aspect-ratio: 2172 / 383; padding: 0; border-radius: var(--home-card-radius); background-position: center; background-size: contain; }
+  .leagueBanner { height: auto; min-height: 72px; aspect-ratio: 4 / 1; padding: 0; border-radius: var(--home-card-radius); background-position: left center; background-size: cover; }
   .leagueCta { min-width: 150px; min-height: 44px; padding: 8px 12px; font-size: 14px; }
 }
 @media (max-width: 560px) {
@@ -193,7 +204,7 @@
 @media (max-width: 340px) {
   .page { padding-inline: 12px; }
   .headerUtility { padding-inline: 8px; }
-  .moviback { padding: 16px; }
+  .moviback { padding: 14px 12px; }
   .balanceIcon { width: 50px; height: 50px; }
   .points { font-size: 34px; }
   .quickAction { min-height: 144px; padding-inline: 8px; }

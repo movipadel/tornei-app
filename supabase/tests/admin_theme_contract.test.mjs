@@ -33,6 +33,7 @@ test("theme persistence and styling remain scoped to Admin", async () => {
   assert.match(selector, /addEventListener\("change", handleSystemChange\)/);
   assert.match(layout, /movi-admin-theme-v1/);
   assert.match(styles, /^\.admin-ui/m);
+  assert.match(styles, /@media\(max-width:640px\)\{\.admin-topbar\{padding-top:env\(safe-area-inset-top\)\}/);
   assert.doesNotMatch(styles, /(^|\n)(html|body)\s*\{/);
 });
 

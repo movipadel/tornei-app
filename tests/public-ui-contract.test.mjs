@@ -9,6 +9,7 @@ test("public tokens remain scoped and use the approved palette", async () => {
   for (const color of ["#070d1c", "#101a2f", "#182540", "#111d34", "#1010ff", "#2525ff", "#67dfff", "#d76abb", "#542348", "#f7f9ff", "#b6c4dc", "#2c3a55", "#7185a7", "#74e3ad", "#ffd180", "#ff9daa"]) assert.match(css, new RegExp(color));
   assert.match(css, /^\.root \{/m);
   assert.match(css, /env\(safe-area-inset-bottom\)/);
+  assert.match(css, /\.skipLink \{[\s\S]*?translateY\(calc\(-100% - 16px - env\(safe-area-inset-top\)\)\)/);
   assert.match(css, /prefers-reduced-motion/);
 });
 
