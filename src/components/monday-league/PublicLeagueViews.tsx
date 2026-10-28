@@ -8,6 +8,7 @@ import { toast } from "sonner";
 
 import PublicNav from "@/components/PublicNav";
 import styles from "@/app/monday-league/MondayLeague.module.css";
+import { getDefaultOpenMatchdayIds, getMatchdaySummary, toggleOpenMatchday } from "@/lib/monday-league/matchday-ui";
 
 type Phase = { id: string; code: string; name: string; sequence: number; status: string };
 type Standing = { position: number; teamId: string; teamName: string; points: number; played: number; wins: number; losses: number; setsWon: number; setsLost: number; setDifference: number; gamesWon: number; gamesLost: number; gameDifference: number };
@@ -95,7 +96,30 @@ function StandingsView({ data }: { data: Snapshot }) {
 }
 
 function CalendarView({ rounds }: { rounds: Round[] }) {
-  return <div className={styles.rounds}>{rounds.map((round) => <section className={styles.roundCard} key={round.id}><header className={styles.roundHeading}><h2>Giornata {round.number}</h2><span>{formatDate(round.playDate)}</span></header><div className={styles.matchList}>{round.matches.map((match) => <MatchCard key={match.id} match={match} />)}</div></section>)}</div>;
+  const [openRoundIds, setOpenRoundIds] = useState<Set<string>>(() => new Set(getDefaultOpenMatchdayIds(rounds)));
+
+  return <div className={styles.rounds}>{rounds.map((round) => {
+    const expanded = openRoundIds.has(round.id);
+    const toggleId = `matchday-${round.id}-toggle`;
+    const contentId = `matchday-${round.id}-matches`;
+    return <section className={`${styles.roundCard}${expanded ? ` ${styles.roundCardExpanded}` : ""}`} key={round.id}>
+      <h2 className={styles.roundHeading}>
+        <button
+          id={toggleId}
+          type="button"
+          className={styles.roundToggle}
+          aria-expanded={expanded}
+          aria-controls={contentId}
+          onClick={() => setOpenRoundIds((current) => toggleOpenMatchday(current, round.id))}
+        >
+          <span className={styles.roundHeadingPrimary}><span className={styles.roundTitle}>Giornata {round.number}</span><span className={styles.roundDate}>{formatDate(round.playDate)}</span></span>
+          <span className={styles.roundSummary}>{getMatchdaySummary(round)}</span>
+          <ChevronDown className={`${styles.roundChevron} ${expanded ? styles.roundChevronExpanded : ""}`} size={20} aria-hidden />
+        </button>
+      </h2>
+      <div id={contentId} role="region" aria-labelledby={toggleId} className={styles.matchList} hidden={!expanded}>{round.matches.map((match) => <MatchCard key={match.id} match={match} />)}</div>
+    </section>;
+  })}</div>;
 }
 
 function TeamsView({ teams, phaseId }: { teams: TeamCard[]; phaseId: string }) {
@@ -120,7 +144,7 @@ export function PublicLeagueMain() {
   useEffect(() => { void load(); }, []);
   if (loading && !data) return <LoadingState />;
   if (!data) return <UnavailableState error={error || undefined} />;
-  return <div className={styles.page}><PublicNav /><main className={styles.container}><header className={styles.hero}><div className={styles.eyebrow}>Competizione a squadre</div><h1 className={styles.title}>{data.season.status === "phase2" ? <>Monday League<br />Serie A &amp; Serie B</> : data.season.status === "completed" ? <>Monday League<br />Classifica finale</> : <>Monday<br />League</>}</h1><p className={styles.subtitle}>{data.season.name}: classifica, giornate, risultati e protagonisti in un unico spazio.</p><span className={styles.phaseBadge}>{data.selectedPhase.name}</span></header>{data.season.status === "completed" ? <div className={styles.notice}>Campionato concluso · consulta le classifiche finali di Serie A e Serie B.</div> : null}<PhaseNav phases={data.phases} selectedId={data.selectedPhase.id} onSelect={(id) => void load(id)} /><nav className={styles.tabs} aria-label="Contenuti Monday League">{[["standings", "Classifica", Trophy], ["calendar", "Calendario / Risultati", CalendarDays], ["teams", "Squadre", Users]].map(([key, label, Icon]) => <button type="button" key={String(key)} onClick={() => setTab(key as typeof tab)} className={`${styles.tabButton} ${tab === key ? styles.tabButtonActive : ""}`} aria-pressed={tab === key}><Icon size={16} aria-hidden /> {String(label)}</button>)}</nav>{data.hasProvisionalResults ? <div className={styles.notice}>Classifica provvisoria: include risultati non ancora definitivi.</div> : null}{tab === "standings" ? <StandingsView data={data} /> : tab === "calendar" ? <CalendarView rounds={data.rounds} /> : <TeamsView teams={data.teams} phaseId={data.selectedPhase.id} />}</main></div>;
+  return <div className={styles.page}><PublicNav /><main className={styles.container}><header className={styles.hero}><div className={styles.eyebrow}>Competizione a squadre</div><h1 className={styles.title}>{data.season.status === "phase2" ? <>Monday League<br />Serie A &amp; Serie B</> : data.season.status === "completed" ? <>Monday League<br />Classifica finale</> : <>Monday<br />League</>}</h1><p className={styles.subtitle}>{data.season.name}: classifica, giornate, risultati e protagonisti in un unico spazio.</p><span className={styles.phaseBadge}>{data.selectedPhase.name}</span></header>{data.season.status === "completed" ? <div className={styles.notice}>Campionato concluso · consulta le classifiche finali di Serie A e Serie B.</div> : null}<PhaseNav phases={data.phases} selectedId={data.selectedPhase.id} onSelect={(id) => void load(id)} /><nav className={styles.tabs} aria-label="Contenuti Monday League">{[["standings", "Classifica", Trophy], ["calendar", "Calendario / Risultati", CalendarDays], ["teams", "Squadre", Users]].map(([key, label, Icon]) => <button type="button" key={String(key)} onClick={() => setTab(key as typeof tab)} className={`${styles.tabButton} ${tab === key ? styles.tabButtonActive : ""}`} aria-pressed={tab === key}><Icon size={16} aria-hidden /> {String(label)}</button>)}</nav>{data.hasProvisionalResults ? <div className={styles.notice}>Classifica provvisoria: include risultati non ancora definitivi.</div> : null}{tab === "standings" ? <StandingsView data={data} /> : tab === "calendar" ? <CalendarView key={data.selectedPhase.id} rounds={data.rounds} /> : <TeamsView teams={data.teams} phaseId={data.selectedPhase.id} />}</main></div>;
 }
 
 export function PublicLeagueTeamPage({ slug, initialPhaseId }: { slug: string; initialPhaseId?: string }) {

@@ -35,11 +35,20 @@
 .teamLink { color: #f8fafc; font-weight: 850; text-decoration: none; }
 .teamLink:hover { color: #5eead4; }
 .rounds { display: grid; gap: 14px; }
-.roundCard { padding: 18px; border: 1px solid rgba(148, 163, 184, .14); border-radius: 20px; background: rgba(15, 23, 42, .72); }
-.roundHeading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
-.roundHeading h2 { margin: 0; color: white; font-size: 18px; }
-.roundHeading span { color: #94a3b8; font-size: 13px; }
-.matchList { display: grid; gap: 8px; }
+.roundCard { overflow: hidden; border: 1px solid rgba(148, 163, 184, .14); border-radius: 20px; background: rgba(15, 23, 42, .72); transition: border-color .16s ease, background-color .16s ease; }
+.roundCardExpanded { border-color: rgba(45, 212, 191, .28); background: rgba(15, 23, 42, .82); }
+.roundHeading { margin: 0; }
+.roundToggle { width: 100%; min-height: 64px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, auto) auto; align-items: center; gap: 14px; padding: 14px 18px; border: 0; background: transparent; color: inherit; text-align: left; cursor: pointer; }
+.roundToggle:hover { background: rgba(255,255,255,.035); }
+.roundToggle:focus-visible { outline: 3px solid #5eead4; outline-offset: -3px; }
+.roundHeadingPrimary { min-width: 0; display: grid; gap: 3px; }
+.roundTitle { color: white; font-size: 18px; font-weight: 850; line-height: 1.2; }
+.roundDate { color: #94a3b8; font-size: 13px; font-weight: 500; line-height: 1.35; }
+.roundSummary { min-width: 0; color: #b8c5d7; font-size: 12px; font-weight: 750; line-height: 1.35; text-align: right; overflow-wrap: anywhere; }
+.roundChevron { flex: 0 0 auto; color: #5eead4; transition: transform .16s ease; }
+.roundChevronExpanded { transform: rotate(180deg); }
+.matchList { display: grid; gap: 8px; padding: 0 18px 18px; }
+.matchList[hidden] { display: none; }
 .matchRow { width: 100%; display: grid; grid-template-columns: minmax(76px, .7fr) minmax(210px, 2fr) minmax(120px, 1fr); gap: 12px; align-items: center; padding: 13px; border: 1px solid rgba(148, 163, 184, .11); border-radius: 14px; background: rgba(2, 6, 23, .34); color: inherit; text-align: left; }
 button.matchRow { cursor: pointer; }
 button.matchRow:hover, button.matchRow:focus-visible { border-color: rgba(45, 212, 191, .5); outline: none; }
@@ -85,6 +94,12 @@ button.matchRow:hover, button.matchRow:focus-visible { border-color: rgba(45, 21
   .hero { padding: 25px 18px; border-radius: 22px; }
   .tabs { top: 4px; }
   .tabButton { flex: 0 0 auto; min-width: 136px; }
+  .rounds { gap: 10px; }
+  .roundCard { border-radius: 16px; }
+  .roundToggle { min-height: 58px; gap: 8px; padding: 11px 13px; }
+  .roundTitle { font-size: 16px; }
+  .roundDate, .roundSummary { font-size: 11px; }
+  .matchList { padding: 0 12px 12px; }
   .matchRow { grid-template-columns: 74px minmax(0, 1fr); }
   .matchResult { grid-column: 1 / -1; justify-self: stretch; display: flex; justify-content: space-between; align-items: center; text-align: left; }
   .score { font-size: 17px; }
@@ -93,4 +108,8 @@ button.matchRow:hover, button.matchRow:focus-visible { border-color: rgba(45, 21
   .profileHero { min-height: 230px; }
   .profileInfo { align-items: center; padding: 18px; }
   .profileLogo { width: 62px; height: 62px; border-radius: 18px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .roundCard, .roundChevron { transition: none; }
 }
