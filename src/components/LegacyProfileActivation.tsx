@@ -46,7 +46,7 @@ export default function LegacyProfileActivation() {
     <Link href="/accedi" style={back}>← Torna all’accesso</Link>
     {state === "lookup" && <>
       <h1 style={title}>Attiva il mio profilo</h1>
-      <p style={copy}>Hai già giocato o partecipato ad attività MOVI?</p>
+      <p style={copy}><strong>Il tuo profilo esiste già.</strong> Non devi registrarti di nuovo. I tuoi dati, attività e MoviBack restano disponibili: devi solo attivare il nuovo accesso.</p>
       <form onSubmit={lookup} style={grid}>
         <Field label="Nome e cognome" value={form.full_name} autoComplete="name" onChange={(full_name) => setForm({ ...form, full_name })} />
         <Field label="Numero di telefono" value={form.phone} autoComplete="tel" inputMode="tel" onChange={(phone) => setForm({ ...form, phone })} />

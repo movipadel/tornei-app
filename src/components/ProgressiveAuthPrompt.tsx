@@ -4,15 +4,18 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 type Migration = { status: string; activation_available: boolean; message?: string };
+const DISMISS_KEY = "movi:legacy-access-reminder-dismissed";
 
 export default function ProgressiveAuthPrompt() {
   const pathname = usePathname();
   const [migration, setMigration] = useState<Migration | null>(null);
   const [busy, setBusy] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
   const resumeAttempted = useRef(false);
 
   useEffect(() => {
     if (pathname.startsWith("/admin") || pathname.startsWith("/staff") || pathname.startsWith("/dev/") || pathname === "/attiva-account" || pathname === "/accedi") return;
+    setDismissed(window.sessionStorage.getItem(DISMISS_KEY) === "1");
     let active = true;
     const load = () => fetch("/api/user/me", { cache: "no-store" })
       .then(async (response) => response.ok ? response.json() : null)
@@ -48,11 +51,21 @@ export default function ProgressiveAuthPrompt() {
       })
       .catch(() => undefined);
     void load();
-    window.addEventListener("movi:user-session-changed", load);
-    return () => { active = false; window.removeEventListener("movi:user-session-changed", load); };
+    const sessionChanged = () => {
+      window.sessionStorage.removeItem(DISMISS_KEY);
+      setDismissed(false);
+      void load();
+    };
+    window.addEventListener("movi:user-session-changed", sessionChanged);
+    return () => { active = false; window.removeEventListener("movi:user-session-changed", sessionChanged); };
   }, [pathname]);
 
-  if (!migration || migration.status === "linked") return null;
+  if (!migration?.activation_available || migration.status === "linked" || dismissed) return null;
+
+  function dismiss() {
+    window.sessionStorage.setItem(DISMISS_KEY, "1");
+    setDismissed(true);
+  }
 
   async function activate() {
     setBusy(true);
@@ -68,13 +81,14 @@ export default function ProgressiveAuthPrompt() {
 
   const publicShellOffset = !pathname.startsWith("/admin") && !pathname.startsWith("/staff") && !["/accedi", "/registrati", "/attiva-account", "/accesso-precedente", "/password-dimenticata", "/reset-password"].includes(pathname) && !pathname.startsWith("/riscatto-premio/");
 
-  return <aside aria-live="polite" style={{ ...shell, bottom: publicShellOffset ? "calc(80px + env(safe-area-inset-bottom))" : 16 }}>
-    <div><strong>{migration.status === "review_required" ? "Ci pensiamo noi" : "Attiva il nuovo accesso"}</strong>
-      <p style={{ margin: "4px 0 0", fontSize: 13 }}>{migration.message ?? "Userai email e password senza perdere nulla del tuo profilo."}</p>
+  return <aside aria-live="polite" aria-label="Attiva il nuovo accesso MOVI" style={{ ...shell, bottom: publicShellOffset ? "calc(80px + env(safe-area-inset-bottom))" : 16 }}>
+    <div><strong>MOVI ha un nuovo sistema di accesso.</strong>
+      <p style={{ margin: "4px 0 0", fontSize: 13 }}>{migration.message ?? "Il tuo profilo esiste già. Non devi registrarti di nuovo: dati, attività e MoviBack restano disponibili. Devi solo attivare il nuovo accesso per evitare problemi futuri."}</p>
     </div>
-    {migration.activation_available && <button type="button" onClick={activate} disabled={busy} style={button}>
-      {busy ? "Attendi…" : "Continua"}
-    </button>}
+    <div style={actions}>
+      <button type="button" onClick={activate} disabled={busy} style={button}>{busy ? "Attendi…" : "Attiva ora il mio profilo"}</button>
+      <button type="button" onClick={dismiss} disabled={busy} style={secondaryButton}>Lo farò più tardi</button>
+    </div>
   </aside>;
 }
 
@@ -85,3 +99,5 @@ const shell: React.CSSProperties = {
   border: "1px solid #c7d2fe", boxShadow: "0 16px 45px rgba(15,23,42,.18)",
 };
 const button: React.CSSProperties = { minHeight: 42, border: 0, borderRadius: 10, padding: "0 15px", background: "#4f46e5", color: "white", fontWeight: 800, cursor: "pointer" };
+const actions: React.CSSProperties = { display: "flex", gap: 8, flexWrap: "wrap" };
+const secondaryButton: React.CSSProperties = { ...button, border: "1px solid #a5b4fc", background: "white", color: "#3730a3" };

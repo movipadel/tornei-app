@@ -17,13 +17,14 @@ async function post(path: string, body: Record<string, unknown> = {}) {
   return data;
 }
 
-export default function MoviAuthForm({ mode }: { mode: Mode }) {
+export default function MoviAuthForm({ mode, entryFirst = false }: { mode: Mode; entryFirst?: boolean }) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [sent, setSent] = useState(false);
   const [legacyVerified, setLegacyVerified] = useState(false);
   const [result, setResult] = useState<Result>(null);
   const [emailLocked, setEmailLocked] = useState(false);
+  const [loginChosen, setLoginChosen] = useState(!entryFirst);
   const [form, setForm] = useState<Record<string, string | boolean>>({ gender: "M" });
 
   useEffect(() => {
@@ -121,6 +122,30 @@ export default function MoviAuthForm({ mode }: { mode: Mode }) {
 
   if (result) return <ResultCard result={result} />;
 
+  if (mode === "login" && !loginChosen) {
+    return <Shell>
+      <h1 style={headingStyle}>Come vuoi entrare in MOVI?</h1>
+      <p style={copyStyle}>Scegli la situazione che ti riguarda. Il tuo profilo e i tuoi dati restano al sicuro.</p>
+      <div style={entryGridStyle}>
+        <section style={entryPrimaryStyle}>
+          <h2 style={entryHeadingStyle}>Hai già attivato il nuovo accesso MOVI?</h2>
+          <p style={entryCopyStyle}>Usa l’email e la password che hai già scelto.</p>
+          <button type="button" style={buttonStyle} onClick={() => setLoginChosen(true)}>Accedi</button>
+        </section>
+        <section style={entryCardStyle}>
+          <h2 style={entryHeadingStyle}>Hai già giocato, partecipato a tornei o usato MOVI in passato?</h2>
+          <p style={entryCopyStyle}><strong>Il tuo profilo esiste già.</strong> Non devi registrarti di nuovo. I tuoi dati, attività e MoviBack restano disponibili: devi solo attivare il nuovo accesso.</p>
+          <Link href="/attiva-account" style={entryLinkStyle}>Attiva il tuo profilo</Link>
+        </section>
+        <section style={entryCardStyle}>
+          <h2 style={entryHeadingStyle}>È la prima volta che usi MOVI?</h2>
+          <p style={entryCopyStyle}>Crea il tuo profilo per iniziare a usare i servizi MOVI.</p>
+          <Link href="/registrati" style={entryLinkSecondaryStyle}>Crea un nuovo profilo</Link>
+        </section>
+      </div>
+    </Shell>;
+  }
+
   if (sent) {
     const canResend = mode === "activate" || mode === "signup";
     return <Shell>
@@ -173,7 +198,7 @@ export default function MoviAuthForm({ mode }: { mode: Mode }) {
       {!(mode === "signup" && legacyVerified) && <button disabled={busy} style={buttonStyle}>{busy ? "Attendi…" : action(mode, legacyVerified)}</button>}
     </form>
     {message && <p role="status" style={messageStyle}>{message}</p>}
-    <AuthLinks mode={mode} />
+    <AuthLinks mode={mode} onChooseAnother={entryFirst && mode === "login" ? () => setLoginChosen(false) : undefined} />
   </Shell>;
 }
 
@@ -198,11 +223,10 @@ function ResultCard({ result }: { result: Exclude<Result, null> }) {
   </Shell>;
 }
 
-function AuthLinks({ mode }: { mode: Mode }) {
+function AuthLinks({ mode, onChooseAnother }: { mode: Mode; onChooseAnother?: () => void }) {
   if (mode === "login") return <nav style={navStyle}>
     <Link href="/password-dimenticata">Password dimenticata?</Link>
-    <Link href="/attiva-account"><strong>Attiva il mio profilo</strong><br />Hai già giocato o partecipato ad attività MOVI?</Link>
-    <Link href="/registrati"><strong>Crea nuovo profilo</strong><br />Non sei mai stato registrato su MOVI?</Link>
+    {onChooseAnother ? <button type="button" onClick={onChooseAnother} style={plainButtonStyle}>Scegli un altro percorso</button> : null}
   </nav>;
   if (mode === "signup") return <nav style={navStyle}><Link href="/accedi">Hai già un account? Accedi</Link></nav>;
   if (mode === "forgot" || mode === "reset") return <nav style={navStyle}><Link href="/accedi">Torna all’accesso</Link></nav>;
@@ -254,3 +278,11 @@ const secondaryButtonStyle: React.CSSProperties = { minHeight: 44, width: "100%"
 const linkButtonStyle: React.CSSProperties = { minHeight: 46, display: "grid", placeItems: "center", borderRadius: 12, background: "#4f46e5", color: "white", fontWeight: 850, textDecoration: "none" };
 const messageStyle: React.CSSProperties = { padding: 12, borderRadius: 10, background: "#eef2ff", color: "#312e81", fontWeight: 650 };
 const navStyle: React.CSSProperties = { display: "grid", gap: 8, marginTop: 18, fontSize: 14 };
+const entryGridStyle: React.CSSProperties = { display: "grid", gap: 12 };
+const entryCardStyle: React.CSSProperties = { display: "grid", gap: 10, padding: 18, border: "1px solid #dbe3ed", borderRadius: 16, background: "#f8fafc" };
+const entryPrimaryStyle: React.CSSProperties = { ...entryCardStyle, borderColor: "#a5b4fc", background: "#eef2ff" };
+const entryHeadingStyle: React.CSSProperties = { margin: 0, color: "#172554", fontSize: 18, lineHeight: 1.3 };
+const entryCopyStyle: React.CSSProperties = { margin: 0, color: "#475569", fontSize: 14, lineHeight: 1.5 };
+const entryLinkStyle: React.CSSProperties = { ...linkButtonStyle, width: "100%", boxSizing: "border-box" };
+const entryLinkSecondaryStyle: React.CSSProperties = { ...entryLinkStyle, background: "white", color: "#4338ca", border: "1px solid #c7d2fe" };
+const plainButtonStyle: React.CSSProperties = { minHeight: 44, border: 0, padding: 0, background: "transparent", color: "#4338ca", font: "inherit", fontWeight: 800, textAlign: "left", cursor: "pointer" };

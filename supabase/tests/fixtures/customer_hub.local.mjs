@@ -11,10 +11,16 @@ if(bucket.error)check(await db.storage.createBucket('medical-certificates',{publ
 const people=[
  ['A','Certificato valido','active'],['B','Tolleranza 20 giorni','grace'],['C','Stand-by 70 giorni','standby'],
  ['D','Stand-by con nuovo certificato','pending'],['E','Riattivato dopo approvazione','reactivated'],['F','Senza MoviBack','none'],['G','Attivazione iniziale','initial'],
+ ['H','Account legacy senza identità giocatore','account_only'],
 ];
 for(let index=0;index<people.length;index++){
  const number=String(index+1).padStart(12,'0'), userId=`c7001000-0000-4000-8000-${number}`, playerId=`c7002000-0000-4000-8000-${number}`;
  const email=`customer-hub-${people[index][0].toLowerCase()}@example.invalid`, phone=`+39349000700${index+1}`;
+ const isAccountOnly=people[index][2]==='account_only';
+ if(isAccountOnly){
+  check(await db.from('users').upsert({id:userId,full_name:`Customer ${people[index][0]} · ${people[index][1]}`,phone,email,gender:'F',auth_user_id:null,auth_migration_state:'activation_pending',identity_status:'active'}));
+  continue;
+ }
  const existing=await db.from('users').select('id,auth_user_id').eq('id',userId).maybeSingle();check(existing);
  let authUserId=existing.data?.auth_user_id;
  if(!authUserId){const auth=await db.auth.admin.createUser({email,password,email_confirm:true});check(auth);authUserId=auth.data.user.id;}
@@ -42,6 +48,7 @@ for(const [letter,,kind] of people){
  if(kind==='pending'){await add('1','approved',day(-70),-100);await add('2','pending_review',day(300),-1);}
  if(kind==='reactivated'){await add('1','approved',day(-70),-100);await add('2','approved',day(300),-1);}
  if(kind==='initial')await add('2','pending_review',day(300),-1);
+ if(kind==='account_only')await add('1','approved',day(120),-1);
 }
 check(await db.from('medical_certificates').upsert(certificateRows));
 const transactions=membershipRows.filter(row=>row.status==='approved').flatMap((row,index)=>[
@@ -55,4 +62,4 @@ check(await db.from('reward_redemptions').upsert({id:'c7008000-0000-4000-8000-00
 const staffId='c7009000-0000-4000-8000-000000000001';
 check(await db.from('staff_users').upsert({id:staffId,email:'customer-hub-staff@example.invalid',full_name:'Staff Customer Hub locale',role:'staff',is_active:true}));
 check(await db.rpc('set_staff_password',{p_staff_id:staffId,p_password:'CustomerHub-Staff-2026!'}));
-console.log('Customer Hub LOCAL fixtures ready. Users customer-hub-a..g@example.invalid / CustomerHub-Local-2026!; staff customer-hub-staff@example.invalid / CustomerHub-Staff-2026!');
+console.log('Customer Hub LOCAL fixtures ready. Linked users customer-hub-a..g@example.invalid / CustomerHub-Local-2026!; synthetic account-only customer H; staff customer-hub-staff@example.invalid / CustomerHub-Staff-2026!');

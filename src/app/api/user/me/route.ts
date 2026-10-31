@@ -19,7 +19,7 @@ export async function GET() {
       ? "Abbiamo trovato più profili associati ai tuoi dati. Li sistemiamo noi senza perdere punti, tornei o storico."
       : state === "conflict"
         ? "Il tuo profilo resta invariato. Contatta MOVI e lo sistemiamo."
-        : "Userai email e password senza perdere nulla del tuo profilo.",
+        : "Il tuo profilo esiste già. Non devi registrarti di nuovo: dati, attività e MoviBack restano disponibili. Devi solo attivare il nuovo accesso per evitare problemi futuri.",
   } : identity.source === "auth" && identity.profile
     ? { status: "linked", activation_available: false }
     : identity.source === "auth" && state === "review_required"
