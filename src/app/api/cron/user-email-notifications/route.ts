@@ -65,10 +65,10 @@ export async function POST(req: Request) {
         if (skipped.error) throw skipped.error;
         continue;
       }
-      const email = await resolveUserNotificationEmail(item.recipient_user_id);
-      fingerprint = userEmailDestinationFingerprint(email);
-      const content = renderUserNotificationEmail(item);
-      const result = await sendUserTransactionalEmail({ to: email, ...content });
+      const recipient = await resolveUserNotificationEmail(item.recipient_user_id);
+      fingerprint = userEmailDestinationFingerprint(recipient.email);
+      const content = renderUserNotificationEmail(item, recipient.customerName);
+      const result = await sendUserTransactionalEmail({ to: recipient.email, ...content });
       const finish = await sb.rpc("finish_notification_delivery", { p_delivery_id: item.delivery_id, p_worker_id: worker, p_status: "delivered", p_provider_message_id: result.id, p_destination_fingerprint: fingerprint });
       if (finish.error) throw finish.error;
       delivered += 1;

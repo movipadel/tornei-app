@@ -42,6 +42,10 @@ function label(value: unknown) {
   return Array.isArray(value) ? value.filter(Boolean).join(", ") : String(value ?? "").trim();
 }
 
+function customerDisplayName(value: string | null | undefined) {
+  return value?.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, 100) || "Cliente MoviBack";
+}
+
 function rows(event: UserNotificationEvent) {
   const payload = event.payload;
   if (event.domain === "requests") {
@@ -111,25 +115,32 @@ function rows(event: UserNotificationEvent) {
   ];
 }
 
-export function renderUserNotificationEmail(event: UserNotificationEvent) {
+export function renderUserNotificationEmail(event: UserNotificationEvent, customerName?: string | null) {
   const copy = eventCopy[event.event_type];
   if (!copy) throw new Error("NOTIFICATION_TEMPLATE_UNSUPPORTED");
+  const isCertificate = event.event_type.startsWith("moviback.certificate.");
+  const name = customerDisplayName(customerName);
+  const greeting = isCertificate ? `Ciao ${name},\n\n` : "";
+  const greetingHtml = isCertificate ? `<p style="margin:0 0 18px;line-height:1.55">Ciao ${escapeHtml(name)},</p>` : "";
   const details = rows(event).filter(([, value]) => value);
   const detailText = details.map(([key, value]) => `${key}: ${value}`).join("\n");
-  const text = `MOVI\n\n${copy.heading}\n${copy.intro}${detailText ? `\n\n${detailText}` : ""}\n\n${event.event_type.startsWith("moviback.certificate.") ? `Aggiorna certificato: ${authRedirect("/moviback")}` : "Apri MOVI per i dettagli."}`;
+  const text = `MOVI\n\n${greeting}${copy.heading}\n${copy.intro}${detailText ? `\n\n${detailText}` : ""}\n\n${isCertificate ? `Aggiorna certificato: ${authRedirect("/moviback")}` : "Apri MOVI per i dettagli."}`;
   const detailHtml = details.map(([key, value]) => `<tr><th align="left" style="padding:8px 12px;color:#667085;font-size:13px">${escapeHtml(key)}</th><td style="padding:8px 12px;color:#101828;font-size:14px">${escapeHtml(value)}</td></tr>`).join("");
-  const certificateCta = event.event_type.startsWith("moviback.certificate.")
+  const certificateCta = isCertificate
     ? `<p style="margin:20px 0"><a href="${escapeHtml(authRedirect("/moviback"))}" style="background:#4338ca;color:#fff;padding:12px 18px;border-radius:10px;text-decoration:none">Aggiorna certificato</a></p>` : "";
-  const html = `<div style="margin:0;background:#f4f6fb;padding:24px;font-family:Arial,sans-serif;color:#101828"><div style="max-width:600px;margin:auto;background:#fff;border:1px solid #e4e7ec;border-radius:18px;overflow:hidden"><div style="background:#17124f;color:#fff;padding:22px 24px"><strong style="font-size:22px">MOVI</strong></div><div style="padding:24px"><h1 style="margin:0 0 10px;font-size:24px">${escapeHtml(copy.heading)}</h1><p style="margin:0 0 18px;line-height:1.55">${escapeHtml(copy.intro)}</p>${detailHtml ? `<table role="presentation" style="width:100%;border-collapse:collapse;background:#f8f9fc;border-radius:12px">${detailHtml}</table>` : ""}${certificateCta}<p style="margin:20px 0 0;color:#667085;font-size:13px;line-height:1.5">Apri MOVI per i dettagli. Questa è un’email transazionale relativa alle tue attività.</p></div></div></div>`;
-  return { subject: copy.subject, html, text };
+  const html = `<div style="margin:0;background:#f4f6fb;padding:24px;font-family:Arial,sans-serif;color:#101828"><div style="max-width:600px;margin:auto;background:#fff;border:1px solid #e4e7ec;border-radius:18px;overflow:hidden"><div style="background:#17124f;color:#fff;padding:22px 24px"><strong style="font-size:22px">MOVI</strong></div><div style="padding:24px">${greetingHtml}<h1 style="margin:0 0 10px;font-size:24px">${escapeHtml(copy.heading)}</h1><p style="margin:0 0 18px;line-height:1.55">${escapeHtml(copy.intro)}</p>${detailHtml ? `<table role="presentation" style="width:100%;border-collapse:collapse;background:#f8f9fc;border-radius:12px">${detailHtml}</table>` : ""}${certificateCta}<p style="margin:20px 0 0;color:#667085;font-size:13px;line-height:1.5">Apri MOVI per i dettagli. Questa è un’email transazionale relativa alle tue attività.</p></div></div></div>`;
+  const certificateState = isCertificate
+    ? event.event_type.includes("standby") ? "MoviBack in stand-by" : event.event_type.includes("grace") ? "Certificato scaduto" : "Certificato in scadenza"
+    : "";
+  return { subject: isCertificate ? `MOVI — ${certificateState} — ${name}` : copy.subject, html, text, ...(isCertificate ? { bcc: "movipadel@gmail.com" } : {}) };
 }
 
 export async function resolveUserNotificationEmail(userId: string) {
-  const { data, error } = await supabaseAdmin().from("users").select("email,identity_status").eq("id", userId).maybeSingle();
+  const { data, error } = await supabaseAdmin().from("users").select("email,full_name,identity_status").eq("id", userId).maybeSingle();
   if (error) throw new Error("NOTIFICATION_DESTINATION_LOOKUP_FAILED");
   const email = String(data?.email ?? "").trim().toLowerCase();
   if (!data || data.identity_status !== "active" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error("NOTIFICATION_DESTINATION_UNAVAILABLE");
-  return email;
+  return { email, customerName: data.full_name };
 }
 
 export function userEmailDestinationFingerprint(email: string) {
@@ -138,7 +149,7 @@ export function userEmailDestinationFingerprint(email: string) {
   return createHmac("sha256", secret).update(email.trim().toLowerCase()).digest("hex");
 }
 
-export async function sendUserTransactionalEmail(input: { to: string; subject: string; html: string; text: string }) {
+export async function sendUserTransactionalEmail(input: { to: string; subject: string; html: string; text: string; bcc?: string }) {
   const transport = process.env.USER_EMAIL_TRANSPORT;
   const local = process.env.SUPABASE_URL === "http://127.0.0.1:55421";
   if (local) {
@@ -148,7 +159,7 @@ export async function sendUserTransactionalEmail(input: { to: string; subject: s
   }
   if (transport !== "resend") throw new Error("USER_EMAIL_TRANSPORT_NOT_CONFIGURED");
   if (!process.env.RESEND_API_KEY || !process.env.USER_EMAIL_FROM) throw new Error("USER_EMAIL_RESEND_CONFIG_MISSING");
-  const { data, error } = await new Resend(process.env.RESEND_API_KEY).emails.send({ from: process.env.USER_EMAIL_FROM, to: input.to, subject: input.subject, html: input.html, text: input.text });
+  const { data, error } = await new Resend(process.env.RESEND_API_KEY).emails.send({ from: process.env.USER_EMAIL_FROM, to: input.to, subject: input.subject, html: input.html, text: input.text, ...(input.bcc ? { bcc: input.bcc } : {}) });
   if (error) throw new Error(`USER_EMAIL_PROVIDER:${error.message}`);
   return { id: data?.id ?? null };
 }

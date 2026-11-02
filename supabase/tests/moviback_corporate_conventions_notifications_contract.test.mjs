@@ -30,6 +30,6 @@ test("templates communicate non-retroactivity and preserve the shared worker", (
   assert.match(renderer, /un’altra promozione valida/);
   assert.match(renderer, /Nessun moltiplicatore è attivo/);
   assert.match(renderer, /Convenzione.*Moltiplicatore.*Attiva dal/s);
-  assert.match(worker, /renderUserNotificationEmail\(item\)/);
+  assert.match(worker, /renderUserNotificationEmail\(item, recipient\.customerName\)/);
   assert.match(worker, /userEmailFailureDecision/);
 });
