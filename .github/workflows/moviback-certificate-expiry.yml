@@ -1,0 +1,29 @@
+name: MoviBack Certificate Expiry
+
+on:
+  schedule:
+    - cron: "15 5 * * *"
+  workflow_dispatch:
+
+jobs:
+  enqueue-certificate-events:
+    if: vars.MOVIBACK_CERTIFICATE_EXPIRY_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Enqueue certificate milestones
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          set -euo pipefail
+          curl --fail-with-body --silent --show-error --max-time 30 \
+            --request POST --header "Authorization: Bearer ${CRON_SECRET}" \
+            "https://app.movipadel.it/api/cron/moviback-certificate-expiry"
+      - name: Deliver due user email notifications
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          set -euo pipefail
+          curl --fail-with-body --silent --show-error --max-time 30 \
+            --request POST --header "Authorization: Bearer ${CRON_SECRET}" \
+            "https://app.movipadel.it/api/cron/user-email-notifications"

@@ -38,7 +38,7 @@ test('eligibility-sensitive operations use their canonical authority',()=>{
 
  assert.match(read('src/app/api/moviback/me/route.ts'),/computeMovibackEligibility/);
  const adminReviewRoute=read('src/app/api/admin/moviback/requests/route.ts');
- assert.match(adminReviewRoute,/\.rpc\("review_moviback_membership_c5"/);
+ assert.match(adminReviewRoute,/reviewMovibackMembershipCompatible\(sb,/);
  assert.doesNotMatch(adminReviewRoute,/computeMovibackEligibility/);
  assert.match(
   read('supabase/migrations/20261026100000_moviback_corporate_conventions_new_member.sql'),
@@ -103,16 +103,21 @@ test('customer list is bounded and does not require a query',()=>{
  assert.doesNotMatch(page,/full fiscal|file_path|tax_code/);
 });
 
-test('certificate review records actor and time and checks storage',()=>{
+test('certificate review delegates exact target and actor to canonical RPC after checking storage',()=>{
  const source=read('src/app/api/admin/moviback/certificates/[id]/review/route.ts');
  assert.match(source,/createSignedUrl/);
- assert.match(source,/reviewed_at: now/);
- assert.match(source,/reviewed_by: session!\.sid/);
+ assert.match(source,/\.rpc\("review_moviback_certificate"/);
+ assert.match(source,/p_membership_id: membershipId/);
+ assert.match(source,/p_certificate_id: id/);
+ assert.match(source,/p_actor_staff_id: session!\.sid/);
+ const migration=read('supabase/migrations/20261102100000_moviback_certificate_review_hardening.sql');
+ assert.match(migration,/reviewed_at=v_now, reviewed_by=p_actor_staff_id/);
 });
 
-test('grace warning is view-scoped without localStorage persistence',()=>{
+test('grace and standby warnings persist in the page without localStorage persistence',()=>{
  const source=read('src/app/moviback/page.tsx');
- assert.match(source,/Certificato medico scaduto/);
- assert.match(source,/Continua su MoviBack/);
+ assert.match(source,/Certificato scaduto · periodo di tolleranza/);
+ assert.match(source,/MoviBack in stand-by/);
+ assert.match(source,/Aggiorna certificato/);
  assert.doesNotMatch(source,/localStorage/);
 });

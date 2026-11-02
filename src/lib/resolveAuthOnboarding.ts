@@ -2,6 +2,7 @@ import "server-only";
 
 import { normalizeEmail } from "@/lib/authFlow";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { consumeMediaConsentIntentIfAvailable } from "@/lib/mediaConsentCompatibility";
 
 type OnboardingFlow = "activation" | "signup";
 type ResolutionData = { state?: string; [key: string]: unknown };
@@ -23,6 +24,9 @@ async function runResolutionRpc(flow: OnboardingFlow, authUserId: string): Promi
   const { data, error } = await supabaseAdmin().rpc(rpc, { p_auth_user_id: authUserId });
   if (error) throw error;
   const result = (data ?? {}) as ResolutionData;
+  if (result.state === "linked") {
+    await consumeMediaConsentIntentIfAvailable(supabaseAdmin(), authUserId);
+  }
   return { flow, state: String(result.state ?? "conflict"), data: result };
 }
 
@@ -64,6 +68,7 @@ export async function resolveVerifiedAuthOnboarding(
       }).eq("auth_user_id", authUser.id);
       if (error) throw error;
     }
+    await consumeMediaConsentIntentIfAvailable(admin, authUser.id);
     return { flow, state: "linked", data: { state: "linked", linked_public_user_id: linkedProfile.id } };
   }
 

@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { guardAdmin } from "@/lib/adminGuard";
 import { getStaffSessionFromCookie } from "@/lib/staffSession";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { classifyReviewError, reviewMovibackMembershipCompatible } from "@/lib/movibackReviewCompatibility";
 
 export const runtime = "nodejs";
 
@@ -39,7 +40,8 @@ export async function GET() {
       .in("user_id", userIds).order("uploaded_at", { ascending: false });
     if (certificates.error) return NextResponse.json({ error: certificates.error.message }, { status: 500 });
     for (const cert of (certificates.data ?? []) as CertificateRow[]) {
-      if (!certificateByUser.has(cert.user_id)) {
+      if (!["pending_review", "approved"].includes(cert.status)) continue;
+      if (!certificateByUser.has(cert.user_id) || (cert.status === "pending_review" && certificateByUser.get(cert.user_id)?.status !== "pending_review")) {
         const { user_id: _userId, ...publicCertificate } = cert;
         void _userId;
         certificateByUser.set(cert.user_id, publicCertificate);
@@ -58,7 +60,9 @@ export async function GET() {
   }
   const enriched: PendingRow[] = rows.map((row) => ({
     ...row,
-    certificate_only: false,
+    membership_id: row.id,
+    certificate_id: certificateByUser.get(String(row.user_id ?? ""))?.id ?? null,
+    queue_kind: "membership_review",
     certificate: certificateByUser.get(String(row.user_id ?? "")) ?? null,
     pending_convention: conventionByMembership.get(row.id) ?? null,
   }));
@@ -76,7 +80,13 @@ export async function GET() {
     if (replacements.error) return NextResponse.json({ error: replacements.error.message }, { status: 500 });
     const latest = new Map<string, Record<string, unknown>>();
     for (const cert of pendingCertificates.data ?? []) if (!latest.has(cert.user_id)) latest.set(cert.user_id, cert);
-    for (const membership of replacements.data ?? []) enriched.push({ ...membership, certificate_only: true, certificate: latest.get(membership.user_id) ?? null, pending_convention: null } as PendingRow);
+    for (const membership of replacements.data ?? []) {
+      if (membership.status !== "approved") continue;
+      const certificate = latest.get(membership.user_id) as CertificateRow | undefined;
+      if (!certificate) continue;
+      enriched.push({ ...membership, membership_id: membership.id, certificate_id: certificate.id,
+        queue_kind: "certificate_review", certificate, pending_convention: null } as PendingRow);
+    }
   }
   return NextResponse.json({ data: enriched });
 }
@@ -90,6 +100,10 @@ const reviewErrors: Record<string, { status: number; message: string }> = {
   CERTIFICATE_NOT_ELIGIBLE: { status: 400, message: "Il certificato non consente l’approvazione MoviBack" },
   MEMBERSHIP_NOT_ELIGIBLE: { status: 400, message: "La membership non è idonea all’approvazione" },
   REJECTION_REASON_REQUIRED: { status: 400, message: "Motivo rifiuto obbligatorio" },
+  CERTIFICATE_MEMBERSHIP_MISMATCH: { status: 409, message: "Il certificato non appartiene alla membership" },
+  CERTIFICATE_NOT_PENDING: { status: 409, message: "Il certificato non è più in revisione" },
+  CERTIFICATE_NOT_REVIEWABLE: { status: 409, message: "Il certificato non è più disponibile per la revisione" },
+  CERTIFICATE_EXPIRED_REPLACEMENT_REQUIRED: { status: 409, message: "Certificato scaduto: richiedere un nuovo certificato" },
 };
 
 export async function POST(request: Request) {
@@ -99,29 +113,54 @@ export async function POST(request: Request) {
   if (origin && origin !== new URL(request.url).origin) return NextResponse.json({ error: "Origine non consentita" }, { status: 403 });
   const body = await request.json().catch(() => ({}));
   const id = String(body.id ?? "");
+  const certificateId = String(body.certificate_id ?? "");
+  const queueKind = String(body.queue_kind ?? "");
   const action = String(body.action ?? "");
-  if (!id || !["approve", "reject"].includes(action)) return NextResponse.json({ error: "Dati mancanti o non validi" }, { status: 400 });
+  if (!id || !certificateId || !["membership_review", "certificate_review"].includes(queueKind) || !["approve", "reject"].includes(action)) return NextResponse.json({ error: "Dati mancanti o non validi" }, { status: 400 });
 
   const sb = supabaseAdmin();
-  const certificate = await sb.from("loyalty_memberships").select("user_id").eq("id", id).maybeSingle();
+  const certificate = await sb.from("loyalty_memberships").select("user_id,status").eq("id", id).maybeSingle();
   if (certificate.error || !certificate.data) return NextResponse.json({ error: "Richiesta non trovata" }, { status: 404 });
-  const latest = await sb.from("medical_certificates").select("id,file_path")
-    .eq("user_id", certificate.data.user_id).order("uploaded_at", { ascending: false }).limit(1).maybeSingle();
-  if (latest.error || !latest.data?.file_path) return NextResponse.json({ error: "Certificato medico non presente" }, { status: 400 });
+  if ((queueKind === "membership_review" && certificate.data.status !== "pending_review") ||
+      (queueKind === "certificate_review" && certificate.data.status !== "approved")) {
+    return NextResponse.json({ error: "La richiesta non è più in revisione" }, { status: 409 });
+  }
+  const latest = await sb.from("medical_certificates").select("id,file_path,user_id,status")
+    .eq("id", certificateId).maybeSingle();
+  if (latest.error || !latest.data?.file_path || latest.data.user_id !== certificate.data.user_id ||
+      (queueKind === "certificate_review" && latest.data.status !== "pending_review") ||
+      (queueKind === "membership_review" && !["pending_review", "approved"].includes(latest.data.status)))
+    return NextResponse.json({ error: "Certificato non più disponibile per la revisione" }, { status: 409 });
   if (action === "approve") {
     const signed = await sb.storage.from("medical-certificates").createSignedUrl(latest.data.file_path, 60);
     if (signed.error || !signed.data?.signedUrl) return NextResponse.json({ error: "File del certificato non disponibile" }, { status: 400 });
   }
   const session = await getStaffSessionFromCookie();
-  const reviewed = await sb.rpc("review_moviback_membership_c5", {
-    p_membership_id: id,
-    p_action: action,
-    p_rejection_reason: action === "reject" ? String(body.rejection_reason ?? "") : null,
-    p_certificate_note: String(body.certificate_note ?? ""),
-    p_actor_staff_id: session!.sid,
-  });
+  if (queueKind === "membership_review") {
+    const outcome = await reviewMovibackMembershipCompatible(sb, {
+      membershipId: id, certificateId, userId: certificate.data.user_id,
+      action: action as "approve" | "reject",
+      rejectionReason: action === "reject" ? String(body.rejection_reason ?? "") : null,
+      certificateNote: String(body.certificate_note ?? ""), actorStaffId: session!.sid,
+    });
+    if (outcome.kind === "SUCCESS") return NextResponse.json({ ok: true, ...outcome.data });
+    if (outcome.kind === "RPC_NOT_INSTALLED") return NextResponse.json({ error: "Revisione temporaneamente non disponibile" }, { status: 503 });
+    if (outcome.kind === "AUTHORIZATION_FAILED") return NextResponse.json({ error: "Operatore non autorizzato" }, { status: 403 });
+    if (outcome.kind === "BUSINESS_RULE_REJECTED") {
+      const failure = reviewErrors[String(outcome.code ?? "")] ?? { status: 409, message: "Revisione non disponibile" };
+      return NextResponse.json({ error: failure.message, code: outcome.code }, { status: failure.status });
+    }
+    console.error("MoviBack membership review failed", outcome.code);
+    return NextResponse.json({ error: "Errore durante la revisione MoviBack" }, { status: 500 });
+  }
+  const reviewed = await sb.rpc("review_moviback_certificate", {
+      p_membership_id: id, p_certificate_id: certificateId, p_action: action,
+      p_notes: String(body.rejection_reason ?? body.certificate_note ?? ""), p_actor_staff_id: session!.sid,
+    });
   if (reviewed.error) {
-    console.error("MoviBack C5 review failed", reviewed.error.code);
+    if (reviewed.error.code === "PGRST202") return NextResponse.json({ error: "Revisione certificati disponibile dopo l’aggiornamento del database" }, { status: 503 });
+    if (classifyReviewError(reviewed.error) === "AUTHORIZATION_FAILED") return NextResponse.json({ error: "Operatore non autorizzato" }, { status: 403 });
+    console.error("MoviBack certificate review failed", reviewed.error.code);
     return NextResponse.json({ error: "Errore durante la revisione MoviBack" }, { status: 500 });
   }
   const result = (reviewed.data ?? {}) as { ok?: boolean; error_code?: string; convention_status?: string; convention_reason?: string };

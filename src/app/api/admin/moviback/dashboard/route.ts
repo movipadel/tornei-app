@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { guardOperatorPermission } from "@/lib/operatorAuthorization";
+import { calendarDaysAfter, romeCalendarDate } from "@/lib/movibackEligibility";
 
 export const runtime = "nodejs";
 
@@ -24,6 +25,7 @@ export async function GET() {
     transactionsRes,
     monthTransactionsRes,
     certificatesRes,
+    approvedMemberUsersRes,
   ] = await Promise.all([
     sb.from("loyalty_memberships").select("id,status", { count: "exact", head: true }),
     sb.from("loyalty_memberships").select("id", { count: "exact", head: true }).eq("status", "pending_review"),
@@ -31,7 +33,8 @@ export async function GET() {
     sb.from("rewards_catalog").select("id,is_active,points_cost"),
     sb.from("loyalty_transactions").select("id,points_delta,euro_amount,club,type,created_at,notes,loyalty_memberships(membership_code,users(full_name,phone))").order("created_at", { ascending: false }).limit(20),
     sb.from("loyalty_transactions").select("points_delta,euro_amount,club,type,created_at").gte("created_at", monthStart.toISOString()),
-    sb.from("medical_certificates").select("id,expiry_date,status,user_id"),
+    sb.from("medical_certificates").select("id,expiry_date,status,user_id,uploaded_at").eq("status", "approved").order("uploaded_at", { ascending: false }),
+    sb.from("loyalty_memberships").select("user_id").eq("status", "approved"),
   ]);
 
   const firstError =
@@ -41,7 +44,7 @@ export async function GET() {
     rewardsRes.error ||
     transactionsRes.error ||
     monthTransactionsRes.error ||
-    certificatesRes.error;
+    certificatesRes.error || approvedMemberUsersRes.error;
 
   if (firstError) {
     return NextResponse.json({ error: firstError.message }, { status: 500 });
@@ -50,45 +53,49 @@ export async function GET() {
   const rewards = rewardsRes.data || [];
   const allTx = transactionsRes.data || [];
   const monthTx = monthTransactionsRes.data || [];
-  const certs = certificatesRes.data || [];
+  const approvedUsers = new Set((approvedMemberUsersRes.data ?? []).map(item => item.user_id));
+  const currentByUser = new Map<string, NonNullable<typeof certificatesRes.data>[number]>();
+  for (const cert of certificatesRes.data ?? []) {
+    if (approvedUsers.has(cert.user_id) && !currentByUser.has(cert.user_id)) currentByUser.set(cert.user_id, cert);
+  }
+  const certs = [...currentByUser.values()];
 
   const totalPointsBalance = allTx.reduce(
-    (sum: number, tx: any) => sum + Number(tx.points_delta || 0),
+    (sum: number, tx) => sum + Number(tx.points_delta || 0),
     0
   );
 
   const monthEarnedPoints = monthTx
-    .filter((tx: any) => tx.type === "earn")
-    .reduce((sum: number, tx: any) => sum + Math.max(0, Number(tx.points_delta || 0)), 0);
+    .filter((tx) => tx.type === "earn")
+    .reduce((sum: number, tx) => sum + Math.max(0, Number(tx.points_delta || 0)), 0);
 
   const monthEuroAmount = monthTx
-    .filter((tx: any) => tx.type === "earn")
-    .reduce((sum: number, tx: any) => sum + Number(tx.euro_amount || 0), 0);
+    .filter((tx) => tx.type === "earn")
+    .reduce((sum: number, tx) => sum + Number(tx.euro_amount || 0), 0);
 
   const byClub = CLUBS.map((club) => {
-    const rows = monthTx.filter((tx: any) => tx.club === club && tx.type === "earn");
+    const rows = monthTx.filter((tx) => tx.club === club && tx.type === "earn");
 
     return {
       club,
-      points: rows.reduce((sum: number, tx: any) => sum + Math.max(0, Number(tx.points_delta || 0)), 0),
-      euro: rows.reduce((sum: number, tx: any) => sum + Number(tx.euro_amount || 0), 0),
+      points: rows.reduce((sum: number, tx) => sum + Math.max(0, Number(tx.points_delta || 0)), 0),
+      euro: rows.reduce((sum: number, tx) => sum + Number(tx.euro_amount || 0), 0),
       count: rows.length,
     };
   });
 
-  const now = new Date();
-  const in30 = new Date();
-  in30.setDate(now.getDate() + 30);
+  const today = romeCalendarDate();
 
-  const expiringCertificates = certs.filter((c: any) => {
+  const expiringCertificates = certs.filter((c) => {
     if (!c.expiry_date) return false;
-    const d = new Date(c.expiry_date);
-    return d >= now && d <= in30;
+    const days = calendarDaysAfter(c.expiry_date, today);
+    return days !== null && days >= -30 && days <= 0;
   }).length;
 
-  const expiredCertificates = certs.filter((c: any) => {
+  const expiredCertificates = certs.filter((c) => {
     if (!c.expiry_date) return false;
-    return new Date(c.expiry_date) < now;
+    const days = calendarDaysAfter(c.expiry_date, today);
+    return days !== null && days > 0;
   }).length;
 
   return NextResponse.json({
@@ -100,8 +107,8 @@ export async function GET() {
         total_points_balance: totalPointsBalance,
         month_earned_points: monthEarnedPoints,
         month_euro_amount: monthEuroAmount,
-        active_rewards: rewards.filter((r: any) => r.is_active).length,
-        hidden_rewards: rewards.filter((r: any) => !r.is_active).length,
+        active_rewards: rewards.filter((r) => r.is_active).length,
+        hidden_rewards: rewards.filter((r) => !r.is_active).length,
       },
       clubs: byClub,
       latest_transactions: allTx,

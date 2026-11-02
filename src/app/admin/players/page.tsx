@@ -11,11 +11,13 @@ type Customer = {
   id?:string; full_name:string; normalized_phone:string; email:string|null; account_user_id:string|null; status:string;
   merged_into_player_id:string|null; descriptive_level:string|null; movi_level:number|null; movi_level_label:string|null;
   moviback_state:string; compliance_badge:string; identity_warning:boolean; game_profile:GameProfile|null;
+  certificate_expiry_date:string|null; certificate_pending:boolean; media_consent:{status:string;effective_at:string|null;source:string|null}|null; media_consent_available:boolean;
   auth_access:{key:string;label:string};
 };
 const levels:Record<string,string>={principiante:'Principiante',intermedio:'Intermedio',avanzato:'Avanzato'};
 const movibackLabels:Record<string,string>={none:'Assente',active:'Attivo',grace_period:'Tolleranza',standby:'Stand-by',pending_review:'In revisione',blocked:'Bloccato'};
 const complianceLabels:Record<string,string>={none:'Assente',valid:'Valida',approved:'Approvata',expired_grace:'Tolleranza',expired:'Scaduta',pending_review:'Da verificare',rejected:'Rifiutata'};
+const mediaLabels:Record<string,string>={granted:'Consentito',not_granted:'Non consentito',revoked:'Revocato'};
 
 export default function PlayersPage(){
   const [mode,setMode]=useState<'list'|'matching'>('list');
@@ -48,7 +50,7 @@ export default function PlayersPage(){
       <label className={s.field}>Nome, telefono o email<input value={q} onChange={event=>setQ(event.target.value)} maxLength={100} placeholder="Cerca nome o telefono o email"/></label>
       <label className={s.field}>Stato<select value={status} onChange={event=>setStatus(event.target.value)}><option value="active">Attivi</option><option value="archived">Archiviati</option><option value="merged">Fusi</option><option value="all">Tutti</option></select></label>
       <label className={s.field}>Account<select value={account} onChange={event=>setAccount(event.target.value)}><option value="all">Tutti</option><option value="linked">Con account</option><option value="unlinked">Senza account</option></select></label>
-      <label className={s.field}>MoviBack<select value={moviback} onChange={event=>setMoviback(event.target.value)}><option value="all">Tutti</option><option value="member">Con MoviBack</option><option value="active">Attivi</option><option value="grace_period">Tolleranza</option><option value="standby">Stand-by</option><option value="pending_review">In revisione</option><option value="none">Senza MoviBack</option></select></label>
+      <label className={s.field}>MoviBack<select value={moviback} onChange={event=>setMoviback(event.target.value)}><option value="all">Tutti</option><option value="member">Con MoviBack</option><option value="active">Attivi</option><option value="expires_30d">Scade entro 30 giorni</option><option value="expires_7d">Scade entro 7 giorni</option><option value="grace_period">Tolleranza</option><option value="standby">Stand-by</option><option value="pending_review">Membership o certificato in revisione</option><option value="none">Senza MoviBack</option></select></label>
       <label className={s.field}>Profilo gioco<select value={profile} onChange={event=>setProfile(event.target.value)}><option value="all">Tutti</option><option value="complete">Completi</option><option value="partial">Parziali</option><option value="incomplete">Da completare</option></select></label>
       <div className={s.filterActions}><button className={s.primary} disabled={busy}>{busy?'Caricamento…':'Applica'}</button><button className={s.secondary} type="button" disabled={busy} onClick={reset}>Azzera</button></div>
     </form>
@@ -56,7 +58,7 @@ export default function PlayersPage(){
     {error&&<div className={s.error} role="alert">{error}</div>}
     {!busy&&!items.length&&!error&&<div className={s.empty}>Nessun giocatore trovato con questi filtri.</div>}
     {!!items.length&&<div className={s.tableWrap}><table className={s.table}>
-      <thead><tr><th>Cliente</th><th>Contatti</th><th>Account / accesso</th><th>Livello</th><th>MoviBack</th><th>Profilo gioco</th><th>Compliance</th><th>Azione</th></tr></thead>
+      <thead><tr><th>Cliente</th><th>Contatti</th><th>Account / accesso</th><th>Livello</th><th>MoviBack</th><th>Profilo gioco</th><th>Compliance</th><th>Media</th><th>Azione</th></tr></thead>
       <tbody>{items.map(customer=>{
         const href=customer.kind==='account_only'
           ? `/admin/players/account/${customer.account_user_id}`
@@ -68,7 +70,8 @@ export default function PlayersPage(){
           <td data-label="Livello">{customer.kind==='account_only'?'Non disponibile':customer.movi_level!==null?`MOVI ${customer.movi_level.toFixed(1)}`:customer.descriptive_level?levels[customer.descriptive_level]:'Da definire'}</td>
           <td data-label="MoviBack"><span className={`${s.badge} ${s[customer.moviback_state]??''}`}>{movibackLabels[customer.moviback_state]??customer.moviback_state}</span></td>
           <td data-label="Profilo gioco">{customer.game_profile?<><span className={`${s.profileBadge} ${s[customer.game_profile.status]}`}>{customer.game_profile.label} · {customer.game_profile.score}/5</span>{customer.game_profile.missing.length>0&&<small className={s.missing}>Manca: {customer.game_profile.missing.join(', ')}</small>}</>:<span className={s.neutralState}>Non disponibile senza identità giocatore</span>}</td>
-          <td data-label="Compliance"><span className={s.badge}>{complianceLabels[customer.compliance_badge]??customer.compliance_badge}</span></td>
+          <td data-label="Compliance"><span className={s.badge}>{complianceLabels[customer.compliance_badge]??customer.compliance_badge}</span>{customer.certificate_expiry_date?<small className={s.missing}>Scadenza {customer.certificate_expiry_date.split('-').reverse().join('/')}</small>:null}</td>
+          <td data-label="Media"><span className={s.badge}>{customer.media_consent_available ? mediaLabels[customer.media_consent?.status??'']??'Non raccolto' : 'Non disponibile'}</span></td>
           <td data-label="Azione"><Link className={s.openAction} href={href}>{customer.status==='merged'?'Apri identità mantenuta':'Apri cliente'}</Link></td>
         </tr>;
       })}</tbody>

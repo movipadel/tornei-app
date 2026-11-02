@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { renderUserNotificationEmail, resolveUserNotificationEmail, sendUserTransactionalEmail, userEmailDestinationFingerprint, type UserNotificationEvent } from "@/lib/userNotificationEmail";
 import { userEmailFailureDecision } from "@/lib/userNotificationPolicy";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { calendarDaysAfter, romeCalendarDate } from "@/lib/movibackEligibility";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,6 +25,29 @@ function errorCode(error: unknown) {
   return { code: message.startsWith("USER_EMAIL_PROVIDER:") ? "provider_error" : "delivery_error", permanent: false };
 }
 
+async function certificateEventCurrent(item: Claimed) {
+  if (!item.event_type.startsWith("moviback.certificate.")) return true;
+  const certificateId = String(item.payload.certificate_id ?? "");
+  const expiryDate = String(item.payload.expiry_date ?? "");
+  const daysAfter = calendarDaysAfter(expiryDate, romeCalendarDate());
+  const milestoneStillRelevant = daysAfter !== null && ({
+    "moviback.certificate.expiring_30d": daysAfter >= -30 && daysAfter < -7,
+    "moviback.certificate.expiring_7d": daysAfter >= -7 && daysAfter <= 0,
+    "moviback.certificate.grace_started": daysAfter >= 1 && daysAfter <= 60,
+    "moviback.certificate.standby_started": daysAfter >= 61,
+  }[item.event_type] ?? false);
+  if (!milestoneStillRelevant) return false;
+  const sb = supabaseAdmin();
+  const [latest, membership] = await Promise.all([
+    sb.from("medical_certificates").select("id,expiry_date").eq("user_id", item.recipient_user_id)
+      .eq("status", "approved").order("uploaded_at", { ascending: false }).limit(1).maybeSingle(),
+    sb.from("loyalty_memberships").select("id").eq("user_id", item.recipient_user_id)
+      .eq("status", "approved").limit(1).maybeSingle(),
+  ]);
+  if (latest.error || membership.error) throw new Error("NOTIFICATION_CERTIFICATE_LOOKUP_FAILED");
+  return Boolean(membership.data && latest.data?.id === certificateId && latest.data.expiry_date === expiryDate);
+}
+
 export async function POST(req: Request) {
   if (!authorized(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const sb = supabaseAdmin(), worker = crypto.randomUUID();
@@ -33,6 +57,14 @@ export async function POST(req: Request) {
   for (const item of (data ?? []) as Claimed[]) {
     let fingerprint: string | null = null;
     try {
+      if (!(await certificateEventCurrent(item))) {
+        const skipped = await sb.rpc("finish_notification_delivery", {
+          p_delivery_id: item.delivery_id, p_worker_id: worker, p_status: "skipped",
+          p_error_code: "certificate_event_obsolete",
+        });
+        if (skipped.error) throw skipped.error;
+        continue;
+      }
       const email = await resolveUserNotificationEmail(item.recipient_user_id);
       fingerprint = userEmailDestinationFingerprint(email);
       const content = renderUserNotificationEmail(item);

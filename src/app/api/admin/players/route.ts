@@ -1,15 +1,16 @@
 import { getCurrentOperator, guardOperatorPermission } from "@/lib/operatorAuthorization";
 import { editorialJson } from "@/lib/padelleriaServer";
-import { computeMovibackEligibility } from "@/lib/movibackEligibility";
+import { calendarDaysAfter, computeMovibackEligibility, romeCalendarDate } from "@/lib/movibackEligibility";
 import { moviLevelLabel } from "@/lib/playerProfile";
 import { computeGameProfileCompleteness } from "@/lib/playerProfileCompleteness";
 import { customerAuthAccess, customerHubMatchesSearch } from "@/lib/customerHub";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { mediaConsentViewMissing } from "@/lib/mediaConsentCompatibility";
 
 export const dynamic = "force-dynamic";
 const statuses = new Set(["active", "archived", "merged", "all"]);
 const accounts = new Set(["all", "linked", "unlinked"]);
-const movibackFilters = new Set(["all", "member", "active", "grace_period", "standby", "pending_review", "none"]);
+const movibackFilters = new Set(["all", "member", "active", "expires_30d", "expires_7d", "grace_period", "standby", "pending_review", "none"]);
 const profileFilters = new Set(["all", "complete", "partial", "incomplete"]);
 const REGISTRY_CAP = 5000;
 
@@ -69,15 +70,17 @@ export async function GET(req: Request) {
     ...playerRows.map((player) => player.account_user_id).filter(Boolean) as string[],
     ...accountOnlyRows.map((item) => item.id),
   ])];
-  const [profiles, adminProfiles, availability, memberships, certificates, cases] = await Promise.all([
+  const [profiles, adminProfiles, availability, memberships, certificates, cases, mediaConsents] = await Promise.all([
     ids.length ? sb.from("player_profiles").select("player_identity_id,descriptive_level,preferred_clubs,available_other_clubs,preferred_match_types,available_last_minute").in("player_identity_id", ids) : Promise.resolve({ data: [], error: null }),
     ids.length ? sb.from("player_admin_profiles").select("player_identity_id,movi_level").in("player_identity_id", ids) : Promise.resolve({ data: [], error: null }),
     ids.length ? sb.from("player_profile_availability").select("player_identity_id").in("player_identity_id", ids) : Promise.resolve({ data: [], error: null }),
     userIds.length ? sb.from("loyalty_memberships").select("id,user_id,status,tax_code,approved_at,created_at,health_data_consent_at").in("user_id", userIds) : Promise.resolve({ data: [], error: null }),
     userIds.length ? sb.from("medical_certificates").select("id,user_id,status,expiry_date,uploaded_at").in("user_id", userIds).order("uploaded_at", { ascending: false }) : Promise.resolve({ data: [], error: null }),
     operator?.role === "admin" && ids.length ? sb.from("player_identity_cases").select("id,player_ids,status").in("status", ["open", "in_review"]).overlaps("player_ids", ids) : Promise.resolve({ data: [], error: null }),
+    userIds.length ? sb.from("user_media_consent_current").select("user_id,status,effective_at,source").in("user_id", userIds) : Promise.resolve({ data: [], error: null }),
   ]);
-  if (profiles.error || adminProfiles.error || availability.error || memberships.error || certificates.error || cases.error) {
+  if (profiles.error || adminProfiles.error || availability.error || memberships.error || certificates.error || cases.error ||
+      (mediaConsents.error && !mediaConsentViewMissing(mediaConsents.error))) {
     return editorialJson({ error: "Riepilogo Customer Hub non disponibile" }, 503);
   }
 
@@ -91,6 +94,13 @@ export async function GET(req: Request) {
   for (const membership of memberships.data ?? []) membershipsByUser.set(membership.user_id, [...(membershipsByUser.get(membership.user_id) ?? []), membership]);
   const certificatesByUser = new Map<string, CertificateRow[]>();
   for (const certificate of certificates.data ?? []) certificatesByUser.set(certificate.user_id, [...(certificatesByUser.get(certificate.user_id) ?? []), certificate]);
+  const mediaByUser = new Map((mediaConsents.data ?? []).map((item) => [item.user_id, item]));
+  const mediaConsentAvailable = !mediaConsentViewMissing(mediaConsents.error);
+  const today = romeCalendarDate();
+  const currentExpiry = (userId: string | null) =>
+    userId ? (certificatesByUser.get(userId) ?? []).find((item) => item.status === "approved")?.expiry_date ?? null : null;
+  const hasPendingCertificate = (userId: string | null) =>
+    userId ? (certificatesByUser.get(userId) ?? []).some((item) => item.status === "pending_review") : false;
   const conflictIds = new Set<string>();
   for (const item of cases.data ?? []) for (const playerId of item.player_ids ?? []) conflictIds.add(playerId);
 
@@ -122,6 +132,10 @@ export async function GET(req: Request) {
       movi_level_label: moviLevelLabel(level),
       moviback_state: memberRows.length ? eligibility.eligibility_state : "none",
       compliance_badge: memberRows.length ? eligibility.certificate_state : "none",
+      certificate_expiry_date: currentExpiry(player.account_user_id),
+      certificate_pending: hasPendingCertificate(player.account_user_id),
+      media_consent: player.account_user_id ? mediaByUser.get(player.account_user_id) ?? null : null,
+      media_consent_available: mediaConsentAvailable,
       identity_warning: conflictIds.has(player.id),
       game_profile: gameProfile,
     };
@@ -147,13 +161,27 @@ export async function GET(req: Request) {
       movi_level_label: null,
       moviback_state: memberRows.length ? eligibility.eligibility_state : "none",
       compliance_badge: memberRows.length ? eligibility.certificate_state : "none",
+      certificate_expiry_date: currentExpiry(item.id),
+      certificate_pending: hasPendingCertificate(item.id),
+      media_consent: mediaByUser.get(item.id) ?? null,
+      media_consent_available: mediaConsentAvailable,
       identity_warning: false,
       game_profile: null,
     };
   });
 
   const enriched = [...playerResults, ...accountOnlyResults]
-    .filter((item) => moviback === "all" || (moviback === "member" ? item.moviback_state !== "none" : item.moviback_state === moviback))
+    .filter((item) => {
+      if (moviback === "all") return true;
+      if (moviback === "member") return item.moviback_state !== "none";
+      if (moviback === "pending_review") return item.moviback_state === "pending_review" || item.certificate_pending;
+      if (moviback === "expires_30d" || moviback === "expires_7d") {
+        if (!item.certificate_expiry_date || item.moviback_state !== "active") return false;
+        const days = calendarDaysAfter(item.certificate_expiry_date, today);
+        return days !== null && days <= 0 && days >= (moviback === "expires_7d" ? -7 : -30);
+      }
+      return item.moviback_state === moviback;
+    })
     .filter((item) => profile === "all" || (item.kind === "account_only" ? profile === "incomplete" : item.game_profile.status === profile))
     .sort((left, right) => left.full_name.localeCompare(right.full_name, "it") || left.result_key.localeCompare(right.result_key));
 

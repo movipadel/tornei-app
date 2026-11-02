@@ -3,6 +3,7 @@ import "server-only";
 import { createHash, createHmac, randomUUID } from "node:crypto";
 import { Resend } from "resend";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { authRedirect } from "@/lib/authFlow";
 
 export type UserNotificationEvent = {
   event_type: string;
@@ -27,6 +28,10 @@ const eventCopy: Record<string, { subject: string; heading: string; intro: strin
   "moviback.agreement.activated": { subject: "La tua convenzione MOVI è attiva", heading: "Convenzione attiva", intro: "La tua convenzione è attiva. Da ora i nuovi accrediti MoviBack idonei utilizzeranno il moltiplicatore previsto. Il saldo e i punti già maturati non sono stati modificati." },
   "moviback.agreement.not_activated": { subject: "La convenzione non è stata attivata", heading: "Convenzione non attivata", intro: "La tua membership MoviBack è stata approvata, ma la convenzione non è stata attivata. Nessun moltiplicatore è attivo tramite quel codice e i punti già maturati non sono stati modificati." },
   "moviback.agreement.revoked": { subject: "La tua convenzione MOVI è terminata", heading: "Convenzione terminata", intro: "La tua membership MoviBack resta attiva e i punti già maturati rimangono invariati. I futuri accrediti idonei non useranno più il moltiplicatore di questa convenzione; potrà comunque applicarsi un’altra promozione valida secondo le regole MOVI." },
+  "moviback.certificate.expiring_30d": { subject: "Il tuo certificato MOVI scade tra 30 giorni", heading: "Certificato in scadenza", intro: "Il certificato medico scade tra 30 giorni. Per ora tessera, accumulo punti e premi restano disponibili. Aggiorna il certificato da MoviBack." },
+  "moviback.certificate.expiring_7d": { subject: "Il tuo certificato MOVI scade tra 7 giorni", heading: "Aggiorna il certificato", intro: "Il certificato medico scade tra 7 giorni. Tessera, accumulo punti e premi restano disponibili. Carica un nuovo certificato appena possibile." },
+  "moviback.certificate.grace_started": { subject: "Certificato MOVI scaduto: periodo di tolleranza", heading: "Periodo di tolleranza iniziato", intro: "Il certificato è scaduto. Per 60 giorni di tolleranza tessera, accumulo punti e riscatto premi restano disponibili. Carica un nuovo certificato appena possibile." },
+  "moviback.certificate.standby_started": { subject: "MoviBack in stand-by: aggiorna il certificato", heading: "Accumulo punti sospeso", intro: "Il certificato è scaduto da oltre 60 giorni. L'accumulo punti è sospeso finché non carichi un nuovo certificato approvato. Saldo, tessera, QR e riscatto premi restano disponibili." },
 };
 
 function escapeHtml(value: unknown) {
@@ -80,6 +85,10 @@ function rows(event: UserNotificationEvent) {
     ];
   }
   if (event.domain === "moviback") {
+    if (event.event_type.startsWith("moviback.certificate.")) return [
+      ["Scadenza certificato", label(payload.expiry_date)],
+      ["Aggiorna certificato", "/moviback"],
+    ];
     const multiplier = Number(payload.multiplier ?? 0);
     return [
       ["Convenzione", label(payload.agreement_name)],
@@ -107,9 +116,11 @@ export function renderUserNotificationEmail(event: UserNotificationEvent) {
   if (!copy) throw new Error("NOTIFICATION_TEMPLATE_UNSUPPORTED");
   const details = rows(event).filter(([, value]) => value);
   const detailText = details.map(([key, value]) => `${key}: ${value}`).join("\n");
-  const text = `MOVI\n\n${copy.heading}\n${copy.intro}${detailText ? `\n\n${detailText}` : ""}\n\nApri MOVI per i dettagli.`;
+  const text = `MOVI\n\n${copy.heading}\n${copy.intro}${detailText ? `\n\n${detailText}` : ""}\n\n${event.event_type.startsWith("moviback.certificate.") ? `Aggiorna certificato: ${authRedirect("/moviback")}` : "Apri MOVI per i dettagli."}`;
   const detailHtml = details.map(([key, value]) => `<tr><th align="left" style="padding:8px 12px;color:#667085;font-size:13px">${escapeHtml(key)}</th><td style="padding:8px 12px;color:#101828;font-size:14px">${escapeHtml(value)}</td></tr>`).join("");
-  const html = `<div style="margin:0;background:#f4f6fb;padding:24px;font-family:Arial,sans-serif;color:#101828"><div style="max-width:600px;margin:auto;background:#fff;border:1px solid #e4e7ec;border-radius:18px;overflow:hidden"><div style="background:#17124f;color:#fff;padding:22px 24px"><strong style="font-size:22px">MOVI</strong></div><div style="padding:24px"><h1 style="margin:0 0 10px;font-size:24px">${escapeHtml(copy.heading)}</h1><p style="margin:0 0 18px;line-height:1.55">${escapeHtml(copy.intro)}</p>${detailHtml ? `<table role="presentation" style="width:100%;border-collapse:collapse;background:#f8f9fc;border-radius:12px">${detailHtml}</table>` : ""}<p style="margin:20px 0 0;color:#667085;font-size:13px;line-height:1.5">Apri MOVI per i dettagli. Questa è un’email transazionale relativa alle tue attività.</p></div></div></div>`;
+  const certificateCta = event.event_type.startsWith("moviback.certificate.")
+    ? `<p style="margin:20px 0"><a href="${escapeHtml(authRedirect("/moviback"))}" style="background:#4338ca;color:#fff;padding:12px 18px;border-radius:10px;text-decoration:none">Aggiorna certificato</a></p>` : "";
+  const html = `<div style="margin:0;background:#f4f6fb;padding:24px;font-family:Arial,sans-serif;color:#101828"><div style="max-width:600px;margin:auto;background:#fff;border:1px solid #e4e7ec;border-radius:18px;overflow:hidden"><div style="background:#17124f;color:#fff;padding:22px 24px"><strong style="font-size:22px">MOVI</strong></div><div style="padding:24px"><h1 style="margin:0 0 10px;font-size:24px">${escapeHtml(copy.heading)}</h1><p style="margin:0 0 18px;line-height:1.55">${escapeHtml(copy.intro)}</p>${detailHtml ? `<table role="presentation" style="width:100%;border-collapse:collapse;background:#f8f9fc;border-radius:12px">${detailHtml}</table>` : ""}${certificateCta}<p style="margin:20px 0 0;color:#667085;font-size:13px;line-height:1.5">Apri MOVI per i dettagli. Questa è un’email transazionale relativa alle tue attività.</p></div></div></div>`;
   return { subject: copy.subject, html, text };
 }
 

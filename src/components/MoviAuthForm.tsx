@@ -26,6 +26,15 @@ export default function MoviAuthForm({ mode, entryFirst = false }: { mode: Mode;
   const [emailLocked, setEmailLocked] = useState(false);
   const [loginChosen, setLoginChosen] = useState(!entryFirst);
   const [form, setForm] = useState<Record<string, string | boolean>>({ gender: "M" });
+  const [mediaConsentAvailable, setMediaConsentAvailable] = useState(false);
+
+  useEffect(() => {
+    if (mode !== "signup") return;
+    void fetch("/api/auth/media-consent-availability", { cache: "no-store" })
+      .then(async (response) => response.ok ? response.json() : null)
+      .then((data) => setMediaConsentAvailable(data?.available === true))
+      .catch(() => setMediaConsentAvailable(false));
+  }, [mode]);
 
   useEffect(() => {
     const query = new URLSearchParams(window.location.search);
@@ -194,6 +203,7 @@ export default function MoviAuthForm({ mode, entryFirst = false }: { mode: Mode;
         <Check name="terms_accepted" label="Accetto i Termini di utilizzo" checked={form.terms_accepted} onChange={(v) => set("terms_accepted", v)} />
         <Check name="age_confirmed" label="Confermo di avere almeno 18 anni" checked={form.age_confirmed} onChange={(v) => set("age_confirmed", v)} />
         <Check name="marketing_accepted" label="Acconsento alle comunicazioni marketing" checked={form.marketing_accepted} onChange={(v) => set("marketing_accepted", v)} optional />
+        {mediaConsentAvailable ? <Check name="media_consent" label="Acconsento all’uso di foto e video in cui sono riconoscibile per i canali social e i materiali promozionali MOVI. Il consenso è facoltativo e posso revocarlo in qualsiasi momento dal mio Profilo." checked={form.media_consent} onChange={(v) => set("media_consent", v)} optional /> : null}
       </>}
       {!(mode === "signup" && legacyVerified) && <button disabled={busy} style={buttonStyle}>{busy ? "Attendi…" : action(mode, legacyVerified)}</button>}
     </form>

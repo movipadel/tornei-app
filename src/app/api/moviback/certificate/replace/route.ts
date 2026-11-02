@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
+import { randomUUID } from "node:crypto";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getUserIdFromCookie } from "@/lib/userAuth";
-import { calendarDaysAfter } from "@/lib/movibackEligibility";
+import { calendarDaysAfter, romeCalendarDate } from "@/lib/movibackEligibility";
 
 export const runtime = "nodejs";
 
@@ -36,6 +37,9 @@ export async function POST(req: Request) {
   if (!expiryDate || calendarDaysAfter(expiryDate, expiryDate) !== 0) {
     return NextResponse.json({ error: "Scadenza certificato obbligatoria" }, { status: 400 });
   }
+  if ((calendarDaysAfter(expiryDate, romeCalendarDate()) ?? 1) > 0) {
+    return NextResponse.json({ error: "Il nuovo certificato deve essere ancora valido" }, { status: 400 });
+  }
 
   if (!(file instanceof File)) {
     return NextResponse.json({ error: "Certificato obbligatorio" }, { status: 400 });
@@ -67,7 +71,7 @@ export async function POST(req: Request) {
   const sb = supabaseAdmin();
 
   const cleanName = safeFileName(file.name);
-  const filePath = `${uid}/${Date.now()}-${cleanName}`;
+  const filePath = `${uid}/${randomUUID()}-${cleanName}`;
 
   const buffer = Buffer.from(await file.arrayBuffer());
 
@@ -96,7 +100,8 @@ export async function POST(req: Request) {
     .single();
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    await sb.storage.from(BUCKET).remove([filePath]);
+    return NextResponse.json({ error: "Impossibile registrare il nuovo certificato. Riprova." }, { status: 409 });
   }
 
   return NextResponse.json({ data });

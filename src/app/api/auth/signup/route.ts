@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { authRedirect, genericEmailMessage, normalizeEmail, validPassword } from "@/lib/authFlow";
 import { createSupabaseAuthServerClient } from "@/lib/supabase/authServer";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { mediaConsentSchemaAvailable } from "@/lib/mediaConsentCompatibility";
 
 export const runtime = "nodejs";
 
@@ -36,6 +37,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ state: "existing_profile", redirect_to: "/attiva-account" });
   }
 
+  // Reject an unsupported optional consent before creating an Auth identity.
+  if (body.media_consent === true) {
+    const available = await mediaConsentSchemaAvailable(admin).catch(() => false);
+    if (!available) return NextResponse.json({ error: "Consenso media non ancora disponibile. Riprova senza questa scelta." }, { status: 503 });
+  }
+
   const supabase = await createSupabaseAuthServerClient();
   const { data, error } = await supabase.auth.signUp({
     email,
@@ -61,6 +68,13 @@ export async function POST(request: Request) {
     }
     if ((prepared as { state?: string } | null)?.state === "invalid_profile") {
       return NextResponse.json({ error: "Dati o consensi obbligatori mancanti" }, { status: 400 });
+    }
+    if ((prepared as { state?: string } | null)?.state === "pending_verification" && body.media_consent === true) {
+      const intent = await admin.from("user_media_signup_intents").upsert({
+        auth_user_id: data.user.id,
+        grant_requested: true,
+      });
+      if (intent.error) return NextResponse.json({ error: "Preferenze non disponibili. Riprova." }, { status: 503 });
     }
   }
   return NextResponse.json({ ok: true, message: genericEmailMessage });

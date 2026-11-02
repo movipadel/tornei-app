@@ -17,6 +17,8 @@ const paths = [
   `${users[0]}/enrollment-${tokens[0]}-invalid.pdf`,
   `${users[0]}/enrollment-${tokens[1]}-valid.pdf`,
   `${users[1]}/enrollment-${tokens[2]}-plain.pdf`,
+  `${users[0]}/transition-queue.pdf`,
+  `${users[0]}/transition-exact.pdf`,
 ];
 const storageHeaders = {
   apikey: local.SERVICE_ROLE_KEY,
@@ -124,7 +126,9 @@ values('${agreement}','${hash("MOVI-ABCDE-FGHJK-LMNPQ-RSTUV")}','QRSTUV','availa
   const approved = await fetch(`${app}/api/admin/moviback/requests`, {
     method: "POST",
     headers: { Cookie: adminCookie, "Content-Type": "application/json" },
-    body: JSON.stringify({ id: validBody.membership.id, action: "approve" }),
+    body: JSON.stringify({ id: validBody.membership.id,
+      certificate_id: sql(`select id from public.medical_certificates where user_id='${users[0]}' order by uploaded_at desc limit 1`),
+      queue_kind: "membership_review", action: "approve" }),
   });
   assert.equal(approved.status, 200, await approved.clone().text());
   assert.equal((await approved.json()).convention_status, "active");
@@ -132,12 +136,40 @@ values('${agreement}','${hash("MOVI-ABCDE-FGHJK-LMNPQ-RSTUV")}','QRSTUV','availa
   assert.equal(approvedMe.active_agreement.status, "active");
   assert.equal(approvedMe.agreement_state.status, "active");
 
+  for (const path of paths.slice(-2)) {
+    const uploaded = await fetch(`${local.API_URL}/storage/v1/object/medical-certificates/${path}`, {
+      method: "POST", headers: { apikey: local.SERVICE_ROLE_KEY,
+        Authorization: `Bearer ${local.SERVICE_ROLE_KEY}`, "Content-Type": "application/pdf" },
+      body: new Uint8Array([37, 80, 68, 70, 45, 49, 46, 52]),
+    });
+    assert.equal(uploaded.status, 200, await uploaded.clone().text());
+  }
+  sql(`insert into public.medical_certificates(user_id,file_path,status,expiry_date)
+    values('${users[0]}','${paths.at(-2)}','pending_review',current_date+30)`);
+  const queueCertificateId = sql(`select id from public.medical_certificates where file_path='${paths.at(-2)}'`);
+  const queueReview = await fetch(`${app}/api/admin/moviback/requests`, {
+    method: "POST", headers: { Cookie: adminCookie, "Content-Type": "application/json" },
+    body: JSON.stringify({ id: validBody.membership.id, certificate_id: queueCertificateId,
+      queue_kind: "certificate_review", action: "reject", rejection_reason: "Synthetic unreadable document" }),
+  });
+  assert.equal(queueReview.status, 200, await queueReview.clone().text());
+  assert.equal(sql(`select status from public.medical_certificates where id='${queueCertificateId}'`), "rejected");
+  sql(`insert into public.medical_certificates(user_id,file_path,status,expiry_date)
+    values('${users[0]}','${paths.at(-1)}','pending_review',current_date+30)`);
+  const exactCertificateId = sql(`select id from public.medical_certificates where file_path='${paths.at(-1)}'`);
+  const exactReview = await fetch(`${app}/api/admin/moviback/certificates/${exactCertificateId}/review`, {
+    method: "POST", headers: { Cookie: adminCookie, "Content-Type": "application/json" },
+    body: JSON.stringify({ membership_id: validBody.membership.id, action: "approve" }),
+  });
+  assert.equal(exactReview.status, 200, await exactReview.clone().text());
+  assert.equal(sql(`select status from public.medical_certificates where id='${exactCertificateId}'`), "approved");
+
   const cookie2 = await login(1);
   const plain = await fetch(`${app}/api/moviback/request-membership`, { method: "POST", headers: { Cookie: cookie2 }, body: enrollmentForm(tokens[2], "plain.pdf") });
   assert.equal(plain.status, 200, await plain.clone().text());
   assert.equal((await plain.json()).agreement, null);
   assert.equal(sql(`select count(*) from public.moviback_agreement_entitlements where membership_id=(select id from public.loyalty_memberships where user_id='${users[1]}')`), "0");
-  console.log("MoviBack C5 HTTP acceptance PASS: optional code, invalid rollback, reservation, replay, approval activation and safe /me state.");
+  console.log("MoviBack review transition HTTP acceptance PASS: membership approval, certificate queue rejection, exact-ID approval and safe /me state.");
 } finally {
   sql(cleanup);
   const newBuckets = sql("select bucket_key from public.legacy_login_rate_limits").split(/\s+/).filter(Boolean).filter((key) => !bucketsBefore.has(key));

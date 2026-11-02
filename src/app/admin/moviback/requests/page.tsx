@@ -6,6 +6,9 @@ import { Loader2, Check, X, FileText, UserCheck } from "lucide-react";
 
 type Row = {
   id: string;
+  membership_id: string;
+  certificate_id: string | null;
+  queue_kind: "membership_review" | "certificate_review";
   membership_code: string;
   membership_type: string;
   has_existing_membership: boolean;
@@ -65,12 +68,12 @@ export default function RequestsPage() {
   }, []);
 
   async function handleAction(
-  id: string,
+  row: Row,
   action: "approve" | "reject",
   reason?: string
 ) {
     try {
-      setSavingId(id);
+      setSavingId(row.id);
 
       const res = await fetch("/api/admin/moviback/requests", {
         method: "POST",
@@ -78,7 +81,9 @@ export default function RequestsPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-  id,
+  id: row.membership_id,
+  certificate_id: row.certificate_id,
+  queue_kind: row.queue_kind,
   action,
   rejection_reason: action === "reject" ? reason : undefined,
 }),
@@ -91,8 +96,8 @@ export default function RequestsPage() {
         action === "approve"
           ? json.convention_status === "not_activated"
             ? "Membership approvata; convenzione non attivata"
-            : "Richiesta approvata"
-          : "Richiesta rifiutata",
+            : row.queue_kind === "certificate_review" ? "Certificato approvato" : "Richiesta approvata"
+          : row.queue_kind === "certificate_review" ? "Certificato rifiutato" : "Richiesta rifiutata",
       );
       await load();
       setRejectTarget(null);
@@ -160,7 +165,7 @@ setRejectionReason("");
         ) : (
           <div style={{ display: "grid", gap: 14 }}>
             {data.map((r) => (
-              <div key={r.id} style={cardStyle}>
+              <div key={`${r.queue_kind}:${r.id}:${r.certificate_id}`} style={cardStyle}>
                 <div
                   style={{
                     display: "flex",
@@ -285,7 +290,7 @@ setRejectionReason("");
                     <FileText size={16} style={{ color: "#fbbf24" }} />
                     <div>
                       <div style={{ fontSize: 13, fontWeight: 900 }}>
-                        Certificato medico
+                        {r.queue_kind === "certificate_review" ? "Revisione certificato" : "Revisione membership · Certificato medico"}
                       </div>
                       <div style={muted}>
                         {r.certificate?.status || "non presente"}
@@ -313,6 +318,9 @@ setRejectionReason("");
                   </button>
                 </div>
 
+                {r.certificate?.status === "pending_review" && (!r.certificate.expiry_date || r.certificate.expiry_date < new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Rome", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date())) ? (
+                  <p role="status" style={{ color: "#fca5a5", fontWeight: 800 }}>Certificato scaduto: richiedere un nuovo certificato.</p>
+                ) : null}
                 <div
                   style={{
                     marginTop: 14,
@@ -322,8 +330,8 @@ setRejectionReason("");
                   }}
                 >
                   <button
-                    onClick={() => handleAction(r.id, "approve")}
-                    disabled={savingId === r.id}
+                     onClick={() => handleAction(r, "approve")}
+                     disabled={savingId === r.id || (r.certificate?.status === "pending_review" && (!r.certificate.expiry_date || r.certificate.expiry_date < new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Rome", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date())))}
                     style={{
                       ...approveBtn,
                       opacity: savingId === r.id ? 0.65 : 1,
@@ -334,7 +342,7 @@ setRejectionReason("");
                     ) : (
                       <Check size={16} />
                     )}
-                    Approva
+                     {r.queue_kind === "certificate_review" ? "Approva certificato" : "Approva membership"}
                   </button>
 
                   <button
@@ -353,7 +361,7 @@ setRejectionReason("");
                     ) : (
                       <X size={16} />
                     )}
-                    Rifiuta
+                     {r.queue_kind === "certificate_review" ? "Rifiuta certificato" : "Rifiuta membership"}
                   </button>
                 </div>
               </div>
@@ -440,7 +448,7 @@ setRejectionReason("");
           type="button"
           disabled={!!savingId || !rejectionReason.trim()}
           onClick={() =>
-            handleAction(rejectTarget.id, "reject", rejectionReason)
+            handleAction(rejectTarget, "reject", rejectionReason)
           }
           style={{
             ...rejectBtn,

@@ -92,7 +92,12 @@ export async function POST(req: Request) {
     p_operator_id: session.sid,
   });
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: creditErrorStatus(error.message) });
+    const messages: Record<string, string> = {
+      MOVIBACK_CREDIT_CERTIFICATE_STANDBY: "Accredito non possibile: il certificato è scaduto da oltre 60 giorni. Il cliente deve caricare un nuovo certificato.",
+      MOVIBACK_CREDIT_CERTIFICATE_MISSING: "Accredito non possibile: non è presente un certificato medico approvato.",
+      MOVIBACK_CREDIT_CERTIFICATE_EXPIRY_INVALID: "Accredito non possibile: la scadenza del certificato non è valida. Contatta un Admin.",
+    };
+    return NextResponse.json({ error: messages[error.message] ?? error.message }, { status: creditErrorStatus(error.message) });
   }
 
   const result = data as CreditResult;

@@ -3,15 +3,18 @@ import "server-only";
 import { customerAuthAccess } from "@/lib/customerHub";
 import { computeMovibackEligibility } from "@/lib/movibackEligibility";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { mediaConsentRpcMissing } from "@/lib/mediaConsentCompatibility";
 
 export async function loadCustomerAccount(userId: string) {
   const sb = supabaseAdmin();
-  const [accountResult, membershipsResult, certificatesResult] = await Promise.all([
+  const [accountResult, membershipsResult, certificatesResult, mediaResult] = await Promise.all([
     sb.from("users").select("id,full_name,phone,email,gender,identity_status,auth_migration_state,auth_user_id,created_at").eq("id", userId).maybeSingle(),
     sb.from("loyalty_memberships").select("id,user_id,status,membership_code,tax_code,membership_type,fee_points,fee_paid,approved_at,approved_by,suspended_at,suspension_reason,health_data_consent_at,created_at,updated_at").eq("user_id", userId),
     sb.from("medical_certificates").select("id,status,uploaded_at,reviewed_at,reviewed_by,expiry_date,notes").eq("user_id", userId).order("uploaded_at", { ascending: false }),
+    sb.rpc("current_user_media_consent", { p_user_id: userId }),
   ]);
-  if (accountResult.error || membershipsResult.error || certificatesResult.error) throw new Error("Customer Hub non disponibile");
+  const mediaConsentAvailable = !mediaConsentRpcMissing(mediaResult.error, "current_user_media_consent");
+  if (accountResult.error || membershipsResult.error || certificatesResult.error || (mediaResult.error && mediaConsentAvailable)) throw new Error("Customer Hub non disponibile");
   if (!accountResult.data) return null;
 
   const { auth_user_id: authUserId, ...safeAccount } = accountResult.data;
@@ -57,6 +60,8 @@ export async function loadCustomerAccount(userId: string) {
     eligibility,
     certificate: certificates[0] ?? null,
     certificates,
+    media_consent: mediaResult.data?.[0] ?? { status: "not_collected", effective_at: null, source: null },
+    media_consent_available: mediaConsentAvailable,
     points_balance: pointsBalance,
     transactions,
     redemptions,

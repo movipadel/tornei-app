@@ -31,7 +31,7 @@ test("enrollment is identity-bound, hash-only, rate-limited and idempotent", () 
 });
 
 test("approval keeps membership primary and convention outcome atomic", () => {
-  assert.match(review, /review_moviback_membership_c5/);
+  assert.match(review, /reviewMovibackMembershipCompatible\(sb,/);
   assert.match(migration, /status='approved'.*approved_at=v_now/s);
   assert.match(migration, /entitlement_activated_on_membership_approval/);
   assert.match(migration, /entitlement_not_activated_on_membership_approval/);
