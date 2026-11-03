@@ -1,0 +1,12 @@
+.profile { margin: 8px 0 20px; padding: 4px 0 0 35px; color: var(--public-text-secondary, #b7c5db); min-width: 0; }
+.compact { margin-top: 24px; padding: 16px 0; border-top: 1px solid var(--admin-border, #334155); color: var(--admin-text, #e2e8f0); min-width: 0; }
+.heading { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; font-size: 13px; }
+.heading h2 { margin: 0; font-size: 15px; font-weight: 600; }
+.badge { padding: 3px 9px; border-radius: 999px; background: var(--public-overlay, rgba(128,145,170,.12)); font-size: 12px; font-weight: 600; line-height: 1.5; }
+.helper { max-width: 65ch; margin: 8px 0 0; font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.actions button { min-height: 40px; max-width: 100%; padding: 8px 12px; border: 1px solid var(--admin-border, var(--public-control, #475569)); border-radius: 9px; background: transparent; color: inherit; font: inherit; font-size: 13px; line-height: 1.4; cursor: pointer; white-space: normal; }
+.actions button:hover { background: rgba(128,145,170,.12); }
+.actions button:focus-visible { outline: 3px solid var(--public-cyan, #22d3ee); outline-offset: 3px; }
+.actions button:disabled { opacity: .6; cursor: wait; }
+@media (max-width: 480px) { .profile { padding-left: 0; } }

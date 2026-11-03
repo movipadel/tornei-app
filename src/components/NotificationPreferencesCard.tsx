@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { BellRing, LoaderCircle, Save } from 'lucide-react';
 import styles from '@/app/profilo/profile.module.css';
+import PushEnrollmentCard from './PushEnrollmentCard';
 
 type Preference = { transactional_email_enabled: boolean; transactional_push_enabled: boolean; version: number; updated_at: string };
 
@@ -35,11 +36,12 @@ export default function NotificationPreferencesCard() {
   return <section className={styles.card} aria-labelledby="profile-notifications-title">
     <div className={styles.sectionHeading}>
       <span className={styles.sectionIcon} aria-hidden><BellRing size={21} /></span>
-      <div><h2 id="profile-notifications-title">Notifiche</h2><p>Ricevi via email gli aggiornamenti importanti sulle tue attività MOVI.</p></div>
+      <div><h2 id="profile-notifications-title">Notifiche</h2><p>Scegli come ricevere gli aggiornamenti sulle tue attività MOVI.</p></div>
     </div>
     {loading ? <p className={styles.inlineLoading} role="status"><LoaderCircle size={18} aria-hidden />Caricamento preferenze…</p> : <>
       <label className={styles.notificationControl}><input type="checkbox" checked={enabled} onChange={event => { setEnabled(event.target.checked); setMessage(''); }} disabled={saving} /><span><strong>Email</strong><small>Aggiornamenti transazionali sulle tue attività.</small></span></label>
-      <label className={styles.notificationControl}><input type="checkbox" checked={pushEnabled} onChange={event => setPushEnabled(event.target.checked)} disabled={saving} /><span><strong>Push</strong><small>Preferenza per i futuri avvisi di attività; richiede anche l’iscrizione del dispositivo.</small></span></label>
+      <label className={styles.notificationControl}><input type="checkbox" checked={pushEnabled} onChange={event => setPushEnabled(event.target.checked)} disabled={saving} /><span><strong>Push</strong><small>Ricevi notifiche push sulle tue attività MOVI.</small></span></label>
+      <PushEnrollmentCard audience="customer" variant="profile" preferenceEnabled={preference?.transactional_push_enabled} preferencePending={!!preference&&pushEnabled!==preference.transactional_push_enabled} />
       <p className={styles.muted}>Le email di sicurezza dell&apos;account, come verifica e recupero password, continuano a essere inviate indipendentemente da questa preferenza.</p>
       {error ? <p className={`${styles.notice} ${styles.error}`} role="alert">{error}</p> : null}
       {message ? <p className={`${styles.notice} ${styles.success}`} role="status">{message}</p> : null}

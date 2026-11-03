@@ -1,4 +1,5 @@
 import Link from "next/link";
+import PushEnrollmentCard from '@/components/PushEnrollmentCard';
 import { BellRing, CalendarDays, Gift, Network, ScanLine, ShoppingBag, Store, Trophy, UsersRound, type LucideIcon } from "lucide-react";
 import type { CurrentOperator } from "@/lib/operatorAuthorizationCore";
 import type { OperatorPermission } from "@/lib/operatorPermissions";
@@ -56,6 +57,7 @@ export function StaffDashboard({ operator, modules }: { operator: CurrentOperato
             <p>Contatta un Admin per richiedere l’accesso alle attività necessarie.</p>
           </section>
         )}
+        <PushEnrollmentCard audience="staff" variant="compact" />
       </div>
     </main>
   );

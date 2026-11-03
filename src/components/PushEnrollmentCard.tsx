@@ -1,9 +1,10 @@
 'use client';
 import { useCallback,useEffect,useState } from 'react';
 import { canonicalPushRegistration,publicKeyBytes,subscriptionKeyMatches } from '@/lib/pushClient';
+import styles from './PushEnrollmentCard.module.css';
 
 type State='checking'|'unsupported'|'available'|'denied'|'active'|'repair'|'conflict';
-export default function PushEnrollmentCard({ audience }: { audience:'customer'|'staff' }) {
+export default function PushEnrollmentCard({ audience, variant='compact', preferenceEnabled=false, preferencePending=false }: { audience:'customer'|'staff'; variant?:'profile'|'compact'; preferenceEnabled?:boolean; preferencePending?:boolean }) {
   const [state,setState]=useState<State>('checking');
   const [busy,setBusy]=useState(false);
   const [message,setMessage]=useState('');
@@ -59,13 +60,24 @@ export default function PushEnrollmentCard({ audience }: { audience:'customer'|'
       setState('available');setMessage('Notifiche disattivate su questo dispositivo.');
     }catch(error){setMessage(error instanceof Error?error.message:'Riprova');}finally{setBusy(false);}
   }
-  const labels:Record<State,string>={checking:'Verifica dispositivo…',unsupported:'Non supportate in questo browser',available:'Disponibili su questo dispositivo',denied:'Permesso negato: riattiva le notifiche nelle impostazioni del browser, poi verifica di nuovo.',active:'Attive su questo dispositivo',repair:'Iscrizione da completare o riparare',conflict:'Questo browser ha un’iscrizione di un altro account'};
-  return <section aria-label="Notifiche push" style={{padding:20,margin:'16px 0',border:'1px solid #aaa',borderRadius:12}}>
-    <h2>Notifiche su questo dispositivo</h2><p>{labels[state]}</p>
-    {audience==='staff'&&state!=='active'&&<p>Le precedenti iscrizioni push sono disattivate. Attiva nuovamente questo dispositivo con il tuo account. Gli avvisi operativi continuano su Telegram; gli avvisi push saranno disponibili dopo una successiva attivazione.</p>}
-    {iosInstall&&<p>Su iPhone e iPad aggiungi MOVI alla schermata Home e aprila da lì per attivare le notifiche.</p>}
-    {message&&<p role="status">{message}</p>}
-    {!['unsupported','checking','denied'].includes(state)&&<button type="button" disabled={busy} onClick={()=>void(state==='active'?revoke():enroll(state==='conflict'))}>{busy?'Attendi…':state==='active'?'Disattiva su questo dispositivo':state==='conflict'?'Crea una nuova iscrizione':'Attiva notifiche push'}</button>}
-    <button type="button" disabled={busy} onClick={()=>void refresh()}>Verifica stato</button>
-  </section>;
+  const labels:Record<State,string>={checking:'Verifica in corso…',unsupported:'Non supportate',available:'Da attivare',denied:'Permesso negato',active:'Attive su questo dispositivo',repair:'Da riparare',conflict:'Dispositivo di un altro account'};
+  const profile=variant==='profile';
+  const helper=state==='denied'?'Le notifiche sono bloccate nelle impostazioni del browser.'
+    :state==='conflict'?'Attiva di nuovo questo dispositivo per usarlo con il tuo account.'
+    :profile&&preferencePending?'Salva notifiche per applicare la preferenza modificata.'
+    :profile&&!preferenceEnabled?'La preferenza Push è disattivata. Puoi comunque gestire questo dispositivo.'
+    :profile&&state==='active'?'Notifiche push attive su questo dispositivo.'
+    :profile&&['available','repair'].includes(state)?'Push abilitate nelle preferenze, ma questo dispositivo non è ancora attivo.'
+    :!profile&&['available','repair'].includes(state)?'Attiva le push su questo dispositivo. Telegram resta disponibile.' :'';
+  const displayMessage=message&&(/service worker|VAPID|endpoint|subscription/i.test(message)?'Aggiorna la pagina e riprova ad attivare le notifiche.':message);
+  return <div className={profile?styles.profile:styles.compact} role="group" aria-label={profile?'Stato dispositivo push':'Notifiche push'}>
+    <div className={styles.heading}>{profile?<span>Stato dispositivo</span>:<h2>Notifiche push</h2>}<span className={styles.badge} role="status" aria-live="polite">{labels[state]}</span></div>
+    {helper&&<p className={styles.helper}>{helper}</p>}
+    {iosInstall&&<p className={styles.helper}>Su iPhone e iPad aggiungi MOVI alla schermata Home e aprila da lì per attivare le notifiche.</p>}
+    {displayMessage&&<p className={styles.helper} role="status">{displayMessage}</p>}
+    <div className={styles.actions}>
+      {!['unsupported','checking','denied'].includes(state)&&<button type="button" disabled={busy} onClick={()=>void(state==='active'?revoke():enroll(state==='conflict'))}>{busy?'Attendi…':state==='active'?(profile?'Disattiva su questo dispositivo':'Disattiva'):state==='conflict'?'Attiva per questo account':profile?'Attiva notifiche push':'Attiva'}</button>}
+      <button type="button" disabled={busy} onClick={()=>void refresh()}>{profile?'Verifica stato':'Verifica'}</button>
+    </div>
+  </div>;
 }

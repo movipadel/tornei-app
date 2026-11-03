@@ -47,8 +47,6 @@ export default function AdminHomePage() {
       <p className={s.intro}>Parti dalle attività quotidiane, poi passa alla gestione sportiva, editoriale e commerciale.</p>
     </div><Link href="/" className={s.homeLink} aria-label="Home pubblica"><Home size={20} strokeWidth={1.6}/></Link></header>
 
-    <PushEnrollmentCard audience="staff" />
-
     <div className={s.areas}>{areas.map((area, areaIndex) => <section key={area.id} className={`${s.area} ${s[area.tone]} ${area.featured ? s.featured : ""}`} aria-labelledby={`${area.id}-title`}>
       <div className={s.areaHeader}><span className={s.areaIndex}>{String(areaIndex + 1).padStart(2, "0")}</span><div><h2 id={`${area.id}-title`}>{area.title}</h2><p>{area.description}</p></div></div>
       <div className={s.cardGrid}>{area.cards.map(card => { const Icon = card.icon; return <Link key={card.title} href={card.href} className={s.card}>
@@ -57,5 +55,6 @@ export default function AdminHomePage() {
         <span className={s.arrow} aria-hidden="true">→</span>
       </Link>; })}</div>
     </section>)}</div>
+    <PushEnrollmentCard audience="staff" variant="compact" />
   </div></div>;
 }

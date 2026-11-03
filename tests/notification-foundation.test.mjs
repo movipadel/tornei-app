@@ -9,7 +9,7 @@ function load(path,mocks={}) {
  const source=readFileSync(new URL('../'+path,import.meta.url),'utf8');
  const code=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true}}).outputText;
  const compiledModule={exports:{}};
- new Function('require','module','exports',code)(name=>name==='server-only'?{}:mocks[name]??require(name),compiledModule,compiledModule.exports);
+ new Function('require','module','exports',code)(name=>name==='server-only'||name.endsWith('.css')?{}:mocks[name]??require(name),compiledModule,compiledModule.exports);
  return compiledModule.exports;
 }
 const validation=load('src/lib/pushValidation.ts');
@@ -86,7 +86,7 @@ test('VAPID mismatch is detectable; source contracts keep one worker and repair 
  const sw=readFileSync('worker/index.ts','utf8');assert.match(sw,/addEventListener\('push'/);assert.match(sw,/addEventListener\('notificationclick'/);assert.match(sw,/await relevant.navigate/);
  assert.match(readFileSync('src/lib/pushClient.ts','utf8'),/navigator.serviceWorker.ready/);
  assert.doesNotMatch(readFileSync('src/app/admin/page.tsx','utf8'),/serviceWorker.register/);
- for(const p of ['src/app/admin/page.tsx','src/app/staff/page.tsx','src/app/profilo/page.tsx'])assert.match(readFileSync(p,'utf8'),/PushEnrollmentCard/);
+ for(const p of ['src/app/admin/page.tsx','src/app/staff/StaffDashboard.tsx','src/components/NotificationPreferencesCard.tsx'])assert.match(readFileSync(p,'utf8'),/PushEnrollmentCard/);
  for(const p of ['src/components/PushEnrollmentCard.tsx','src/lib/pushClient.ts','worker/index.ts'])assert.doesNotMatch(readFileSync(p,'utf8'),/VAPID_PRIVATE_KEY/);
 });
 
@@ -138,7 +138,7 @@ test('customer and staff enrollment UI reconciles permission, missing persistenc
    const values=[];let cursor=0,effects=[];
    const react={useState(initial){const index=cursor++;if(!(index in values))values[index]=initial;return [values[index],value=>{values[index]=typeof value==='function'?value(values[index]):value;}];},useCallback:fn=>fn,useEffect:fn=>effects.push(fn)};
    const Card=load('src/components/PushEnrollmentCard.tsx',{'react':react,'@/lib/pushClient':{canonicalPushRegistration:async()=>registration,publicKeyBytes:()=>new Uint8Array(65),subscriptionKeyMatches:()=>true}}).default;
-   const render=()=>{cursor=0;effects=[];return Card({audience});};
+   const render=()=>{cursor=0;effects=[];return Card({audience,variant:'profile'});};
    const findButtons=node=>{if(!node||typeof node!=='object')return [];const children=node.props?.children;return [...(node.type==='button'?[node]:[]),...(Array.isArray(children)?children:[children]).flatMap(findButtons)];};
    render();effects[0]();await flush();assert.equal(values[0],'repair');assert.equal(prompted,0);
    let button=findButtons(render())[0];assert.equal(button.props.children,'Attiva notifiche push');button.props.onClick();await flush();await flush();assert.equal(values[0],'active');assert.equal(prompted,1);assert.equal(requests.at(-1).url,audience==='staff'?'/api/staff/push':'/api/user/push');

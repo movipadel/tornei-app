@@ -1,4 +1,3 @@
-import PushEnrollmentCard from '@/components/PushEnrollmentCard';
 import { redirect } from "next/navigation";
 import { StaffDashboard } from "./StaffDashboard";
 import {
@@ -26,5 +25,5 @@ export default async function StaffPage({
   const effectivePermissions = await getEffectiveOperatorPermissions(operator);
   const allowed = new Set(effectivePermissions);
   const modules = OPERATOR_PERMISSIONS.filter((permission) => allowed.has(permission.key));
-  return <><StaffDashboard operator={operator} modules={modules} /><PushEnrollmentCard audience="staff" /></>;
+  return <StaffDashboard operator={operator} modules={modules} />;
 }

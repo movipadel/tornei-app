@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { ArrowRight, BadgeCheck, LoaderCircle, RotateCcw, Save, UserRound } from 'lucide-react';
 import PublicNav from '@/components/PublicNav';
 import PlayerProfileFields from '@/components/PlayerProfileFields';
-import PushEnrollmentCard from '@/components/PushEnrollmentCard';
 import NotificationPreferencesCard from '@/components/NotificationPreferencesCard';
 import MediaConsentCard from '@/components/MediaConsentCard';
 import { emptySharedProfile, type SharedPlayerProfile } from '@/lib/playerProfile';
@@ -119,7 +118,6 @@ export default function ProfilePage() {
         </form>
 
         <NotificationPreferencesCard />
-        <PushEnrollmentCard audience="customer" />
         <MediaConsentCard className={styles.card} />
 
         <section className={styles.card} aria-labelledby="profile-rating-title">
