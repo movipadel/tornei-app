@@ -1,113 +1,44 @@
-import webPush from "web-push";
-import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import 'server-only';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { legacyAdminPushEnabled, sendLegacyAdminPush } from '@/lib/pushTransport';
+import { safePushUrl } from '@/lib/pushUrl';
 
-type AdminPushPayload = {
-  title: string;
-  body: string;
-  url?: string;
-  icon?: string;
-  badge?: string;
-};
-
-function getVapidConfig() {
-  const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-  const privateKey = process.env.VAPID_PRIVATE_KEY;
-  const subject = process.env.VAPID_SUBJECT || "mailto:movipadel@gmail.com";
-
-  if (!publicKey || !privateKey) {
-    throw new Error("VAPID keys mancanti");
-  }
-
-  return {
-    publicKey,
-    privateKey,
-    subject,
-  };
-}
-
+type AdminPushPayload = { title:string; body:string; url?:string; icon?:string; badge?:string };
+/** @deprecated Pre-cutover only. No new legacy rows, ownership inference or outbox enqueue. */
 export async function sendAdminPushNotification(payload: AdminPushPayload) {
-  const sb = supabaseAdmin();
-
-  const { publicKey, privateKey, subject } = getVapidConfig();
-
-  webPush.setVapidDetails(subject, publicKey, privateKey);
-
-  const { data: subscriptions, error } = await sb
-    .from("admin_push_subscriptions")
-    .select("id,endpoint,p256dh,auth,is_active")
-    .eq("is_active", true);
-
-  if (error) {
-    console.error("[admin-push] subscriptions error", error.message);
-    return {
-      ok: false,
-      sent: 0,
-      failed: 0,
-      error: error.message,
-    };
-  }
-
-  if (!subscriptions?.length) {
-    return {
-      ok: true,
-      sent: 0,
-      failed: 0,
-    };
-  }
-
-  let sent = 0;
-  let failed = 0;
-
-  const body = JSON.stringify({
-    title: payload.title,
-    body: payload.body,
-    url: payload.url || "/admin",
-    icon: payload.icon || "/icon-192.png",
-    badge: payload.badge || "/icon-192.png",
-  });
-
-  await Promise.all(
-    subscriptions.map(async (sub) => {
-      try {
-        await webPush.sendNotification(
-          {
-            endpoint: sub.endpoint,
-            keys: {
-              p256dh: sub.p256dh,
-              auth: sub.auth,
-            },
-          },
-          body
-        );
-
-        sent += 1;
-      } catch (err: any) {
-        failed += 1;
-
-        const statusCode = err?.statusCode;
-
-        if (statusCode === 404 || statusCode === 410) {
-          await sb
-            .from("admin_push_subscriptions")
-            .update({
-              is_active: false,
-              updated_at: new Date().toISOString(),
-            })
-            .eq("id", sub.id);
-        }
-
-        console.error("[admin-push] send error", {
-          subscriptionId: sub.id,
-          statusCode,
-          message: err?.message,
-        });
+  if (!legacyAdminPushEnabled()) return { ok:true,sent:0,failed:0,skipped:true };
+  const sb=supabaseAdmin();
+  const legacy=await sb.from('admin_push_subscriptions').select('id,endpoint,p256dh,auth').eq('is_active',true);
+  if(legacy.error) { console.error('[admin-push] subscription lookup failed'); return {ok:false,sent:0,failed:0}; }
+  let sent=0,failed=0,skipped=0;
+  const seen=new Set<string>();
+  for(const sub of legacy.data??[]) {
+    if(seen.has(sub.endpoint))continue;
+    seen.add(sub.endpoint);
+    try {
+      // An explicitly enrolled canonical device must not bypass revoke/account switch via legacy fallback.
+      const owned=await sb.from('push_subscriptions').select('is_active,revoked_at,public_user_id,staff_user_id').eq('endpoint',sub.endpoint).maybeSingle();
+      if(owned.error)throw new Error('PUSH_OWNERSHIP_LOOKUP');
+      if(owned.data) {
+        if(!owned.data.is_active || owned.data.revoked_at || owned.data.public_user_id || !owned.data.staff_user_id){skipped++;continue;}
+        const staff=await sb.from('staff_users').select('is_active,role').eq('id',owned.data.staff_user_id).maybeSingle();
+        if(staff.error)throw new Error('PUSH_STAFF_LOOKUP');
+        if(!staff.data?.is_active || staff.data.role!=='admin'){skipped++;continue;}
       }
-    })
-  );
-
-  return {
-    ok: true,
-    sent,
-    failed,
-  };
+      await sendLegacyAdminPush(sub,{
+        title:payload.title,body:payload.body,url:safePushUrl(payload.url??'/admin','https://push.invalid'),
+        icon:payload.icon??'/icon-192.png',badge:payload.badge??'/icon-192.png',
+      });
+      sent++;
+    } catch(error) {
+      failed++;
+      const statusCode=(error as {statusCode?:number}).statusCode;
+      if(statusCode===404||statusCode===410){
+        const cleanup=await sb.from('admin_push_subscriptions').update({is_active:false,updated_at:new Date().toISOString()}).eq('id',sub.id);
+        if(cleanup.error)console.error('[admin-push] stale subscription cleanup failed');
+      }
+      console.error('[admin-push] send failed',{statusCode:statusCode??null});
+    }
+  }
+  return {ok:failed===0,sent,failed,skipped};
 }

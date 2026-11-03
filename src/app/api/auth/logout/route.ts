@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 import { createSupabaseAuthServerClient } from "@/lib/supabase/authServer";
 import { USER_COOKIE_NAME } from "@/lib/userAuth";
+import { revokePushOnLogout } from '@/lib/pushApi';
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
+  await revokePushOnLogout('customer');
   const body = await request.json().catch(() => ({}));
   const scope = body.scope === "auth" || body.scope === "legacy" ? body.scope : "all";
   if (scope !== "legacy") {

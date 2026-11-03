@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 import { USER_COOKIE_NAME } from "@/lib/userAuth";
 import { createSupabaseAuthServerClient } from "@/lib/supabase/authServer";
+import { revokePushOnLogout } from '@/lib/pushApi';
 
 export const runtime = "nodejs";
 
 export async function POST() {
+  await revokePushOnLogout('customer');
   const supabase = await createSupabaseAuthServerClient();
   await supabase.auth.signOut({ scope: "local" });
   const res = NextResponse.json({ ok: true });

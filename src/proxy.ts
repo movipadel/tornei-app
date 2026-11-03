@@ -27,6 +27,9 @@ async function verifyStaffToken(token?: string) {
 }
 
 export async function proxy(request: NextRequest) {
+  // Existing worker updates must remain public during the pre-cutover grace period.
+  // Exact static URL only; no Admin page/API authorization is bypassed.
+  if (request.nextUrl.pathname === '/admin-push-sw.js') return NextResponse.next();
   const authResponse = await refreshSupabaseAuth(request);
   const { pathname } = request.nextUrl;
   const isAdminPath = pathname.startsWith("/admin");

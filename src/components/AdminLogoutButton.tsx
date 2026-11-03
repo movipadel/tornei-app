@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { LogOut } from "lucide-react";
 
 export function AdminLogoutButton({ redirectTo = "/admin/login" }: { redirectTo?: string }) {
@@ -11,10 +12,11 @@ export function AdminLogoutButton({ redirectTo = "/admin/login" }: { redirectTo?
       type="button"
       className="admin-logout-button"
       onClick={async () => {
-        await fetch("/api/admin/logout", {
+        const response = await fetch("/api/admin/logout", {
           method: "POST",
           credentials: "include",
         });
+        if (!response.ok) { toast.error("Uscita non completata. Riprova per disattivare le notifiche del dispositivo."); return; }
         router.replace(redirectTo);
         router.refresh();
       }}

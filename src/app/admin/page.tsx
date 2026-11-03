@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useEffect, useState, type ComponentType } from "react";
-import { toast } from "sonner";
-import { BellRing, CalendarDays, Gift, GitMerge, Home, Loader2, Network, ScanLine, Settings, ShieldAlert, ShoppingBag, Store, Trophy, UsersRound } from "lucide-react";
+import { type ComponentType } from "react";
+import PushEnrollmentCard from "@/components/PushEnrollmentCard";
+import { BellRing, CalendarDays, Gift, GitMerge, Home, Network, ScanLine, Settings, ShieldAlert, ShoppingBag, Store, Trophy, UsersRound } from "lucide-react";
 import s from "./dashboard.module.css";
 
 type DashboardCard = { title: string; description: string; href: string; icon: ComponentType<{ size?: number; strokeWidth?: number }> };
@@ -38,48 +38,7 @@ const areas: DashboardArea[] = [
   ] },
 ];
 
-function urlBase64ToUint8Array(base64String: string) {
-  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = `${base64String}${padding}`.replace(/-/g, "+").replace(/_/g, "/");
-  const rawData = window.atob(base64);
-  const outputArray = new Uint8Array(rawData.length);
-  for (let index = 0; index < rawData.length; index += 1) outputArray[index] = rawData.charCodeAt(index);
-  return outputArray;
-}
-
 export default function AdminHomePage() {
-  const [pushLoading, setPushLoading] = useState(false);
-  const [pushPermission, setPushPermission] = useState<NotificationPermission | "unsupported">("default");
-
-  useEffect(() => {
-    if (!("Notification" in window)) { setPushPermission("unsupported"); return; }
-    setPushPermission(Notification.permission);
-  }, []);
-
-  async function enableAdminPush() {
-    if (pushLoading) return;
-    try {
-      setPushLoading(true);
-      if (!("serviceWorker" in navigator)) throw new Error("Il browser non supporta i service worker.");
-      if (!("PushManager" in window)) throw new Error("Il browser non supporta le notifiche push.");
-      if (!("Notification" in window)) throw new Error("Il browser non supporta le notifiche.");
-      const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-      if (!vapidPublicKey) throw new Error("VAPID public key mancante.");
-      const permission = await Notification.requestPermission();
-      if (permission !== "granted") throw new Error("Permesso notifiche non concesso.");
-      const registration = await navigator.serviceWorker.register("/admin-push-sw.js");
-      const existingSubscription = await registration.pushManager.getSubscription();
-      const subscription = existingSubscription || await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(vapidPublicKey) });
-      const response = await fetch("/api/admin/push/subscribe", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(subscription) });
-      const json = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(json.error || "Errore registrazione notifiche.");
-      toast.success("Notifiche admin attivate su questo dispositivo.");
-      setPushPermission(Notification.permission);
-    } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : "Errore attivazione notifiche.");
-    } finally { setPushLoading(false); }
-  }
-
   return <div className={s.page}><div className={s.shell}>
     <header className={s.header}><div>
       <Image className={s.logo} src="/home/movi-logo.png" alt="Movi" width={134} height={44} priority/>
@@ -88,9 +47,7 @@ export default function AdminHomePage() {
       <p className={s.intro}>Parti dalle attività quotidiane, poi passa alla gestione sportiva, editoriale e commerciale.</p>
     </div><Link href="/" className={s.homeLink} aria-label="Home pubblica"><Home size={20} strokeWidth={1.6}/></Link></header>
 
-    {pushPermission !== "granted" && pushPermission !== "unsupported" && <button type="button" onClick={enableAdminPush} disabled={pushLoading} className={s.pushButton}>
-      {pushLoading ? <Loader2 size={18} className="animate-spin"/> : <BellRing size={18} strokeWidth={1.8}/>} {pushLoading ? "Attivazione notifiche..." : "Attiva notifiche admin su questo dispositivo"}
-    </button>}
+    <PushEnrollmentCard audience="staff" />
 
     <div className={s.areas}>{areas.map((area, areaIndex) => <section key={area.id} className={`${s.area} ${s[area.tone]} ${area.featured ? s.featured : ""}`} aria-labelledby={`${area.id}-title`}>
       <div className={s.areaHeader}><span className={s.areaIndex}>{String(areaIndex + 1).padStart(2, "0")}</span><div><h2 id={`${area.id}-title`}>{area.title}</h2><p>{area.description}</p></div></div>
