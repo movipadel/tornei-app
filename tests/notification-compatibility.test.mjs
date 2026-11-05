@@ -29,20 +29,10 @@ function fixture() {
  const sender=load('src/lib/adminPush.ts',{'@/lib/supabaseAdmin':{supabaseAdmin:()=>db},'@/lib/pushUrl':urls,'@/lib/pushTransport':{legacyAdminPushEnabled:()=>true,sendLegacyAdminPush:async(sub,payload)=>{if(transportError)throw transportError;sent.push({sub,payload});}}});
  return {send:sender.sendAdminPushNotification,sent,legacy,updated,setOwned:value=>{owned=value;},setStaff:value=>{staff=value;},fail:value=>{transportError=value;}};
 }
-test('all seven existing Tournament/MoviBack/Store producer payloads reach legacy sender without an outbox enqueue',async()=>{
- const f=fixture();
- const context={data:{is_reserve:false},tournamentType:'Baraonda',p1_name:'Synthetic',p2_name_raw:'',tournamentCategory:'Test',whoDeleted:'Synthetic',tName:'Test',whoPromoted:'Synthetic',membershipType:'test',customer:{full_name:'Synthetic'},result:{notification:{reward_name:'Test'}},user:{full_name:'Synthetic'},reward:{name:'Test'},variantText:'',totalsLine:'Test',pickup_club:'Test'};
- for(const [file,expected] of producers){
-  const source=readFileSync(file,'utf8');const ast=ts.createSourceFile(file,source,ts.ScriptTarget.Latest,true);const args=[];
-  function visit(node){if(ts.isCallExpression(node)&&node.expression.getText(ast)==='sendAdminPushNotification')args.push(node.arguments[0].getText(ast));ts.forEachChild(node,visit);}visit(ast);
-  assert.equal(args.length,expected,file);
-  for(const expression of args){const payload=new Function(...Object.keys(context),'return ('+expression+');')(...Object.values(context));const result=await f.send(payload);assert.equal(result.sent,1,file);assert.equal(f.sent.at(-1).payload.url,payload.url);}
-  assert.doesNotMatch(source,/enqueue_push_delivery|claim_push_deliveries/);
- }
- assert.equal(f.sent.length,7);
- // The reserve alternative is also the same existing producer, not a new event.
- const source=readFileSync(producers[0][0],'utf8');assert.match(source,/Nuova riserva torneo/);
+test('migrated producers enqueue canonical events and never call legacy transport',()=>{
+ for(const [file,expected] of producers){const source=readFileSync(file,'utf8');const ast=ts.createSourceFile(file,source,ts.ScriptTarget.Latest,true);let calls=0;function visit(n){if(ts.isCallExpression(n)&&n.expression.getText(ast)==='enqueueStaffPushEvent')calls++;ts.forEachChild(n,visit);}visit(ast);assert.equal(calls,expected,file);assert.doesNotMatch(source,/sendAdminPushNotification|web-push/);}
 });
+
 test('compatibility never creates recipients and respects owned revocation/account changes without fallback',async()=>{
  const f=fixture();f.legacy.push({...f.legacy[0],id:'duplicate'});
  assert.equal((await f.send({title:'Test',body:'Test'})).sent,1);
@@ -98,5 +88,7 @@ test('legacy rows are preserved, new enrollment remains canonical, and email/pus
 });
 test('Telegram producers/transport and customer communications/League source remain baseline-identical',()=>{
  const files=[...producers.map(([file])=>file),'src/lib/telegram.ts','src/lib/moviRequestsServer.ts','src/lib/requestNotification.ts','src/lib/postCommitNotifications.ts','src/app/api/user/communications/route.ts','src/app/api/user/communications/state/route.ts','src/app/api/cron/monday-league-notifications/route.ts','supabase/migrations/20260921130000_monday_league_stage7_notifications.sql'];
- for(const file of files){const baseline=execFileSync('git',['show','HEAD:'+file],{encoding:'utf8',windowsHide:true});assert.equal(readFileSync(file,'utf8').replace(/\r\n/g,'\n'),baseline.replace(/\r\n/g,'\n'),file);}
+ for(const file of files){const baseline=execFileSync('git',['show','HEAD:'+file],{encoding:'utf8',windowsHide:true});assert.equal(withoutPush(readFileSync(file,'utf8')),withoutPush(baseline),file);}
 });
+
+function withoutPush(source){const ast=ts.createSourceFile('fixture.ts',source,ts.ScriptTarget.Latest,true);const edits=[];function visit(n){if(ts.isImportDeclaration(n)&&/\/(adminPush|staffPush)$/.test(n.moduleSpecifier.text))edits.push([n.getStart(ast),n.end,'']);if(ts.isCallExpression(n)&&['sendAdminPushNotification','enqueueStaffPushEvent'].includes(n.expression.getText(ast)))edits.push([n.getStart(ast),n.end,'PUSH_CALL']);ts.forEachChild(n,visit);}visit(ast);for(const [a,b,value]of edits.sort((a,b)=>b[0]-a[0]))source=source.slice(0,a)+value+source.slice(b);return source.replace(/\s+/g,'');}

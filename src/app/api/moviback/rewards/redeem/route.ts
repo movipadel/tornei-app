@@ -3,7 +3,7 @@ import crypto from "crypto";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getUserIdFromCookie } from "@/lib/userAuth";
 import { sendTelegramMessage } from "@/lib/telegram";
-import { sendAdminPushNotification } from "@/lib/adminPush";
+import { enqueueStaffPushEvent } from "@/lib/staffPush";
 import {
   measureNotificationRequest,
   schedulePostCommitNotifications,
@@ -127,13 +127,7 @@ async function handleSmartPost(req: Request) {
         {
           provider: "push",
           run: () =>
-            sendAdminPushNotification({
-              title: "🎁 Nuova richiesta premio MoviBack",
-              body: `${customer?.full_name || "Cliente MoviBack"} · ${
-                result.notification?.reward_name || "Premio"
-              }`,
-              url: "/admin/moviback",
-            }),
+            enqueueStaffPushEvent('moviback.reward.requested', result.data.id),
           failureLog: "Reward redemption admin push notify error (ignored):",
         },
       ]);
@@ -513,13 +507,7 @@ async function handleLegacyPost(req: Request) {
         {
           provider: "push",
           run: () =>
-            sendAdminPushNotification({
-              title: "🎁 Nuovo riscatto MoviBack",
-              body: `${user?.full_name || "Cliente"} · ${reward.name}${
-                variantText ? ` · ${variantText}` : ""
-              }`,
-              url: "/admin/store-orders",
-            }),
+            enqueueStaffPushEvent('moviback.reward.requested', storeOrder.id),
           failureLog: "Reward redemption admin push notify error (ignored):",
         },
       ]);

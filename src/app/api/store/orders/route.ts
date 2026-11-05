@@ -3,7 +3,7 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getUserIdFromCookie } from "@/lib/userAuth";
 import { sendStoreOrderEmail } from "@/lib/email";
 import { sendTelegramMessage } from "@/lib/telegram";
-import { sendAdminPushNotification } from "@/lib/adminPush";
+import { enqueueStaffPushEvent } from "@/lib/staffPush";
 import {
   measureNotificationRequest,
   schedulePostCommitNotifications,
@@ -412,11 +412,7 @@ async function handlePost(req: Request) {
     {
       provider: "push",
       run: () =>
-        sendAdminPushNotification({
-          title: "🛍️ Nuovo ordine Store",
-          body: `${user.full_name} · ${totalsLine} · ${pickup_club}`,
-          url: "/admin/store-orders",
-        }),
+        enqueueStaffPushEvent('store.order.received', order.id),
       failureLog: "Store order admin push notify error (ignored):",
     },
   ]);

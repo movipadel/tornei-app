@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { sendTelegramMessage } from "@/lib/telegram";
-import { sendAdminPushNotification } from "@/lib/adminPush";
+import { enqueueStaffPushEvent } from "@/lib/staffPush";
 import {
   measureNotificationRequest,
   schedulePostCommitNotifications,
@@ -258,18 +258,10 @@ async function handleDelete(req: Request, ctx: { params: Promise<{ id: string }>
     {
       provider: "push",
       run: async () => {
-        await sendAdminPushNotification({
-          title: "❌ Cancellazione iscrizione",
-          body: `${whoDeleted} · ${tName}`,
-          url: "/admin/tournaments",
-        });
+        await enqueueStaffPushEvent('tournament.registration.cancelled', id);
 
         if (whoPromoted) {
-          await sendAdminPushNotification({
-            title: "⬆️ Promozione da riserva",
-            body: `${whoPromoted} ora in main · ${tName}`,
-            url: "/admin/tournaments",
-          });
+          await enqueueStaffPushEvent('tournament.reserve.promoted', id + ':' + promoted!.id);
         }
       },
       failureLog: "Admin push delete notify error (ignored):",

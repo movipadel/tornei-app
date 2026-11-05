@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 import { NextResponse } from "next/server";
 
-import { sendAdminPushNotification } from "@/lib/adminPush";
+import { enqueueStaffPushEvent } from "@/lib/staffPush";
 import { movibackEnrollmentRateLimitKeys } from "@/lib/movibackAgreementActivation";
 import { hashMovibackAgreementCode, normalizeMovibackAgreementCode } from "@/lib/movibackAgreementCodes";
 import { calendarDaysAfter } from "@/lib/movibackEligibility";
@@ -153,7 +153,7 @@ async function handle(request: Request) {
       },
       {
         provider: "push",
-        run: () => sendAdminPushNotification({ title: "🎁 Richiesta MoviBack", body: `Tessera ${membershipType} · certificato caricato`, url: "/admin/moviback/requests" }),
+        run: () => enqueueStaffPushEvent('moviback.membership.requested', result.membership_id!),
         failureLog: "MoviBack request admin push notify error (ignored):",
       },
     ]);

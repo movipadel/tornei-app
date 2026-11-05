@@ -41,10 +41,10 @@ begin
  if public.finish_push_delivery(d,'push-retry')<>'failed' then raise exception 'AGGREGATE_FAILED'; end if;
  if public.push_subscription_eligible(b,e) then raise exception 'REVOKED_ELIGIBLE'; end if;
  perform public.manage_push_subscription('subscribe','https://fcm.googleapis.com/test/staff',null,s,repeat('a',87),repeat('b',22));
- insert into public.notification_events(event_type,domain,recipient_staff_user_id,idempotency_key,payload) values('foundation_test','requests',s,'staff-test:'||s,'{"responsibility_key":"requests_gioca"}') returning id into e;
+ insert into public.notification_events(event_type,domain,recipient_staff_user_id,idempotency_key,payload) values('requests.gioca.received','requests',s,'staff-test:'||s,'{"responsibility_key":"requests_gioca"}') returning id into e;
  select id into a from public.push_subscriptions where staff_user_id=s;
  if public.push_subscription_eligible(a,e) then raise exception 'NO_RESPONSIBILITY'; end if;
- insert into public.staff_notification_responsibilities(staff_user_id,responsibility_key) values(s,'requests_gioca');
+ insert into public.staff_notification_responsibilities(staff_user_id,event_key) values(s,'requests.gioca.received');
  insert into public.staff_permissions(staff_user_id,permission_key) values(s,'requests.manage');
  if not public.push_subscription_eligible(a,e) then raise exception 'STAFF_ELIGIBLE_MISSING'; end if;
  update public.staff_users set is_active=false where id=s;
