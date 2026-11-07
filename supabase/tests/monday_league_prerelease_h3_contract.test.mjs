@@ -5,6 +5,7 @@ import { test } from "node:test";
 const migration = readFileSync(new URL("../migrations/20260925100000_monday_league_prerelease_h3_captain_context.sql", import.meta.url), "utf8");
 const readModel = readFileSync(new URL("../../src/lib/monday-league/public-read-model.ts", import.meta.url), "utf8");
 const teamView = readFileSync(new URL("../../src/components/monday-league/PublicLeagueViews.tsx", import.meta.url), "utf8");
+const matchActions = readFileSync(new URL("../../src/components/monday-league/CaptainMatchActions.tsx", import.meta.url), "utf8");
 
 test("H3 captain selection reuses Stage 6 effective finality at the database clock", () => {
   assert.match(migration, /league_effective_result_status\(m\.current_result_id\) IN \('confirmed','superseded'\)/);
@@ -20,9 +21,11 @@ test("H3 captain selection follows the active sporting phase and terminal outcom
   assert.match(migration, /ORDER BY m\.scheduled_at NULLS LAST,m\.created_at,m\.id/);
 });
 
-test("team API and captain UI consume the corrected RPC match id without duplicate selection", () => {
+test("team API retains the legacy context but captain actions use match-specific collections", () => {
   assert.equal((readModel.match(/\.rpc\("league_get_captain_context"/g) ?? []).length, 1);
   assert.match(readModel, /captain:\s*captainContext/);
-  assert.match(teamView, /captain\.match_id/);
-  assert.match(teamView, /matches\/\$\{captain\.match_id\}\/lineups/);
+  assert.match(readModel, /\.rpc\("league_get_captain_lineup_matches"/);
+  assert.match(teamView, /lineupMatches=\{captain\.lineupMatches\}/);
+  assert.match(matchActions, /matches\/\$\{match\.matchId\}\/lineups/);
+  assert.doesNotMatch(teamView.split("function CaptainControls")[1].split("const fieldStyle")[0], /captain\.match_id/);
 });

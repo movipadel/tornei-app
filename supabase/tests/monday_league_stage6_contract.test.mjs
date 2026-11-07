@@ -5,6 +5,7 @@ import test from "node:test";
 const migration = readFileSync("supabase/migrations/20260921090000_monday_league_stage6_results_contests.sql", "utf8");
 const publicModel = readFileSync("src/lib/monday-league/public-read-model.ts", "utf8");
 const captainUi = readFileSync("src/components/monday-league/PublicLeagueViews.tsx", "utf8");
+const captainActions = readFileSync("src/components/monday-league/CaptainMatchActions.tsx", "utf8");
 const resultRoute = readFileSync("src/app/api/monday-league/matches/[matchId]/result/route.ts", "utf8");
 const contestRoute = readFileSync("src/app/api/monday-league/matches/[matchId]/contest/route.ts", "utf8");
 const adminRoute = readFileSync("src/app/api/admin/monday-league/results/route.ts", "utf8");
@@ -30,7 +31,7 @@ test("captain score uses Stage 3 validation and is immutable", () => {
   assert.match(migration, /league_validate_match_sets\(p_sets\)/);
   assert.match(migration, /ML_RESULT_ALREADY_EXISTS/);
   assert.match(migration, /submitter_type.*'captain'/s);
-  assert.match(captainUi, /Dopo l'invio non potrai modificarlo/);
+  assert.match(captainActions, /Dopo l'invio non potrai modificarlo/);
 });
 
 test("contest storage is revision-linked, bounded and unique while open", () => {
@@ -63,7 +64,8 @@ test("public output exposes effective labels but no private reasons", () => {
 });
 
 test("captain and admin UX expose the required controls and filters", () => {
-  for (const label of ["Inserisci risultato", "Risultato inviato", "Non modificabile", "Contesta risultato", "Contestazione inviata", "Termine contestazione scaduto"]) assert.ok(captainUi.includes(label));
+  assert.match(captainUi, /CaptainMatchActions/);
+  for (const label of ["Inserisci risultato", "Risultato inviato", "Non modificabile", "Contesta risultato", "Contestazione inviata", "Termine contestazione scaduto"]) assert.ok(captainActions.includes(label));
   for (const label of ["DA INSERIRE", "PROVVISORI", "CONTESTATI", "DEFINITIVI", "SPECIALI", "Respingi contestazione", "Accogli e correggi"]) assert.ok(adminUi.includes(label));
 });
 

@@ -7,6 +7,7 @@ const migration = read("supabase/migrations/20260920210000_monday_league_stage5_
 const model = read("src/lib/monday-league/public-read-model.ts");
 const teamApi = read("src/app/api/monday-league/teams/[slug]/route.ts");
 const captainUi = read("src/components/monday-league/PublicLeagueViews.tsx");
+const captainActions = read("src/components/monday-league/CaptainMatchActions.tsx");
 const mediaApi = read("src/app/api/monday-league/teams/[slug]/media/route.ts");
 const lifecycleApi = read("src/app/api/admin/monday-league/season-management/route.ts");
 const home = read("src/app/page.tsx");
@@ -35,7 +36,7 @@ test("privacy is a database read contract and public DTO contains no player ids 
   assert.match(model, /lineups:.*null/s);
   assert.match(model, /roster: \(players \?\? \[\]\)\.map\(\(player\) => \(\{ displayName:/);
   assert.match(model, /captainContext = captainResponse\.data/);
-  assert.match(captainUi, /Formazione riservata fino alla scadenza/);
+  assert.match(captainActions, /Formazione riservata/);
   assert.match(migration, /Formazione non comunicata/);
 });
 
@@ -65,7 +66,8 @@ test("visibility, archive and delete remain independent and isolated", () => {
 });
 
 test("captain controls share the public team page and home hero precedes circuits", () => {
-  for (const label of ["Modifica profilo squadra", "Gestisci rosa", "Inserisci formazione", "Rosa ufficiale — per modifiche contatta"]) assert.ok(captainUi.includes(label));
+  for (const label of ["Modifica profilo squadra", "Gestisci rosa", "Rosa ufficiale — per modifiche contatta"]) assert.ok(captainUi.includes(label));
+  for (const label of ["Schiera formazione", "Modifica formazione", "Prossimo incontro", "Recuperi da giocare"]) assert.ok(captainActions.includes(label));
   assert.ok(home.indexOf("mondayLeagueHero.visible") < home.indexOf('title="I tuoi circuiti"'));
   assert.match(home, /href="\/monday-league"/);
 });

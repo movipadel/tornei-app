@@ -382,7 +382,10 @@ export async function getPublicLeagueTeam(slug: string, phaseId?: string | null,
   const schedule = snapshot.rounds.flatMap((round) => round.matches
     .filter((match) => match.homeTeam.id === team.id || match.awayTeam.id === team.id)
     .map((match) => ({ ...match, roundNumber: round.number, playDate: round.playDate, side: match.homeTeam.id === team.id ? "home" as const : "away" as const })));
-  const nextMatch = schedule.find((match) => !match.result && !["cancelled", "suspended"].includes(match.workflowStatus)) ?? null;
+  const nextMatch = schedule.filter((match) => !match.result && match.workflowStatus === "scheduled" && match.scheduledAt)
+      .sort((a, b) => Date.parse(a.scheduledAt!) - Date.parse(b.scheduledAt!))[0]
+    ?? schedule.find((match) => !match.result && match.workflowStatus === "postponed")
+    ?? null;
   const captainResponse = viewerUserId
     ? await sb.rpc("league_get_captain_context", { p_user_id: viewerUserId, p_team_id: team.id })
     : { data: null, error: null };
@@ -391,9 +394,19 @@ export async function getPublicLeagueTeam(slug: string, phaseId?: string | null,
     ? await sb.rpc("league_get_captain_result_context", { p_user_id: viewerUserId, p_team_id: team.id })
     : { data: null, error: null };
   assertQuery(captainResultResponse.error, "captain result context");
+  const captainLineupMatchesResponse = viewerUserId
+    ? await sb.rpc("league_get_captain_lineup_matches", { p_user_id: viewerUserId, p_team_id: team.id })
+    : { data: null, error: null };
+  assertQuery(captainLineupMatchesResponse.error, "captain lineup matches");
+  const captainResultMatchesResponse = viewerUserId
+    ? await sb.rpc("league_get_captain_result_matches", { p_user_id: viewerUserId, p_team_id: team.id })
+    : { data: null, error: null };
+  assertQuery(captainResultMatchesResponse.error, "captain result matches");
   const captainContext = captainResponse.data ? {
     ...captainResponse.data,
     result: captainResultResponse.data ?? null,
+    lineupMatches: captainLineupMatchesResponse.data ?? [],
+    resultMatches: captainResultMatchesResponse.data ?? [],
     roster: (players ?? []).map((player) => ({ id: player.id, displayName: player.display_name, isCaptain: player.id === team.captain_player_id })),
   } : null;
 
