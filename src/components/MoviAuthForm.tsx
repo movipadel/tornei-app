@@ -137,18 +137,18 @@ export default function MoviAuthForm({ mode, entryFirst = false }: { mode: Mode;
       <p style={copyStyle}>Scegli la situazione che ti riguarda. Il tuo profilo e i tuoi dati restano al sicuro.</p>
       <div style={entryGridStyle}>
         <section style={entryPrimaryStyle}>
-          <h2 style={entryHeadingStyle}>Hai già attivato il nuovo accesso MOVI?</h2>
-          <p style={entryCopyStyle}>Usa l’email e la password che hai già scelto.</p>
+          <h2 style={entryHeadingStyle}>Hai già una password MOVI?</h2>
+          <p style={entryCopyStyle}>Accedi con email e password.</p>
           <button type="button" style={buttonStyle} onClick={() => setLoginChosen(true)}>Accedi</button>
         </section>
-        <section style={entryCardStyle}>
-          <h2 style={entryHeadingStyle}>Hai già giocato, partecipato a tornei o usato MOVI in passato?</h2>
-          <p style={entryCopyStyle}><strong>Il tuo profilo esiste già.</strong> Non devi registrarti di nuovo. I tuoi dati, attività e MoviBack restano disponibili: devi solo attivare il nuovo accesso.</p>
-          <Link href="/attiva-account" style={entryLinkStyle}>Attiva il tuo profilo</Link>
+        <section style={entryPrimaryStyle}>
+          <h2 style={entryHeadingStyle}>Hai già usato MOVI ma non hai mai creato una password?</h2>
+          <p style={entryCopyStyle}>Il tuo profilo esiste già. Conferma i tuoi dati e scegli la password che userai per accedere a MOVI.</p>
+          <Link href="/attiva-account" style={entryLinkStyle}>Crea la tua password MOVI</Link>
         </section>
         <section style={entryCardStyle}>
           <h2 style={entryHeadingStyle}>È la prima volta che usi MOVI?</h2>
-          <p style={entryCopyStyle}>Crea il tuo profilo per iniziare a usare i servizi MOVI.</p>
+          <p style={entryCopyStyle}>Crea il tuo profilo personale.</p>
           <Link href="/registrati" style={entryLinkSecondaryStyle}>Crea un nuovo profilo</Link>
         </section>
       </div>
@@ -293,6 +293,6 @@ const entryCardStyle: React.CSSProperties = { display: "grid", gap: 10, padding:
 const entryPrimaryStyle: React.CSSProperties = { ...entryCardStyle, borderColor: "#a5b4fc", background: "#eef2ff" };
 const entryHeadingStyle: React.CSSProperties = { margin: 0, color: "#172554", fontSize: 18, lineHeight: 1.3 };
 const entryCopyStyle: React.CSSProperties = { margin: 0, color: "#475569", fontSize: 14, lineHeight: 1.5 };
-const entryLinkStyle: React.CSSProperties = { ...linkButtonStyle, width: "100%", boxSizing: "border-box" };
+const entryLinkStyle: React.CSSProperties = { ...linkButtonStyle, width: "100%", boxSizing: "border-box", padding: "10px 8px", textAlign: "center", lineHeight: 1.25 };
 const entryLinkSecondaryStyle: React.CSSProperties = { ...entryLinkStyle, background: "white", color: "#4338ca", border: "1px solid #c7d2fe" };
 const plainButtonStyle: React.CSSProperties = { minHeight: 44, border: 0, padding: 0, background: "transparent", color: "#4338ca", font: "inherit", fontWeight: 800, textAlign: "left", cursor: "pointer" };
