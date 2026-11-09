@@ -170,6 +170,9 @@ export function CaptainMatchActions({ teamId, roster, lineupMatches, resultMatch
 }) {
   const scheduled = lineupMatches.filter((match) => match.status === "scheduled" && match.canSubmitLineup);
   const postponed = lineupMatches.filter((match) => match.status === "postponed" && match.canSubmitLineup);
+  const urgentResults = resultMatches.filter((match) => match.status !== "postponed" && (match.canSubmitResult || match.canContestResult));
+  const recoveryResults = resultMatches.filter((match) => match.status === "postponed" && (match.canSubmitResult || match.canContestResult));
+  const submittedResults = resultMatches.filter((match) => !match.canSubmitResult && !match.canContestResult);
   const focusIsOwnMatch = Boolean(focusMatchId && ([...scheduled, ...postponed].some((match) => match.matchId === focusMatchId)
     || resultMatches.some((match) => match.matchId === focusMatchId)));
   useEffect(() => {
@@ -179,15 +182,20 @@ export function CaptainMatchActions({ teamId, roster, lineupMatches, resultMatch
     document.getElementById(id)?.scrollIntoView({ block: "center" });
   }, [focusMatchId, focusIsOwnMatch, resultMatches]);
   return <div className={styles.captainMatches} aria-label="Incontri del capitano">
+    {urgentResults.length ? <section><h3>Risultati da gestire</h3><div className={styles.captainMatchList}>{urgentResults.map((match) => <ResultCard
+      key={`${match.matchId}:${match.resultId ?? "pending"}`} match={match} onSaved={onSaved} focused={focusMatchId === match.matchId} />)}</div></section> : null}
+    {recoveryResults.length || postponed.length ? <section><h3>Recuperi da giocare</h3><div className={styles.captainMatchList}>
+      {recoveryResults.map((match) => <ResultCard key={`${match.matchId}:${match.resultId ?? "pending"}`} match={match} onSaved={onSaved}
+        focused={focusMatchId === match.matchId} />)}
+      {postponed.map((match) => <LineupCard key={`${match.matchId}:${match.ownLineup?.revision ?? 0}`} match={match} teamId={teamId}
+        roster={roster} onSaved={onSaved} focused={focusMatchId === match.matchId} />)}
+    </div></section> : null}
     {scheduled[0] ? <section><h3>Prossimo incontro</h3><LineupCard key={`${scheduled[0].matchId}:${scheduled[0].ownLineup?.revision ?? 0}`}
       match={scheduled[0]} teamId={teamId} roster={roster} onSaved={onSaved} focused={focusMatchId === scheduled[0].matchId} /></section> : null}
     {scheduled.length > 1 ? <section><h3>Altri incontri programmati</h3><div className={styles.captainMatchList}>{scheduled.slice(1).map((match) => <LineupCard
       key={`${match.matchId}:${match.ownLineup?.revision ?? 0}`} match={match} teamId={teamId} roster={roster} onSaved={onSaved}
       focused={focusMatchId === match.matchId} />)}</div></section> : null}
-    {postponed.length ? <section><h3>Recuperi da giocare</h3><div className={styles.captainMatchList}>{postponed.map((match) => <LineupCard
-      key={`${match.matchId}:${match.ownLineup?.revision ?? 0}`} match={match} teamId={teamId} roster={roster} onSaved={onSaved}
-      focused={focusMatchId === match.matchId} />)}</div></section> : null}
-    {resultMatches.length ? <section><h3>Risultati da gestire</h3><div className={styles.captainMatchList}>{resultMatches.map((match) => <ResultCard
+    {submittedResults.length ? <section><h3>Risultati inviati</h3><div className={styles.captainMatchList}>{submittedResults.map((match) => <ResultCard
       key={`${match.matchId}:${match.resultId ?? "pending"}`} match={match} onSaved={onSaved} focused={focusMatchId === match.matchId} />)}</div></section> : null}
     {!scheduled.length && !postponed.length && !resultMatches.length ? <p className={styles.muted}>Nessun incontro da gestire al momento.</p> : null}
   </div>;
