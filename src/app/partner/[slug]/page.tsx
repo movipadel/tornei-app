@@ -1,9 +1,10 @@
 /* eslint-disable @next/next/no-img-element -- Partner logos are short-lived signed storage URLs. */
-import { ArrowLeft, ExternalLink, Globe2, MapPin, Phone, Tags, WalletCards } from "lucide-react";
+import { ArrowLeft, ExternalLink, Facebook, Globe2, Instagram, MapPin, Phone, Tags, WalletCards } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { MediaFrame } from "@/components/public/PublicPrimitives";
 import { publicPartnerBySlug } from "@/lib/partnersServer";
+import { contactCtaLabel } from "@/lib/partners";
 import styles from "./PartnerDetail.module.css";
 
 export const dynamic = "force-dynamic";
@@ -28,6 +29,9 @@ export default async function PartnerDetailPage({ params }: { params: Promise<{ 
   const phone = partner.phone.replace(/[^+0-9]/g, "");
   const website = safeHttps(partner.website_url);
   const contact = safeHttps(partner.contact_url);
+  const instagram = safeHttps(partner.instagram_url);
+  const facebook = safeHttps(partner.facebook_url);
+  const contactLabel = contactCtaLabel(contact, partner.contact_label);
 
   return <main className={styles.page}>
     <article className={styles.article} aria-labelledby="partner-detail-title">
@@ -54,13 +58,15 @@ export default async function PartnerDetailPage({ params }: { params: Promise<{ 
 
       <div className={styles.membershipInstruction}><WalletCards size={23} aria-hidden /><p>Mostra la tua tessera MOVI per usufruire del vantaggio.</p></div>
 
-      {address || phone || website || contact ? <section className={styles.contacts} aria-labelledby="partner-contacts-title">
+      {address || phone || website || contact || instagram || facebook ? <section className={styles.contacts} aria-labelledby="partner-contacts-title">
         <h2 id="partner-contacts-title">Informazioni e contatti</h2>
         <div className={styles.contactList}>
           {address ? <div className={styles.contactRow}><MapPin size={21} aria-hidden /><span>{address}</span>{directions ? <a href={directions} target="_blank" rel="noopener noreferrer">Indicazioni<ExternalLink size={15} aria-hidden /></a> : null}</div> : null}
           {phone ? <div className={styles.contactRow}><Phone size={21} aria-hidden /><span>{partner.phone}</span><a href={`tel:${phone}`}>Chiama</a></div> : null}
           {website ? <div className={styles.contactRow}><Globe2 size={21} aria-hidden /><span>{new URL(website).hostname.replace(/^www\./, "")}</span><a href={website} target="_blank" rel="noopener noreferrer">Visita il sito<ExternalLink size={15} aria-hidden /></a></div> : null}
-          {contact ? <div className={styles.contactRow}><ExternalLink size={21} aria-hidden /><span>Contatto online</span><a href={contact} target="_blank" rel="noopener noreferrer">Contatta<ExternalLink size={15} aria-hidden /></a></div> : null}
+          {contact ? <div className={styles.contactRow}><ExternalLink size={21} aria-hidden /><span>Contatto online</span><a href={contact} target="_blank" rel="noopener noreferrer">{contactLabel}<ExternalLink size={15} aria-hidden /></a></div> : null}
+          {instagram ? <div className={styles.contactRow}><Instagram size={21} aria-hidden /><span>Instagram</span><a href={instagram} target="_blank" rel="noopener noreferrer">Apri Instagram<ExternalLink size={15} aria-hidden /></a></div> : null}
+          {facebook ? <div className={styles.contactRow}><Facebook size={21} aria-hidden /><span>Facebook</span><a href={facebook} target="_blank" rel="noopener noreferrer">Apri Facebook<ExternalLink size={15} aria-hidden /></a></div> : null}
         </div>
       </section> : null}
     </article>

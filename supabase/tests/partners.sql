@@ -9,6 +9,14 @@ INSERT INTO public.movi_partners(name,slug,category,benefit_title,status,valid_f
 ('TEST expired','test-partner-expired','Altro','10%','active',null,now()-interval '1 day',null,false,0),
 ('TEST deleted','test-partner-deleted','Altro','10%','active',null,null,now(),false,0);
 SELECT pg_temp.assert_true((SELECT count(*)=2 FROM public.movi_partners p WHERE slug like 'test-partner-%' AND public.movi_partner_visible(p)),'eligibility matrix');
+SELECT pg_temp.assert_true((SELECT instagram_url IS NULL AND facebook_url IS NULL AND contact_label IS NULL FROM public.movi_partners WHERE slug='test-partner-permanent'),'legacy partner defaults');
+UPDATE public.movi_partners SET instagram_url='https://www.instagram.com/movi/',facebook_url='https://www.facebook.com/movi/',contact_label='Prenota ora' WHERE slug='test-partner-permanent';
+SELECT pg_temp.assert_true((SELECT instagram_url='https://www.instagram.com/movi/' AND facebook_url='https://www.facebook.com/movi/' AND contact_label='Prenota ora' FROM public.movi_partners WHERE slug='test-partner-permanent'),'social and CTA round trip');
+DO $$ BEGIN
+ BEGIN UPDATE public.movi_partners SET instagram_url='http://instagram.com/movi' WHERE slug='test-partner-permanent'; RAISE EXCEPTION 'insecure Instagram accepted'; EXCEPTION WHEN check_violation THEN NULL; END;
+ BEGIN UPDATE public.movi_partners SET facebook_url='javascript:alert(1)' WHERE slug='test-partner-permanent'; RAISE EXCEPTION 'unsafe Facebook accepted'; EXCEPTION WHEN check_violation THEN NULL; END;
+ BEGIN UPDATE public.movi_partners SET contact_label='<b>Bad</b>' WHERE slug='test-partner-permanent'; RAISE EXCEPTION 'markup label accepted'; EXCEPTION WHEN check_violation THEN NULL; END;
+END $$;
 SELECT pg_temp.assert_true((SELECT slug='test-partner-temporary' FROM public.movi_partners_public_list(1,0,null)),'featured/order');
 DO $$ BEGIN
  BEGIN INSERT INTO public.movi_partners(name,slug,category,benefit_title) VALUES('duplicate','test-partner-draft','Altro','x'); RAISE EXCEPTION 'duplicate accepted'; EXCEPTION WHEN unique_violation THEN NULL; END;

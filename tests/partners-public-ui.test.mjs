@@ -40,6 +40,12 @@ test("Partner contacts are conditional and use external directions rather than a
   assert.match(source, /phone \? <div className=\{styles\.contactRow\}/);
   assert.match(source, /website \? <div className=\{styles\.contactRow\}/);
   assert.match(source, /contact \? <div className=\{styles\.contactRow\}/);
+  assert.match(source, /instagram \? <div className=\{styles\.contactRow\}/);
+  assert.match(source, /facebook \? <div className=\{styles\.contactRow\}/);
+  assert.match(source, /contactCtaLabel\(contact, partner\.contact_label\)/);
+  assert.match(source, /href=\{instagram\} target="_blank" rel="noopener noreferrer"/);
+  assert.match(source, /href=\{facebook\} target="_blank" rel="noopener noreferrer"/);
+  assert.doesNotMatch(await read("src/app/partner/page.tsx"), /instagram_url|facebook_url|contact_label/);
   assert.match(source, /https:\/\/www\.google\.com\/maps\/dir\/\?api=1&destination=/);
   assert.doesNotMatch(source, /<iframe|google\.maps\.Map|mapbox|leaflet/i);
 });

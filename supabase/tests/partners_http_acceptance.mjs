@@ -16,7 +16,10 @@ const sample={status:'draft',name:'HTTP Partner test',slug:`http-partner-${Date.
 const ids=[],paths=[];let checks=0;const ok=()=>checks++;
 try{
  for(const role of ['anon','user','staff']){const token=role==='anon'?'':await new SignJWT({sid:`partner-${role}`,role}).setProtectedHeader({alg:'HS256'}).setExpirationTime('5m').sign(new TextEncoder().encode(process.env.STAFF_COOKIE_SECRET));assert.ok([401,403].includes((await request('/api/admin/partners','POST',sample,token?`staff_session=${token}`:'')).status));ok();}
- let r=await request('/api/admin/partners','POST',sample);assert.equal(r.status,201);let item=r.json.data;ids.push(item.id);ok();
+ let r=await request('/api/admin/partners','POST',sample);assert.equal(r.status,201);let item=r.json.data;ids.push(item.id);assert.equal(item.instagram_url,null);assert.equal(item.facebook_url,null);assert.equal(item.contact_label,null);ok();
+ const socialSample={...sample,slug:`${sample.slug}-social`,instagram_url:'https://www.instagram.com/movi/',facebook_url:'https://www.facebook.com/movi/',contact_url:'https://example.com/contact',contact_label:'Prenota ora'};
+ r=await request('/api/admin/partners','POST',socialSample);assert.equal(r.status,201);ids.push(r.json.data.id);assert.equal(r.json.data.instagram_url,socialSample.instagram_url);assert.equal(r.json.data.facebook_url,socialSample.facebook_url);assert.equal(r.json.data.contact_label,socialSample.contact_label);ok();
+ r=await request(`/api/admin/partners/${ids[1]}`);assert.equal(r.status,200);assert.equal(r.json.data.contact_label,'Prenota ora');ok();
  assert.equal((await request(`/api/partners/${item.slug}`)).status,404);ok();
  assert.equal((await request('/api/admin/partners','POST',sample)).status,409);ok();
  assert.deepEqual((await anon.from('movi_partners').select('id').eq('id',item.id)).data,[]);ok();
@@ -28,8 +31,11 @@ try{
  const bad=new FormData();bad.set('role','logo');bad.set('file',new Blob(['<svg/>'],{type:'image/png'}),'bad.png');assert.equal((await request(`/api/admin/partners/${item.id}/media`,'POST',bad)).status,400);ok();
  assert.equal((await request(`/api/admin/partners/${item.id}/media`,'DELETE',{role:'logo',storage_path:'other/path'})).status,400);ok();
  assert.equal((await request(`/api/admin/partners/${item.id}`,'PUT',{...item,website_url:'http://127.0.0.1:55421'})).status,400);ok();
- r=await request(`/api/admin/partners/${item.id}`,'PUT',{...item,status:'active',name:'Updated HTTP partner'});assert.equal(r.status,200);item=r.json.data;ok();
- r=await request(`/api/partners/${item.slug}`);assert.equal(r.status,200);assert.equal(r.json.data.membership_copy,'Mostra la tua tessera MOVI');assert.equal('logo_path' in r.json.data,false);ok();
+ for(const field of ['instagram_url','facebook_url']){assert.equal((await request(`/api/admin/partners/${item.id}`,'PUT',{...item,[field]:'javascript:alert(1)'})).status,400);ok();}
+ r=await request(`/api/admin/partners/${item.id}`,'PUT',{...item,status:'active',name:'Updated HTTP partner',instagram_url:'https://www.instagram.com/movi/',facebook_url:'https://www.facebook.com/movi/',contact_url:'https://example.com/contact',contact_label:'Prenota ora'});assert.equal(r.status,200);item=r.json.data;ok();
+ r=await request(`/api/partners/${item.slug}`);assert.equal(r.status,200);assert.equal(r.json.data.membership_copy,'Mostra la tua tessera MOVI');assert.equal('logo_path' in r.json.data,false);assert.equal(r.json.data.instagram_url,'https://www.instagram.com/movi/');assert.equal(r.json.data.facebook_url,'https://www.facebook.com/movi/');assert.equal(r.json.data.contact_label,'Prenota ora');ok();
+ r=await request(`/api/admin/partners/${item.id}`,'PUT',{...item,contact_label:''});assert.equal(r.status,200);item=r.json.data;assert.equal(item.contact_label,null);assert.equal((await request(`/api/partners/${item.slug}`)).json.data.contact_label,null);ok();
+ r=await request(`/api/admin/partners/${item.id}`,'PUT',{...item,contact_url:null,contact_label:'Prenota ora'});assert.equal(r.status,200);item=r.json.data;assert.equal(item.contact_url,null);assert.equal(item.contact_label,'Prenota ora');ok();
  r=await request('/api/partners?limit=50');assert.ok(r.json.data.some(p=>p.id===item.id));assert.ok(r.json.data.every(p=>p.status==='active'));ok();
  for(const q of ['limit=51','offset=10001','limit=0']){assert.equal((await request('/api/partners?'+q)).status,400);ok();}
  assert.equal((await request(`/api/admin/partners/${item.id}`,'PUT',{...item,updated_at:'2000-01-01T00:00:00Z'})).status,409);ok();
