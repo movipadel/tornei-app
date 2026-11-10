@@ -36,7 +36,9 @@ import {
 
 import TournamentDialogForm, { TournamentDTO } from "./_components/TournamentDialogForm";
 import RegistrationForm from "./[id]/registrations/RegistrationForm";
+import { AccountStatusBadge } from "./[id]/registrations/_components/RegistrationsTable";
 import FixedPairsGenerateWizard, { FixedPairsPair } from "./FixedPairsGenerateWizard";
+import type { RegistrationAccountStatus } from "@/lib/tournamentRegistrationAccountStatus";
 import {
   getBaraondaFormulaOptionsV2,
   getDefaultBaraondaFormulaV2,
@@ -56,6 +58,8 @@ type RegRow = {
   p2_name: string | null;
   p2_phone: string | null;
   p2_gender: "M" | "F" | null;
+  p1_account_status: RegistrationAccountStatus;
+  p2_account_status: RegistrationAccountStatus | null;
   created_at?: string | null;
 };
 
@@ -1520,18 +1524,23 @@ const selectedFormula = formulaOptions.some((o) => o.value === rawSelectedFormul
                                     <TableRow key={r.id}>
                                       <TableCell>{idx + 1}</TableCell>
                                       <TableCell>
-                                        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                                          <span className="base44-player-name">{r.p1_name}</span>
-                                        <GenderMark gender={r.p1_gender} />
-
+                                        <div className="min-w-0 space-y-1">
+                                          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                                            <span className="base44-player-name">{r.p1_name}</span>
+                                            <GenderMark gender={r.p1_gender} />
+                                          </div>
+                                          <AccountStatusBadge status={r.p1_account_status ?? "NEEDS_REVIEW"} />
                                         </div>
                                       </TableCell>
                                       <TableCell>{r.p1_phone}</TableCell>
                                       <TableCell>
                                         {r.p2_name ? (
-                                          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                                            <span className="base44-player-name">{r.p2_name}</span>
-                                          <GenderMark gender={r.p2_gender} />
+                                          <div className="min-w-0 space-y-1">
+                                            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                                              <span className="base44-player-name">{r.p2_name}</span>
+                                              <GenderMark gender={r.p2_gender} />
+                                            </div>
+                                            <AccountStatusBadge status={r.p2_account_status ?? "NEEDS_REVIEW"} />
                                           </div>
                                         ) : (
                                           "-"
@@ -1601,17 +1610,23 @@ const selectedFormula = formulaOptions.some((o) => o.value === rawSelectedFormul
                                       <TableRow key={r.id}>
                                         <TableCell>{idx + 1}</TableCell>
                                         <TableCell>
-                                          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                                            <span className="base44-player-name">{r.p1_name}</span>
-                                          <GenderMark gender={r.p1_gender} />
+                                          <div className="min-w-0 space-y-1">
+                                            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                                              <span className="base44-player-name">{r.p1_name}</span>
+                                              <GenderMark gender={r.p1_gender} />
+                                            </div>
+                                            <AccountStatusBadge status={r.p1_account_status ?? "NEEDS_REVIEW"} />
                                           </div>
                                         </TableCell>
                                         <TableCell>{r.p1_phone}</TableCell>
                                         <TableCell>
                                           {r.p2_name ? (
-                                            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                                              <span className="base44-player-name">{r.p2_name}</span>
-                                            <GenderMark gender={r.p2_gender} />
+                                            <div className="min-w-0 space-y-1">
+                                              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                                                <span className="base44-player-name">{r.p2_name}</span>
+                                                <GenderMark gender={r.p2_gender} />
+                                              </div>
+                                              <AccountStatusBadge status={r.p2_account_status ?? "NEEDS_REVIEW"} />
                                             </div>
                                           ) : (
                                             "-"

@@ -38,7 +38,7 @@ type Reg = {
   p2_account_status: RegistrationAccountStatus | null;
 };
 
-function AccountStatusBadge({ status }: { status: RegistrationAccountStatus }) {
+export function AccountStatusBadge({ status }: { status: RegistrationAccountStatus }) {
   const details = status === "ACCOUNT_LINKED"
     ? { label: "Account MOVI", icon: CircleCheck, className: "border-emerald-200 bg-emerald-50 text-emerald-800" }
     : status === "IDENTITY_ONLY"

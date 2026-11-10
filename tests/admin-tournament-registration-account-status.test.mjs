@@ -52,3 +52,24 @@ test("Admin list uses read-only identity/account evidence and distinct badges", 
   assert.match(tableStyles, /\.phoneColumn\s*\{\s*display: table-cell;/);
   assert.match(tableStyles, /\.phoneInline\s*\{\s*display: none;/);
 });
+
+test("actual Admin tournament accordion renders each player status in main and reserve rows", () => {
+  const page = readFileSync("src/app/admin/tournaments/page.tsx", "utf8");
+  const ui = readFileSync("src/app/admin/tournaments/ui.tsx", "utf8");
+  const table = readFileSync("src/app/admin/tournaments/[id]/registrations/_components/RegistrationsTable.tsx", "utf8");
+  assert.match(page, /import ClientTournaments from "\.\/ui"/);
+  assert.match(ui, /import \{ AccountStatusBadge \} from "\.\/\[id\]\/registrations\/_components\/RegistrationsTable"/);
+  assert.match(table, /export function AccountStatusBadge/);
+  assert.match(ui, /fetch\(`\/api\/admin\/tournaments\/\$\{tournamentId\}\/registrations`, \{ cache: "no-store" \}\)/);
+  assert.match(ui, /p1_account_status: RegistrationAccountStatus/);
+  assert.match(ui, /p2_account_status: RegistrationAccountStatus \| null/);
+
+  const main = ui.split("{mainRegs.map((r, idx) => (")[1]?.split("{reserveRegs.length > 0")[0] ?? "";
+  const reserve = ui.split("{reserveRegs.map((r, idx) => (")[1]?.split("</TableBody>")[0] ?? "";
+  for (const rows of [main, reserve]) {
+    assert.match(rows, /<AccountStatusBadge status=\{r\.p1_account_status \?\? "NEEDS_REVIEW"\} \/>/);
+    assert.match(rows, /r\.p2_name \? \(/);
+    assert.match(rows, /<AccountStatusBadge status=\{r\.p2_account_status \?\? "NEEDS_REVIEW"\} \/>/);
+    assert.doesNotMatch(rows, /<TableHead>Account<\/TableHead>/);
+  }
+});
