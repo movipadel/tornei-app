@@ -67,9 +67,9 @@ test("actual Admin tournament accordion renders each player status in main and r
   const main = ui.split("{mainRegs.map((r, idx) => (")[1]?.split("{reserveRegs.length > 0")[0] ?? "";
   const reserve = ui.split("{reserveRegs.map((r, idx) => (")[1]?.split("</TableBody>")[0] ?? "";
   for (const rows of [main, reserve]) {
-    assert.match(rows, /<AccountStatusBadge status=\{r\.p1_account_status \?\? "NEEDS_REVIEW"\} \/>/);
+    assert.match(rows, /<AccountStatusBadge status=\{r\.p1_account_status \?\? "NEEDS_REVIEW"\} onVerify=/);
     assert.match(rows, /r\.p2_name \? \(/);
-    assert.match(rows, /<AccountStatusBadge status=\{r\.p2_account_status \?\? "NEEDS_REVIEW"\} \/>/);
+    assert.match(rows, /<AccountStatusBadge status=\{r\.p2_account_status \?\? "NEEDS_REVIEW"\} onVerify=/);
     assert.doesNotMatch(rows, /<TableHead>Account<\/TableHead>/);
   }
 });

@@ -27,6 +27,7 @@ import styles from "./RegistrationsTable.module.css";
 
 type Reg = {
   id: string;
+  is_reserve: boolean;
   position: number;
   p1_name: string;
   p1_phone: string;
@@ -36,27 +37,35 @@ type Reg = {
   p2_gender: "M" | "F" | null;
   p1_account_status: RegistrationAccountStatus;
   p2_account_status: RegistrationAccountStatus | null;
+  p1_player_identity_id: string | null;
+  p2_player_identity_id: string | null;
 };
 
-export function AccountStatusBadge({ status }: { status: RegistrationAccountStatus }) {
+export function AccountStatusBadge({ status, onVerify }: { status: RegistrationAccountStatus; onVerify?: () => void }) {
   const details = status === "ACCOUNT_LINKED"
     ? { label: "Account MOVI", icon: CircleCheck, className: "border-emerald-200 bg-emerald-50 text-emerald-800" }
     : status === "IDENTITY_ONLY"
       ? { label: "Senza account", icon: CircleMinus, className: "border-slate-300 bg-slate-50 text-slate-700" }
       : { label: "Da verificare", icon: CircleHelp, className: "border-amber-300 bg-amber-50 text-amber-900" };
   const Icon = details.icon;
+  if (status === "NEEDS_REVIEW" && onVerify) {
+    return <button type="button" onClick={onVerify} title="Verifica giocatore"
+      className={styles.verifyButton}>
+      <Icon className="h-3 w-3 shrink-0" aria-hidden="true" />{details.label}
+    </button>;
+  }
   return <Badge variant="outline" className={`w-fit max-w-full gap-1 text-[11px] font-semibold ${details.className}`}>
     <Icon className="h-3 w-3 shrink-0" aria-hidden="true" />{details.label}
   </Badge>;
 }
 
-function PlayerDetails({ name, phone, gender, status }: { name: string; phone: string | null; gender: "M" | "F" | null; status: RegistrationAccountStatus }) {
+function PlayerDetails({ name, phone, gender, status, onVerify }: { name: string; phone: string | null; gender: "M" | "F" | null; status: RegistrationAccountStatus; onVerify?: () => void }) {
   return <div className="min-w-0 space-y-1">
     <div className="flex flex-wrap items-center gap-1.5">
       <span className="min-w-0 break-words">{name}</span>
       {gender && <Badge variant="outline" className="text-xs">{gender === "M" ? "♂" : "♀"}</Badge>}
     </div>
-    <AccountStatusBadge status={status} />
+    <AccountStatusBadge status={status} onVerify={onVerify} />
     {phone && <span className={`${styles.phoneInline} text-xs text-slate-500`}>{phone}</span>}
   </div>;
 }
@@ -69,6 +78,7 @@ export default function RegistrationsTable({
   onPromote,
   onDemote,
   onDelete,
+  onVerify,
 }: {
   title: string;
   emptyLabel: string;
@@ -77,6 +87,7 @@ export default function RegistrationsTable({
   onPromote?: (id: string) => void | Promise<void>;
   onDemote?: (id: string) => void | Promise<void>;
   onDelete: (id: string) => void | Promise<void>;
+  onVerify?: (row: Reg, slot: "p1" | "p2") => void;
 }) {
   if (rows.length === 0) {
     return (
@@ -112,9 +123,9 @@ export default function RegistrationsTable({
 
                 <TableCell>
                   <div className="space-y-3">
-                    <PlayerDetails name={r.p1_name} phone={r.p1_phone} gender={r.p1_gender} status={r.p1_account_status} />
+                    <PlayerDetails name={r.p1_name} phone={r.p1_phone} gender={r.p1_gender} status={r.p1_account_status} onVerify={onVerify ? () => onVerify(r, "p1") : undefined} />
                     {showP2 && r.p2_name ? (
-                      <PlayerDetails name={r.p2_name} phone={r.p2_phone} gender={r.p2_gender} status={r.p2_account_status ?? "NEEDS_REVIEW"} />
+                      <PlayerDetails name={r.p2_name} phone={r.p2_phone} gender={r.p2_gender} status={r.p2_account_status ?? "NEEDS_REVIEW"} onVerify={onVerify ? () => onVerify(r, "p2") : undefined} />
                     ) : null}
                   </div>
                 </TableCell>

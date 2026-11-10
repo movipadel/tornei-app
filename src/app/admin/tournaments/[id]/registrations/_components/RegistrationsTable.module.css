@@ -7,6 +7,38 @@
   overflow-wrap: anywhere;
 }
 
+.verifyButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  max-width: 100%;
+  min-height: 44px;
+  padding: 6px 10px;
+  border: 1px solid #f59e0b;
+  border-radius: 999px;
+  background: #fffbeb;
+  color: #78350f;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.verifyButton:hover {
+  background: #fef3c7;
+}
+
+.verifyButton svg {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+}
+
+.verifyButton:focus-visible {
+  outline: 2px solid #4f46e5;
+  outline-offset: 2px;
+}
+
 @media (min-width: 640px) {
   .phoneColumn {
     display: table-cell;

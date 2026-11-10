@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 
 import RegistrationForm from "./RegistrationForm";
 import RegistrationsTable from "./_components/RegistrationsTable";
+import HistoricalIdentityDialog, { registrationIdentityTarget, type RegistrationIdentityTarget } from "./_components/HistoricalIdentityDialog";
 import type { RegistrationAccountStatus } from "@/lib/tournamentRegistrationAccountStatus";
 
 type Reg = {
@@ -23,6 +24,8 @@ type Reg = {
   p2_gender: "M" | "F" | null;
   p1_account_status: RegistrationAccountStatus;
   p2_account_status: RegistrationAccountStatus | null;
+  p1_player_identity_id: string | null;
+  p2_player_identity_id: string | null;
 };
 
 type TournamentLite = {
@@ -47,6 +50,7 @@ export default function AdminTournamentRegistrationsPage({
   const [main, setMain] = useState<Reg[]>([]);
   const [reserve, setReserve] = useState<Reg[]>([]);
   const [loading, setLoading] = useState(true);
+  const [verifyTarget, setVerifyTarget] = useState<RegistrationIdentityTarget | null>(null);
 
   const showP2 = useMemo(() => tournament?.type === "Coppie fisse", [tournament?.type]);
 
@@ -200,6 +204,7 @@ export default function AdminTournamentRegistrationsPage({
         showP2={showP2}
         onDemote={(rid) => setReserveFlag(rid, true)}
         onDelete={remove}
+        onVerify={(row, slot) => setVerifyTarget(registrationIdentityTarget(id, row, slot))}
       />
 
       <RegistrationsTable
@@ -209,7 +214,10 @@ export default function AdminTournamentRegistrationsPage({
         showP2={showP2}
         onPromote={(rid) => setReserveFlag(rid, false)}
         onDelete={remove}
+        onVerify={(row, slot) => setVerifyTarget(registrationIdentityTarget(id, row, slot))}
       />
+      {verifyTarget && <HistoricalIdentityDialog key={`${verifyTarget.registrationId}:${verifyTarget.slot}`}
+        target={verifyTarget} onClose={() => setVerifyTarget(null)} onLinked={loadRegs} />}
     </div>
   );
 }

@@ -37,6 +37,7 @@ import {
 import TournamentDialogForm, { TournamentDTO } from "./_components/TournamentDialogForm";
 import RegistrationForm from "./[id]/registrations/RegistrationForm";
 import { AccountStatusBadge } from "./[id]/registrations/_components/RegistrationsTable";
+import HistoricalIdentityDialog, { registrationIdentityTarget, type RegistrationIdentityTarget } from "./[id]/registrations/_components/HistoricalIdentityDialog";
 import FixedPairsGenerateWizard, { FixedPairsPair } from "./FixedPairsGenerateWizard";
 import type { RegistrationAccountStatus } from "@/lib/tournamentRegistrationAccountStatus";
 import {
@@ -60,6 +61,8 @@ type RegRow = {
   p2_gender: "M" | "F" | null;
   p1_account_status: RegistrationAccountStatus;
   p2_account_status: RegistrationAccountStatus | null;
+  p1_player_identity_id: string | null;
+  p2_player_identity_id: string | null;
   created_at?: string | null;
 };
 
@@ -143,6 +146,7 @@ export default function AdminTournamentsUI() {
   const [selected, setSelected] = useState<TournamentDTO | null>(null);
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [verifyTarget, setVerifyTarget] = useState<RegistrationIdentityTarget | null>(null);
 
   const [regsByTournament, setRegsByTournament] = useState<
     Record<string, { loading: boolean; main: RegRow[]; reserve: RegRow[] }>
@@ -1529,7 +1533,7 @@ const selectedFormula = formulaOptions.some((o) => o.value === rawSelectedFormul
                                             <span className="base44-player-name">{r.p1_name}</span>
                                             <GenderMark gender={r.p1_gender} />
                                           </div>
-                                          <AccountStatusBadge status={r.p1_account_status ?? "NEEDS_REVIEW"} />
+                                          <AccountStatusBadge status={r.p1_account_status ?? "NEEDS_REVIEW"} onVerify={() => setVerifyTarget(registrationIdentityTarget(tid, r, "p1"))} />
                                         </div>
                                       </TableCell>
                                       <TableCell>{r.p1_phone}</TableCell>
@@ -1540,7 +1544,7 @@ const selectedFormula = formulaOptions.some((o) => o.value === rawSelectedFormul
                                               <span className="base44-player-name">{r.p2_name}</span>
                                               <GenderMark gender={r.p2_gender} />
                                             </div>
-                                            <AccountStatusBadge status={r.p2_account_status ?? "NEEDS_REVIEW"} />
+                                            <AccountStatusBadge status={r.p2_account_status ?? "NEEDS_REVIEW"} onVerify={() => setVerifyTarget(registrationIdentityTarget(tid, r, "p2"))} />
                                           </div>
                                         ) : (
                                           "-"
@@ -1615,7 +1619,7 @@ const selectedFormula = formulaOptions.some((o) => o.value === rawSelectedFormul
                                               <span className="base44-player-name">{r.p1_name}</span>
                                               <GenderMark gender={r.p1_gender} />
                                             </div>
-                                            <AccountStatusBadge status={r.p1_account_status ?? "NEEDS_REVIEW"} />
+                                            <AccountStatusBadge status={r.p1_account_status ?? "NEEDS_REVIEW"} onVerify={() => setVerifyTarget(registrationIdentityTarget(tid, r, "p1"))} />
                                           </div>
                                         </TableCell>
                                         <TableCell>{r.p1_phone}</TableCell>
@@ -1626,7 +1630,7 @@ const selectedFormula = formulaOptions.some((o) => o.value === rawSelectedFormul
                                                 <span className="base44-player-name">{r.p2_name}</span>
                                                 <GenderMark gender={r.p2_gender} />
                                               </div>
-                                              <AccountStatusBadge status={r.p2_account_status ?? "NEEDS_REVIEW"} />
+                                              <AccountStatusBadge status={r.p2_account_status ?? "NEEDS_REVIEW"} onVerify={() => setVerifyTarget(registrationIdentityTarget(tid, r, "p2"))} />
                                             </div>
                                           ) : (
                                             "-"
@@ -1695,6 +1699,10 @@ const selectedFormula = formulaOptions.some((o) => o.value === rawSelectedFormul
 
       {/* Dialog tornei */}
       <TournamentDialogForm open={open} onClose={() => setOpen(false)} tournament={selected} onSaved={loadList} />
+
+      {verifyTarget && <HistoricalIdentityDialog key={`${verifyTarget.registrationId}:${verifyTarget.slot}`}
+        target={verifyTarget} onClose={() => setVerifyTarget(null)}
+        onLinked={() => loadRegistrations(verifyTarget.tournamentId)} />}
 
     </>
   );
