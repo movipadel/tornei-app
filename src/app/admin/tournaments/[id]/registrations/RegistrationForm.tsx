@@ -65,29 +65,35 @@ function PlayerSlot({ number, value, onChange }: { number: 1 | 2; value: Player;
     if (event.key === "ArrowUp") { event.preventDefault(); setHighlight((current) => Math.max(current - 1, 0)); }
     if (event.key === "Enter" && highlight >= 0 && candidates[highlight]) { event.preventDefault(); select(candidates[highlight]); }
   }
-  const selectedLabel = value.selection?.kind === "identity" ? "Identità sportiva selezionata"
-    : value.selection?.kind === "account" ? "Account MOVI selezionato"
-      : value.selection?.kind === "new" ? "Nuova identità da creare all’iscrizione" : null;
+  const selectedLabel = value.selection?.kind === "identity" ? "Giocatore selezionato"
+    : value.selection?.kind === "account" ? value.selection.confirmed ? "Account MOVI collegato" : "Account MOVI selezionato"
+      : value.selection?.kind === "new" ? "Nuovo giocatore pronto all’iscrizione" : null;
 
   return <fieldset className="min-w-0 rounded-xl border border-slate-200 p-3 sm:p-4">
     <legend className="px-1 font-semibold text-slate-900">Giocatore {number}</legend>
     <div className={styles.playerGrid}>
-      <div className="relative min-w-0 space-y-1">
+      <div className="min-w-0 space-y-1">
         <Label htmlFor={`${listId}-name`}>Nome giocatore {number}</Label>
         <Input id={`${listId}-name`} className={inputClass} value={value.name} onChange={(event) => edit("name", event.target.value)}
           onKeyDown={handleKeys} role="combobox" aria-autocomplete="list" aria-expanded={open && candidates.length > 0}
           aria-controls={`${listId}-results`} aria-activedescendant={highlight >= 0 ? `${listId}-option-${highlight}` : undefined} required />
         {open && query.trim().length >= 3 && <div id={`${listId}-results`} role="listbox" aria-label={`Suggerimenti giocatore ${number}`}
-          className="absolute left-0 top-full z-30 mt-1 max-h-64 w-full min-w-0 max-w-full overflow-x-hidden overflow-y-auto rounded-xl border border-slate-300 bg-white p-1 shadow-lg">
+          className={styles.suggestions}>
           {loading && <p className="p-2 text-sm text-slate-600">Ricerca…</p>}
           {!loading && candidates.length === 0 && <p className="p-2 text-sm text-slate-600">Nessun profilo trovato</p>}
           {candidates.map((candidate, index) => <div id={`${listId}-option-${index}`} role="option" aria-selected={highlight === index}
-            key={candidate.player_identity_id ?? candidate.account_user_id} className={highlight === index ? "rounded-lg bg-indigo-50" : "rounded-lg"}>
-            <button type="button" className="min-h-11 w-full min-w-0 max-w-full overflow-hidden rounded-lg p-2 text-left hover:bg-indigo-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
+            key={candidate.player_identity_id ?? candidate.account_user_id} className={`${styles.suggestionItem} ${highlight === index ? styles.suggestionActive : ""}`}>
+            <button type="button" className={styles.suggestionButton}
               onMouseDown={(event) => event.preventDefault()} onClick={() => select(candidate)}>
-              <span className="block truncate font-medium text-slate-900">{candidate.display_name}</span>
-              <span className="block truncate text-xs text-slate-600">{candidate.phone}{candidate.email ? ` · ${candidate.email}` : ""}</span>
-              <span className="block text-xs text-indigo-700">{candidate.source}{candidate.alias_match ? " · Alias storico" : ""}</span>
+              <span className={styles.suggestionName}>{candidate.display_name}</span>
+              <span className={styles.suggestionMeta}>
+                <span className={styles.suggestionPhone}>{candidate.phone}</span>
+                {candidate.email && <span className={styles.suggestionEmail}>{candidate.email}</span>}
+              </span>
+              <span className={styles.suggestionBadges}>
+                <span className={`${styles.statusBadge} ${candidate.source === "Profilo MOVI" ? styles.profileBadge : candidate.source === "Account da collegare" ? styles.accountBadge : styles.identityBadge}`}>{candidate.source}</span>
+                {candidate.alias_match && <span className={styles.aliasBadge}>Alias storico</span>}
+              </span>
             </button>
           </div>)}
         </div>}
@@ -104,12 +110,15 @@ function PlayerSlot({ number, value, onChange }: { number: 1 | 2; value: Player;
         </select>
       </div>
     </div>
-    {selectedLabel && <p className="mt-2 text-sm font-medium text-indigo-700" role="status">{selectedLabel}</p>}
+    {selectedLabel && <p className={styles.selectedBadge} role="status">{selectedLabel}</p>}
     {value.selection?.kind === "account" && !value.selection.confirmed && <div className="mt-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
       <p>L’identità sportiva di questo account sarà risolta durante l’iscrizione. Eventuali conflitti bloccheranno l’operazione.</p>
       <Button type="button" variant="outline" className="mt-2 min-h-11" onClick={() => onChange({ ...value, selection: { ...value.selection!, confirmed: true } as Selection })}>Conferma collegamento account</Button>
     </div>}
-    {!value.selection && <div className="mt-3"><Button type="button" variant="outline" className="min-h-11" onClick={() => { setCreateOpen(true); setOpen(false); }}>Crea nuovo giocatore</Button></div>}
+    {!value.selection && <div className={styles.createAction}>
+      <p>Nessun profilo corretto? Crea una nuova identità giocatore.</p>
+      <Button type="button" variant="outline" className="mt-2 min-h-11" onClick={() => { setCreateOpen(true); setOpen(false); }}>Crea nuovo giocatore</Button>
+    </div>}
     {createOpen && !value.selection && <div className="mt-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-slate-900">
       <p>Non è stato trovato un profilo MOVI compatibile. Verrà creata una nuova identità giocatore, senza account di accesso.</p>
       <p className="mt-1 break-words font-medium">{value.name || "Nome mancante"} · {value.phone || "Telefono mancante"}</p>

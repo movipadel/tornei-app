@@ -6,6 +6,7 @@ import { buildPublicCircuitRanking } from "../src/lib/circuitPublicRanking.ts";
 const read = (path) => readFileSync(path, "utf8");
 const migration = read("supabase/migrations/20261110100817_admin_tournament_player_identity.sql");
 const form = read("src/app/admin/tournaments/[id]/registrations/RegistrationForm.tsx");
+const formStyles = read("src/app/admin/tournaments/[id]/registrations/RegistrationForm.module.css");
 const search = read("src/app/api/admin/tournaments/players/search/route.ts");
 const admin = read("src/app/api/admin/tournaments/[id]/registrations/route.ts");
 const publicPost = read("src/app/api/tournaments/[id]/registrations/route.ts");
@@ -26,6 +27,32 @@ test("both slots require explicit selection and clear it when name or phone chan
   assert.match(form, /Crea nuovo giocatore/);
   assert.match(form, /aria-autocomplete="list"/);
   assert.match(form, /aria-activedescendant/);
+});
+
+test("autocomplete cards stay inside the name column and distinguish player states", () => {
+  const dropdown = formStyles.match(/\.suggestions\s*\{([^}]+)\}/)?.[1] ?? "";
+  const email = formStyles.match(/\.suggestionEmail\s*\{([^}]+)\}/)?.[1] ?? "";
+  assert.match(form, /className=\{styles\.suggestions\}/);
+  assert.match(dropdown, /width:\s*100%/);
+  assert.match(dropdown, /max-width:\s*100%/);
+  assert.doesNotMatch(dropdown, /position:\s*absolute/);
+  assert.match(dropdown, /overflow-x:\s*hidden/);
+  assert.match(email, /text-overflow:\s*ellipsis/);
+  assert.match(formStyles, /\.suggestionMeta,[\s\S]*?flex-wrap:\s*wrap/);
+  assert.match(form, /styles\.profileBadge[\s\S]*styles\.accountBadge[\s\S]*styles\.identityBadge/);
+  assert.match(form, /\{candidate\.source\}/);
+  assert.match(formStyles, /\.suggestionButton:focus-visible/);
+  assert.match(formStyles, /min-height:\s*44px/);
+});
+
+test("selection indicator and separate create action preserve keyboard and clear behavior", () => {
+  assert.match(form, /selectedLabel && <p className=\{styles\.selectedBadge\} role="status">/);
+  assert.match(form, /onChange\(\{ \.\.\.value, \[field\]: text, selection: null \}\)/);
+  assert.match(form, /event\.key === "Enter"[\s\S]*select\(candidates\[highlight\]\)/);
+  assert.match(form, /event\.key === "Escape"/);
+  assert.match(form, /className=\{styles\.createAction\}/);
+  assert.match(formStyles, /\.createAction\s*\{[^}]*border-top:/);
+  assert.match(form, /Crea nuovo giocatore/);
 });
 
 test("new identity and registration share one guarded SQL transaction", () => {
