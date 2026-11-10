@@ -1,0 +1,18 @@
+.phoneColumn {
+  display: none;
+}
+
+.phoneInline {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+@media (min-width: 640px) {
+  .phoneColumn {
+    display: table-cell;
+  }
+
+  .phoneInline {
+    display: none;
+  }
+}

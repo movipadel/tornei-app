@@ -21,7 +21,9 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Trash2, Users, ArrowUpRight, ArrowDownRight } from "lucide-react";
+import { Trash2, Users, ArrowUpRight, ArrowDownRight, CircleCheck, CircleHelp, CircleMinus } from "lucide-react";
+import type { RegistrationAccountStatus } from "@/lib/tournamentRegistrationAccountStatus";
+import styles from "./RegistrationsTable.module.css";
 
 type Reg = {
   id: string;
@@ -32,7 +34,32 @@ type Reg = {
   p2_name: string | null;
   p2_phone: string | null;
   p2_gender: "M" | "F" | null;
+  p1_account_status: RegistrationAccountStatus;
+  p2_account_status: RegistrationAccountStatus | null;
 };
+
+function AccountStatusBadge({ status }: { status: RegistrationAccountStatus }) {
+  const details = status === "ACCOUNT_LINKED"
+    ? { label: "Account MOVI", icon: CircleCheck, className: "border-emerald-200 bg-emerald-50 text-emerald-800" }
+    : status === "IDENTITY_ONLY"
+      ? { label: "Senza account", icon: CircleMinus, className: "border-slate-300 bg-slate-50 text-slate-700" }
+      : { label: "Da verificare", icon: CircleHelp, className: "border-amber-300 bg-amber-50 text-amber-900" };
+  const Icon = details.icon;
+  return <Badge variant="outline" className={`w-fit max-w-full gap-1 text-[11px] font-semibold ${details.className}`}>
+    <Icon className="h-3 w-3 shrink-0" aria-hidden="true" />{details.label}
+  </Badge>;
+}
+
+function PlayerDetails({ name, phone, gender, status }: { name: string; phone: string | null; gender: "M" | "F" | null; status: RegistrationAccountStatus }) {
+  return <div className="min-w-0 space-y-1">
+    <div className="flex flex-wrap items-center gap-1.5">
+      <span className="min-w-0 break-words">{name}</span>
+      {gender && <Badge variant="outline" className="text-xs">{gender === "M" ? "♂" : "♀"}</Badge>}
+    </div>
+    <AccountStatusBadge status={status} />
+    {phone && <span className={`${styles.phoneInline} text-xs text-slate-500`}>{phone}</span>}
+  </div>;
+}
 
 export default function RegistrationsTable({
   title,
@@ -73,7 +100,7 @@ export default function RegistrationsTable({
             <TableRow className="bg-slate-50">
               <TableHead className="font-semibold">#</TableHead>
               <TableHead className="font-semibold">Partecipanti</TableHead>
-              <TableHead className="font-semibold">Telefono</TableHead>
+              <TableHead className={`${styles.phoneColumn} font-semibold`}>Telefono</TableHead>
               <TableHead />
             </TableRow>
           </TableHeader>
@@ -84,30 +111,15 @@ export default function RegistrationsTable({
                 <TableCell className="font-medium">{index + 1}</TableCell>
 
                 <TableCell>
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      {r.p1_name}
-                      {r.p1_gender && (
-                        <Badge variant="outline" className="text-xs">
-                          {r.p1_gender === "M" ? "♂" : "♀"}
-                        </Badge>
-                      )}
-                    </div>
-
+                  <div className="space-y-3">
+                    <PlayerDetails name={r.p1_name} phone={r.p1_phone} gender={r.p1_gender} status={r.p1_account_status} />
                     {showP2 && r.p2_name ? (
-                      <div className="flex items-center gap-2 text-slate-600">
-                        {r.p2_name}
-                        {r.p2_gender && (
-                          <Badge variant="outline" className="text-xs">
-                            {r.p2_gender === "M" ? "♂" : "♀"}
-                          </Badge>
-                        )}
-                      </div>
+                      <PlayerDetails name={r.p2_name} phone={r.p2_phone} gender={r.p2_gender} status={r.p2_account_status ?? "NEEDS_REVIEW"} />
                     ) : null}
                   </div>
                 </TableCell>
 
-                <TableCell className="text-slate-600">
+                <TableCell className={`${styles.phoneColumn} text-slate-600`}>
                   {r.p1_phone}
                   {showP2 && r.p2_phone ? ` · ${r.p2_phone}` : ""}
                 </TableCell>

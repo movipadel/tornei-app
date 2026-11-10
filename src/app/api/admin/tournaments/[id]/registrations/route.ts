@@ -4,6 +4,7 @@ import { guardOperatorPermission, getCurrentOperator } from "@/lib/operatorAutho
 import { sendTelegramMessage } from "@/lib/telegram";
 import { enqueueStaffPushEvent } from "@/lib/staffPush";
 import { schedulePostCommitNotifications } from "@/lib/postCommitNotifications";
+import { registrationAccountStatus } from "@/lib/tournamentRegistrationAccountStatus";
 
 export const runtime = "nodejs";
 
@@ -84,9 +85,32 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   const all = data ?? [];
+  const identityIds = [...new Set(all.flatMap((row) => [row.p1_player_identity_id, row.p2_player_identity_id]).filter((value): value is string => Boolean(value)))];
+  const identitiesResult = identityIds.length
+    ? await sb.from("player_identities").select("id,status,merged_into_player_id,account_user_id").in("id", identityIds)
+    : { data: [], error: null };
+  if (identitiesResult.error) return NextResponse.json({ error: "Stato account non disponibile" }, { status: 500 });
+  const identities = new Map((identitiesResult.data ?? []).map((identity) => [identity.id, identity]));
+  const accountIds = [...new Set((identitiesResult.data ?? []).map((identity) => identity.account_user_id).filter((value): value is string => Boolean(value)))];
+  const accountsResult = accountIds.length
+    ? await sb.from("users").select("id,identity_status,merged_into_user_id").in("id", accountIds)
+    : { data: [], error: null };
+  if (accountsResult.error) return NextResponse.json({ error: "Stato account non disponibile" }, { status: 500 });
+  const accounts = new Map((accountsResult.data ?? []).map((account) => [account.id, account]));
+  const rows = all.map((row) => {
+    const p1Identity = row.p1_player_identity_id ? identities.get(row.p1_player_identity_id) : undefined;
+    const p2Identity = row.p2_player_identity_id ? identities.get(row.p2_player_identity_id) : undefined;
+    return {
+      ...row,
+      p1_account_status: registrationAccountStatus(row.p1_player_identity_id, p1Identity, p1Identity?.account_user_id ? accounts.get(p1Identity.account_user_id) : undefined),
+      p2_account_status: row.p2_name
+        ? registrationAccountStatus(row.p2_player_identity_id, p2Identity, p2Identity?.account_user_id ? accounts.get(p2Identity.account_user_id) : undefined)
+        : null,
+    };
+  });
   return NextResponse.json({
-    main: all.filter((r) => !r.is_reserve),
-    reserve: all.filter((r) => r.is_reserve),
+    main: rows.filter((row) => !row.is_reserve),
+    reserve: rows.filter((row) => row.is_reserve),
   });
 }
 

@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 
 import RegistrationForm from "./RegistrationForm";
 import RegistrationsTable from "./_components/RegistrationsTable";
+import type { RegistrationAccountStatus } from "@/lib/tournamentRegistrationAccountStatus";
 
 type Reg = {
   id: string;
@@ -20,6 +21,8 @@ type Reg = {
   p2_name: string | null;
   p2_phone: string | null;
   p2_gender: "M" | "F" | null;
+  p1_account_status: RegistrationAccountStatus;
+  p2_account_status: RegistrationAccountStatus | null;
 };
 
 type TournamentLite = {
@@ -66,8 +69,8 @@ export default function AdminTournamentRegistrationsPage({
     setLoading(true);
     try {
       await Promise.all([loadTournament(), loadRegs()]);
-    } catch (e: any) {
-      toast.error(e?.message ?? "Errore");
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Errore");
     } finally {
       setLoading(false);
     }
@@ -84,8 +87,8 @@ export default function AdminTournamentRegistrationsPage({
       if (!res.ok) throw new Error(json.error ?? "Errore");
       await loadRegs();
       toast.success(is_reserve ? "Spostato in riserva" : "Promosso in principale");
-    } catch (e: any) {
-      toast.error(e?.message ?? "Errore");
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Errore");
     }
   }
 
@@ -96,8 +99,8 @@ export default function AdminTournamentRegistrationsPage({
       if (!res.ok) throw new Error(json.error ?? "Errore");
       await loadRegs();
       toast.success("Iscrizione eliminata");
-    } catch (e: any) {
-      toast.error(e?.message ?? "Errore");
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Errore");
     }
   }
 
@@ -108,8 +111,8 @@ export default function AdminTournamentRegistrationsPage({
       if (!res.ok) throw new Error(json.error ?? "Errore");
       await loadRegs();
       toast.success("Prima riserva promossa");
-    } catch (e: any) {
-      toast.error(e?.message ?? "Errore");
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Errore");
     }
   }
 
