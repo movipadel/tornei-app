@@ -1,177 +1,154 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { toast } from "sonner";
-
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2 } from "lucide-react";
+import styles from "./RegistrationForm.module.css";
 
-type Props = {
-  tournamentId: string;
-  tournamentType?: string; // "Baraonda" | "Coppie fisse"
-  onCreated?: () => void | Promise<void>;
-};
+type Candidate = { player_identity_id: string | null; account_user_id: string | null; display_name: string; phone: string; email: string | null; gender: "M" | "F" | null; source: string; alias_match?: boolean };
+type Selection =
+  | { kind: "identity"; player_identity_id: string }
+  | { kind: "account"; account_user_id: string; confirmed: boolean }
+  | { kind: "new"; confirmed: boolean; confirmed_conflict: boolean; full_name: string; phone: string; gender: "M" | "F" | null };
+type Player = { name: string; phone: string; gender: "" | "M" | "F"; selection: Selection | null };
+const blankPlayer = (): Player => ({ name: "", phone: "", gender: "", selection: null });
+const inputClass = "min-h-11 w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600";
 
-const isCouples = (t?: string) => t === "Coppie fisse";
-const normalizePhone = (s: string) => s.trim().replace(/\s+/g, "");
+function PlayerSlot({ number, value, onChange }: { number: 1 | 2; value: Player; onChange: (value: Player) => void }) {
+  const listId = useId();
+  const [query, setQuery] = useState("");
+  const [candidates, setCandidates] = useState<Candidate[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [highlight, setHighlight] = useState(-1);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [conflictChecked, setConflictChecked] = useState(false);
 
-const baseInputStyle: React.CSSProperties = {
-  width: "100%",
-  padding: "10px 12px",
-  borderRadius: 12,
-  border: "1px solid #e2e8f0",
-  outline: "none",
-  background: "white",
-};
+  useEffect(() => {
+    const trimmed = query.trim();
+    if (!open || trimmed.length < 3) { setCandidates([]); return; }
+    const controller = new AbortController();
+    const timer = window.setTimeout(async () => {
+      setLoading(true);
+      try {
+        const response = await fetch(`/api/admin/tournaments/players/search?q=${encodeURIComponent(trimmed)}`, { signal: controller.signal, cache: "no-store" });
+        if (!response.ok) throw new Error("Ricerca non disponibile");
+        const result = await response.json();
+        setCandidates(Array.isArray(result.data) ? result.data : []);
+        setHighlight(-1);
+      } catch (error) {
+        if (!controller.signal.aborted) toast.error(error instanceof Error ? error.message : "Ricerca non disponibile");
+      } finally { if (!controller.signal.aborted) setLoading(false); }
+    }, 250);
+    return () => { controller.abort(); window.clearTimeout(timer); };
+  }, [open, query]);
 
-export default function RegistrationForm({ tournamentId, tournamentType, onCreated }: Props) {
-  const showP2 = isCouples(tournamentType);
+  function edit(field: "name" | "phone", text: string) {
+    onChange({ ...value, [field]: text, selection: null });
+    setQuery(text); setOpen(true); setCreateOpen(false);
+  }
+  function select(candidate: Candidate) {
+    const selection: Selection = candidate.player_identity_id
+      ? { kind: "identity", player_identity_id: candidate.player_identity_id }
+      : { kind: "account", account_user_id: candidate.account_user_id!, confirmed: false };
+    onChange({ name: candidate.display_name, phone: candidate.phone, gender: candidate.gender ?? "", selection });
+    setOpen(false); setCreateOpen(false); setQuery("");
+  }
+  function handleKeys(event: React.KeyboardEvent<HTMLInputElement>) {
+    if (!open) return;
+    if (event.key === "Escape") { setOpen(false); return; }
+    if (event.key === "ArrowDown") { event.preventDefault(); setHighlight((current) => Math.min(current + 1, candidates.length - 1)); }
+    if (event.key === "ArrowUp") { event.preventDefault(); setHighlight((current) => Math.max(current - 1, 0)); }
+    if (event.key === "Enter" && highlight >= 0 && candidates[highlight]) { event.preventDefault(); select(candidates[highlight]); }
+  }
+  const selectedLabel = value.selection?.kind === "identity" ? "Identità sportiva selezionata"
+    : value.selection?.kind === "account" ? "Account MOVI selezionato"
+      : value.selection?.kind === "new" ? "Nuova identità da creare all’iscrizione" : null;
 
+  return <fieldset className="min-w-0 rounded-xl border border-slate-200 p-3 sm:p-4">
+    <legend className="px-1 font-semibold text-slate-900">Giocatore {number}</legend>
+    <div className={styles.playerGrid}>
+      <div className="relative min-w-0 space-y-1">
+        <Label htmlFor={`${listId}-name`}>Nome giocatore {number}</Label>
+        <Input id={`${listId}-name`} className={inputClass} value={value.name} onChange={(event) => edit("name", event.target.value)}
+          onKeyDown={handleKeys} role="combobox" aria-autocomplete="list" aria-expanded={open && candidates.length > 0}
+          aria-controls={`${listId}-results`} aria-activedescendant={highlight >= 0 ? `${listId}-option-${highlight}` : undefined} required />
+        {open && query.trim().length >= 3 && <div id={`${listId}-results`} role="listbox" aria-label={`Suggerimenti giocatore ${number}`}
+          className="absolute left-0 top-full z-30 mt-1 max-h-64 w-full min-w-0 max-w-full overflow-x-hidden overflow-y-auto rounded-xl border border-slate-300 bg-white p-1 shadow-lg">
+          {loading && <p className="p-2 text-sm text-slate-600">Ricerca…</p>}
+          {!loading && candidates.length === 0 && <p className="p-2 text-sm text-slate-600">Nessun profilo trovato</p>}
+          {candidates.map((candidate, index) => <div id={`${listId}-option-${index}`} role="option" aria-selected={highlight === index}
+            key={candidate.player_identity_id ?? candidate.account_user_id} className={highlight === index ? "rounded-lg bg-indigo-50" : "rounded-lg"}>
+            <button type="button" className="min-h-11 w-full min-w-0 max-w-full overflow-hidden rounded-lg p-2 text-left hover:bg-indigo-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
+              onMouseDown={(event) => event.preventDefault()} onClick={() => select(candidate)}>
+              <span className="block truncate font-medium text-slate-900">{candidate.display_name}</span>
+              <span className="block truncate text-xs text-slate-600">{candidate.phone}{candidate.email ? ` · ${candidate.email}` : ""}</span>
+              <span className="block text-xs text-indigo-700">{candidate.source}{candidate.alias_match ? " · Alias storico" : ""}</span>
+            </button>
+          </div>)}
+        </div>}
+      </div>
+      <div className="min-w-0 space-y-1">
+        <Label htmlFor={`${listId}-phone`}>Telefono giocatore {number}</Label>
+        <Input id={`${listId}-phone`} className={inputClass} type="tel" value={value.phone} onChange={(event) => edit("phone", event.target.value)} onKeyDown={handleKeys} required />
+      </div>
+      <div className="min-w-0 space-y-1">
+        <Label htmlFor={`${listId}-gender`}>Sesso (se noto)</Label>
+        <select id={`${listId}-gender`} className={inputClass} value={value.gender}
+          onChange={(event) => onChange({ ...value, gender: event.target.value as Player["gender"], selection: value.selection?.kind === "new" ? null : value.selection })}>
+          <option value="">Seleziona</option><option value="M">M</option><option value="F">F</option>
+        </select>
+      </div>
+    </div>
+    {selectedLabel && <p className="mt-2 text-sm font-medium text-indigo-700" role="status">{selectedLabel}</p>}
+    {value.selection?.kind === "account" && !value.selection.confirmed && <div className="mt-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
+      <p>L’identità sportiva di questo account sarà risolta durante l’iscrizione. Eventuali conflitti bloccheranno l’operazione.</p>
+      <Button type="button" variant="outline" className="mt-2 min-h-11" onClick={() => onChange({ ...value, selection: { ...value.selection!, confirmed: true } as Selection })}>Conferma collegamento account</Button>
+    </div>}
+    {!value.selection && <div className="mt-3"><Button type="button" variant="outline" className="min-h-11" onClick={() => { setCreateOpen(true); setOpen(false); }}>Crea nuovo giocatore</Button></div>}
+    {createOpen && !value.selection && <div className="mt-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-slate-900">
+      <p>Non è stato trovato un profilo MOVI compatibile. Verrà creata una nuova identità giocatore, senza account di accesso.</p>
+      <p className="mt-1 break-words font-medium">{value.name || "Nome mancante"} · {value.phone || "Telefono mancante"}</p>
+      <label className="mt-2 flex items-start gap-2"><input type="checkbox" className="mt-1" checked={conflictChecked} onChange={(event) => setConflictChecked(event.target.checked)} />Ho verificato eventuali omonimi o alias storici.</label>
+      <Button type="button" className="mt-2 min-h-11" disabled={!value.name.trim() || !value.phone.trim()}
+        onClick={() => { onChange({ ...value, selection: { kind: "new", confirmed: true, confirmed_conflict: conflictChecked, full_name: value.name.trim(), phone: value.phone.trim(), gender: value.gender || null } }); setCreateOpen(false); }}>
+        Conferma nuova identità</Button>
+    </div>}
+  </fieldset>;
+}
+
+export default function RegistrationForm({ tournamentId, tournamentType, onCreated }: { tournamentId: string; tournamentType?: string; onCreated?: () => void | Promise<void> }) {
+  const showP2 = tournamentType === "Coppie fisse";
   const [saving, setSaving] = useState(false);
-
-  const [p1_name, setP1Name] = useState("");
-  const [p1_phone, setP1Phone] = useState("");
-  const [p1_gender, setP1Gender] = useState<"" | "M" | "F">("");
-
-  const [p2_name, setP2Name] = useState("");
-  const [p2_phone, setP2Phone] = useState("");
-  const [p2_gender, setP2Gender] = useState<"" | "M" | "F">("");
-
+  const [p1, setP1] = useState<Player>(blankPlayer);
+  const [p2, setP2] = useState<Player>(blankPlayer);
   const [notes, setNotes] = useState("");
-
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
+  async function submit(event: React.FormEvent) {
+    event.preventDefault();
     if (saving) return;
-
+    if (!p1.selection || (showP2 && !p2.selection)) { toast.error("Seleziona o crea ogni giocatore prima di iscriverlo"); return; }
+    if (p1.selection.kind === "account" && !p1.selection.confirmed || showP2 && p2.selection?.kind === "account" && !p2.selection.confirmed) { toast.error("Conferma il collegamento dell’account"); return; }
+    if (showP2 && p1.selection.kind === "identity" && p2.selection?.kind === "identity" && p1.selection.player_identity_id === p2.selection.player_identity_id) { toast.error("I due giocatori devono essere diversi"); return; }
     setSaving(true);
     try {
-      const payload: any = {
-        p1_name: p1_name.trim(),
-        p1_phone: normalizePhone(p1_phone),
-        p1_gender: p1_gender || null,
-        notes: notes.trim() || null,
-      };
-
-      if (!payload.p1_name) throw new Error("Nome giocatore 1 obbligatorio");
-      if (!payload.p1_phone) throw new Error("Telefono giocatore 1 obbligatorio");
-
-      if (showP2) {
-        payload.p2_name = p2_name.trim() || null;
-        payload.p2_phone = p2_phone ? normalizePhone(p2_phone) : null;
-        payload.p2_gender = p2_gender || null;
-
-        if (!payload.p2_name) throw new Error("Nome giocatore 2 obbligatorio");
-        if (!payload.p2_phone) throw new Error("Telefono giocatore 2 obbligatorio");
-      }
-
-      const res = await fetch(`/api/tournaments/${tournamentId}/registrations`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json.error || "Errore");
-
-      toast.success("Iscrizione aggiunta");
-
-      // reset
-      setP1Name("");
-      setP1Phone("");
-      setP1Gender("");
-      setP2Name("");
-      setP2Phone("");
-      setP2Gender("");
-      setNotes("");
-
+      const response = await fetch(`/api/admin/tournaments/${tournamentId}/registrations`, { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ p1: { ...p1.selection, gender: p1.gender || null }, p2: showP2 ? { ...p2.selection, gender: p2.gender || null } : null, notes: notes.trim() || null }) });
+      const json = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(json.error || "Iscrizione non riuscita");
+      toast.success("Iscrizione aggiunta"); setP1(blankPlayer()); setP2(blankPlayer()); setNotes("");
       await onCreated?.();
-    } catch (err: any) {
-      toast.error(err?.message ?? "Errore");
-    } finally {
-      setSaving(false);
-    }
+    } catch (error) { toast.error(error instanceof Error ? error.message : "Errore"); }
+    finally { setSaving(false); }
   }
-
-  return (
-    <form onSubmit={submit} className="space-y-4">
-      <div className="flex items-baseline justify-between gap-3">
-        <div style={{ fontWeight: 800, fontSize: 18, color: "#0f172a" }}>Aggiungi iscrizione</div>
-        <div className="text-xs text-slate-500">Tipo: {tournamentType ?? "—"}</div>
-      </div>
-
-      {/* PLAYER 1 */}
-      <div className="grid gap-3 md:grid-cols-3">
-        <div className="space-y-1">
-          <Label>Nome giocatore 1</Label>
-          <Input style={baseInputStyle} value={p1_name} onChange={(e) => setP1Name(e.target.value)} required />
-        </div>
-
-        <div className="space-y-1">
-          <Label>Telefono giocatore 1</Label>
-          <Input style={baseInputStyle} value={p1_phone} onChange={(e) => setP1Phone(e.target.value)} required />
-        </div>
-
-        <div className="space-y-1">
-          <Label>Sesso (opz.)</Label>
-          {/* ✅ SELECT NATIVO: niente overlay, niente trasparenze */}
-          <select
-            value={p1_gender}
-            onChange={(e) => setP1Gender(e.target.value as any)}
-            style={baseInputStyle}
-          >
-            <option value="">Seleziona</option>
-            <option value="M">M</option>
-            <option value="F">F</option>
-          </select>
-        </div>
-      </div>
-
-      {/* PLAYER 2 */}
-      {showP2 && (
-        <div className="grid gap-3 md:grid-cols-3">
-          <div className="space-y-1">
-            <Label>Nome giocatore 2</Label>
-            <Input style={baseInputStyle} value={p2_name} onChange={(e) => setP2Name(e.target.value)} required />
-          </div>
-
-          <div className="space-y-1">
-            <Label>Telefono giocatore 2</Label>
-            <Input style={baseInputStyle} value={p2_phone} onChange={(e) => setP2Phone(e.target.value)} required />
-          </div>
-
-          <div className="space-y-1">
-            <Label>Sesso (opz.)</Label>
-            <select
-              value={p2_gender}
-              onChange={(e) => setP2Gender(e.target.value as any)}
-              style={baseInputStyle}
-            >
-              <option value="">Seleziona</option>
-              <option value="M">M</option>
-              <option value="F">F</option>
-            </select>
-          </div>
-        </div>
-      )}
-
-      <div className="space-y-1">
-        <Label>Note (opz.)</Label>
-        <Textarea style={baseInputStyle} value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />
-      </div>
-
-      <Button type="submit" disabled={saving} className="bg-indigo-600 hover:bg-indigo-700">
-        {saving ? (
-          <>
-            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            Salvataggio...
-          </>
-        ) : (
-          "Aggiungi"
-        )}
-      </Button>
-    </form>
-  );
+  return <form onSubmit={submit} className="min-w-0 space-y-4">
+    <div className="flex flex-wrap items-baseline justify-between gap-3"><h2 className="text-lg font-extrabold text-slate-900">Aggiungi iscrizione</h2><span className="text-xs text-slate-500">Tipo: {tournamentType ?? "—"}</span></div>
+    <PlayerSlot number={1} value={p1} onChange={setP1} />
+    {showP2 && <PlayerSlot number={2} value={p2} onChange={setP2} />}
+    <div className="min-w-0 space-y-1"><Label htmlFor="registration-notes">Note (opz.)</Label><Textarea id="registration-notes" className={inputClass} value={notes} onChange={(event) => setNotes(event.target.value)} rows={2} /></div>
+    <Button type="submit" disabled={saving} className="min-h-11 bg-indigo-600 hover:bg-indigo-700">{saving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Salvataggio…</> : "Aggiungi"}</Button>
+  </form>;
 }

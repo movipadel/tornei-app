@@ -21,6 +21,8 @@ const buildPlayerKey = (phone: string) =>
     .replace(/^(\+39|0039)/, "")
     .replace(/[^\d]/g, "");
 
+const normalizePlayerName = (name: string) => name.trim().replace(/\s+/g, " ").toLocaleLowerCase("it");
+
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
   return measureNotificationRequest("/api/tournaments/[id]/registrations", () =>
     handlePost(req, ctx)
@@ -43,17 +45,15 @@ async function handlePost(req: Request, ctx: { params: Promise<{ id: string }> }
     return NextResponse.json({ error: terr?.message ?? "Torneo non trovato" }, { status: 404 });
   }
 
-  if ((t as any).registrations_open === false) {
+  if (t.registrations_open === false) {
     return NextResponse.json({ error: "Iscrizioni chiuse" }, { status: 403 });
   }
 
-  const tournamentType = String((t as any).type);
-  const tournamentCategory = String((t as any).category);
-  const tournamentLevel = String((t as any).level ?? "").toLowerCase();
-  const circuitId = (t as any).circuit_id ?? null;
-  const max = Number((t as any).max_participants);
-
-  let circuitRankingGroupId: string | null = null;
+  const tournamentType = String(t.type);
+  const tournamentCategory = String(t.category);
+  const tournamentLevel = String(t.level ?? "").toLowerCase();
+  const circuitId = t.circuit_id ?? null;
+  const max = Number(t.max_participants);
 
   if (circuitId) {
     const { data: group, error: gerr } = await sb
@@ -75,12 +75,11 @@ async function handlePost(req: Request, ctx: { params: Promise<{ id: string }> }
       );
     }
 
-    circuitRankingGroupId = group.id;
   }
 
   // utente
   const uid = await getUserIdFromCookie();
-  let user: any = null;
+  let user: { id: string; full_name: string; phone: string; email: string | null; gender: string | null } | null = null;
 
   if (uid) {
     const { data: u } = await sb
@@ -92,7 +91,12 @@ async function handlePost(req: Request, ctx: { params: Promise<{ id: string }> }
     user = u ?? null;
   }
 
-  if (user?.gender) {
+  const p1_name = String(body.p1_name ?? "").trim();
+  const p1_phone = normalizePhone(body.p1_phone ?? "");
+  const publicUserIsPlayer1 = Boolean(user?.id && normalizePlayerName(String(user.full_name ?? "")) === normalizePlayerName(p1_name)
+    && buildPlayerKey(String(user.phone ?? "")) && buildPlayerKey(String(user.phone ?? "")) === buildPlayerKey(p1_phone));
+
+  if (publicUserIsPlayer1 && user?.gender) {
     if (tournamentCategory === "Femminile" && user.gender === "M") {
       return NextResponse.json({ error: "Torneo femminile: accesso non consentito" }, { status: 403 });
     }
@@ -102,8 +106,6 @@ async function handlePost(req: Request, ctx: { params: Promise<{ id: string }> }
   }
 
   // payload
-  const p1_name = String(body.p1_name ?? "").trim();
-  const p1_phone = normalizePhone(body.p1_phone ?? "");
   const p1_gender = body.p1_gender ?? null;
 
   const p2_name_raw = String(body.p2_name ?? "").trim();
@@ -183,11 +185,11 @@ if (circuitId) {
   const usedPhones = new Map<string, string>();
 
   for (const r of existingRegs ?? []) {
-    const r1Key = buildPlayerKey(String((r as any).p1_phone ?? ""));
-    const r2Key = buildPlayerKey(String((r as any).p2_phone ?? ""));
+    const r1Key = buildPlayerKey(String(r.p1_phone ?? ""));
+    const r2Key = buildPlayerKey(String(r.p2_phone ?? ""));
 
-    if (r1Key) usedPhones.set(r1Key, String((r as any).p1_name ?? "Giocatore"));
-    if (r2Key) usedPhones.set(r2Key, String((r as any).p2_name ?? "Giocatore"));
+    if (r1Key) usedPhones.set(r1Key, String(r.p1_name ?? "Giocatore"));
+    if (r2Key) usedPhones.set(r2Key, String(r.p2_name ?? "Giocatore"));
   }
 
   const duplicateP1 = usedPhones.get(p1PlayerKey);
@@ -229,7 +231,7 @@ if (circuitId) {
       .eq("is_reserve", false);
 
     const mainGenderCount = (mainRegs ?? []).filter(
-      (r: any) => String(r.p1_gender ?? "") === targetGender
+      (r) => String(r.p1_gender ?? "") === targetGender
     ).length;
 
     is_reserve = mainGenderCount >= maxPerSex;
@@ -254,7 +256,7 @@ if (circuitId) {
 
   const position = (lastPos?.position ?? 0) + 1;
 
-  const payload: any = {
+  const payload = {
     tournament_id: id,
     is_reserve,
     position,
@@ -264,9 +266,8 @@ if (circuitId) {
     p2_name: tournamentType === "Coppie fisse" ? p2_name_raw : null,
     p2_phone: tournamentType === "Coppie fisse" ? (p2_phone_raw || null) : null,
     p2_gender: tournamentType === "Coppie fisse" && p2_gender ? String(p2_gender) : null,
+    ...(publicUserIsPlayer1 && user ? { user_id: user.id } : {}),
   };
-
-  if (user?.id) payload.user_id = user.id;
 
     const { data, error } = await sb
     .from("tournament_registrations")
