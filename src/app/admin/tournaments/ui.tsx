@@ -36,10 +36,11 @@ import {
 
 import TournamentDialogForm, { TournamentDTO } from "./_components/TournamentDialogForm";
 import RegistrationForm from "./[id]/registrations/RegistrationForm";
-import { AccountStatusBadge } from "./[id]/registrations/_components/RegistrationsTable";
+import { AccountStatusBadge, RegistrationGenderActions } from "./[id]/registrations/_components/RegistrationsTable";
 import HistoricalIdentityDialog, { registrationIdentityTarget, type RegistrationIdentityTarget } from "./[id]/registrations/_components/HistoricalIdentityDialog";
 import FixedPairsGenerateWizard, { FixedPairsPair } from "./FixedPairsGenerateWizard";
 import type { RegistrationAccountStatus } from "@/lib/tournamentRegistrationAccountStatus";
+import { tournamentMixedPreparationView } from "@/lib/tournamentMixedPreparationView";
 import {
   getBaraondaFormulaOptionsV2,
   getDefaultBaraondaFormulaV2,
@@ -56,14 +57,29 @@ type RegRow = {
   p1_name: string;
   p1_phone: string;
   p1_gender: "M" | "F" | null;
+  p1_gender_suggestion?: "M" | "F" | null;
+  p1_gender_conflict?: boolean;
   p2_name: string | null;
   p2_phone: string | null;
   p2_gender: "M" | "F" | null;
+  p2_gender_suggestion?: "M" | "F" | null;
+  p2_gender_conflict?: boolean;
   p1_account_status: RegistrationAccountStatus;
   p2_account_status: RegistrationAccountStatus | null;
   p1_player_identity_id: string | null;
   p2_player_identity_id: string | null;
   created_at?: string | null;
+};
+
+type MixedPreparation = {
+  eligible: boolean;
+  reason: string | null;
+  male_count: number;
+  female_count: number;
+  unknown_count: number;
+  player_count: number;
+  ranking_category: string | null;
+  ranking_level: string | null;
 };
 
 function typeLabel(type?: string | null) {
@@ -100,6 +116,21 @@ function capitalize(value?: string | null) {
   if (!value) return "-";
   const v = String(value).toLowerCase();
   return v.charAt(0).toUpperCase() + v.slice(1);
+}
+
+function mixedPreparationReason(reason: string | null) {
+  const messages: Record<string, string> = {
+    RUN_GIA_CREATA: "La run è già stata creata.",
+    TAPPA_GIA_CONCLUSA: "La tappa ha già risultati o è chiusa.",
+    CIRCUITO_RICHIESTO: "Associa prima la tappa a un circuito.",
+    CLASSIFICA_ESPPLICITA_RICHIESTA: "Seleziona la classifica di destinazione nel torneo.",
+    CLASSIFICA_NON_VALIDA: "La classifica selezionata non è valida per il circuito e livello.",
+    CHIUDI_ISCRIZIONI: "Chiudi le iscrizioni prima di impostare la tappa come Misto.",
+    NUMERO_GIOCATORI_NON_PARi: "Servono almeno quattro giocatori e un numero pari di iscritti.",
+    GENERE_NON_INDICATO: "Completa il genere di tutti i giocatori per verificare la tappa Misto.",
+    GENERI_NON_BILANCIATI: "Per impostare la tappa come Misto servono lo stesso numero di uomini e donne.",
+  };
+  return reason ? messages[reason] ?? "Conversione Misto non disponibile." : null;
 }
 
 function todayISODate() {
@@ -150,6 +181,9 @@ export default function AdminTournamentsUI() {
 
   const [regsByTournament, setRegsByTournament] = useState<
     Record<string, { loading: boolean; main: RegRow[]; reserve: RegRow[] }>
+  >({});
+  const [mixedByTournament, setMixedByTournament] = useState<
+    Record<string, { loading: boolean; data: MixedPreparation | null; error: string | null }>
   >({});
 
   const [startingById, setStartingById] = useState<Record<string, boolean>>({});
@@ -214,6 +248,50 @@ const [baraondaFormulaById, setBaraondaFormulaById] = useState<
     }
   }
 
+  async function loadMixedPreparation(tournamentId: string) {
+    setMixedByTournament((previous) => ({ ...previous, [tournamentId]: { loading: true, data: previous[tournamentId]?.data ?? null, error: null } }));
+    try {
+      const response = await fetch(`/api/admin/tournaments/${tournamentId}/mixed-preparation`, { cache: "no-store" });
+      const json = await response.json().catch(() => ({}));
+      if (!response.ok || !json.data) throw new Error(json.error ?? "Preparazione Misto non disponibile");
+      setMixedByTournament((previous) => ({ ...previous, [tournamentId]: { loading: false, data: json.data as MixedPreparation, error: null } }));
+    } catch (error: unknown) {
+      setMixedByTournament((previous) => ({ ...previous, [tournamentId]: { loading: false, data: null, error: error instanceof Error ? error.message : "Preparazione Misto non disponibile" } }));
+    }
+  }
+
+  async function loadTournamentDetails(tournamentId: string) {
+    const tournament = items.find((item) => String(item.id) === tournamentId);
+    if (tournament?.type === "Baraonda" && ["Libero", "Misto"].includes(String(tournament.category))) {
+      await Promise.all([loadRegistrations(tournamentId), loadMixedPreparation(tournamentId)]);
+    } else {
+      await loadRegistrations(tournamentId);
+    }
+  }
+
+  async function prepareMixed(tournamentId: string, action: "set_gender" | "convert_misto" | "convert_libero", registrationId?: string, slot?: "p1" | "p2", gender?: "M" | "F") {
+    const mixed = mixedByTournament[tournamentId]?.data;
+    if (action === "convert_misto" && !mixed?.eligible) return;
+    const message = action === "set_gender"
+      ? `Confermi ${gender} come genere per questa iscrizione? Il profilo MOVI non sarà modificato.`
+      : action === "convert_misto"
+        ? `Impostare la tappa come Misto? La classifica resta ${mixed?.ranking_category ?? "Libero"} · ${capitalize(mixed?.ranking_level)} e i punti continueranno nella stessa classifica del circuito.`
+        : "Reimpostare la tappa come Libero prima della run? La classifica di destinazione resterà invariata.";
+    if (!window.confirm(message)) return;
+    try {
+      const response = await fetch(`/api/admin/tournaments/${tournamentId}/mixed-preparation`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, registration_id: registrationId, slot, gender, confirm: true }),
+      });
+      const json = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(json.error ?? "Preparazione Misto non riuscita");
+      await Promise.all([loadList(), loadTournamentDetails(tournamentId)]);
+      toast.success(action === "set_gender" ? "Genere iscrizione aggiornato" : "Categoria tappa aggiornata");
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Preparazione Misto non riuscita");
+    }
+  }
+
   async function deleteTournament(id: string, name: string) {
     try {
       const res = await fetch(`/api/admin/tournaments/${id}`, { method: "DELETE" });
@@ -233,7 +311,7 @@ const [baraondaFormulaById, setBaraondaFormulaById] = useState<
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json.error || "Errore eliminazione");
       toast.success("Iscrizione eliminata");
-      await loadRegistrations(tournamentId);
+      await loadTournamentDetails(tournamentId);
       await loadList();
     } catch (e: any) {
       toast.error(e?.message ?? "Errore");
@@ -250,7 +328,7 @@ const [baraondaFormulaById, setBaraondaFormulaById] = useState<
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json.error || "Errore");
       toast.success(is_reserve ? "Spostato in riserva" : "Promosso in principale");
-      await loadRegistrations(tournamentId);
+      await loadTournamentDetails(tournamentId);
       await loadList();
     } catch (e: any) {
       toast.error(e?.message ?? "Errore");
@@ -263,7 +341,7 @@ const [baraondaFormulaById, setBaraondaFormulaById] = useState<
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json.error || "Errore eliminazione");
       toast.success("Tutte le iscrizioni eliminate");
-      await loadRegistrations(tournamentId);
+      await loadTournamentDetails(tournamentId);
       await loadList();
     } catch (e: any) {
       toast.error(e?.message ?? "Errore");
@@ -630,6 +708,9 @@ const pastHiddenCount = useMemo(() => {
             const hasRun = Boolean((t as any).has_run);
             const isCircuit = Boolean((t as any).circuit_id);
             const isClosed = (t as any).run_status === "completed"; // temporaneo
+            const mixedState = mixedByTournament[tid];
+            const mixed = mixedState?.data ?? null;
+            const mixedView = tournamentMixedPreparationView(String(t.type), categoryLower, hasRun, mixed, Boolean(mixedState?.loading));
 
             return (
               <div key={tid} className="base44-card">
@@ -638,7 +719,7 @@ const pastHiddenCount = useMemo(() => {
                   onOpenChange={(open) => {
                     const next = open ? tid : null;
                     setExpandedId(next);
-                    if (open) loadRegistrations(tid);
+                    if (open) void loadTournamentDetails(tid);
                   }}
                 >
                   <div className="base44-card-inner">
@@ -1461,6 +1542,38 @@ const selectedFormula = formulaOptions.some((o) => o.value === rawSelectedFormul
                   {/* ✅ QUI è dove deve stare tutta la gestione iscrizioni */}
                   <CollapsibleContent>
                     <div className="base44-collapsible">
+                      {mixedView.showBlock && (
+                        <section aria-label="Preparazione Misto" style={{ border: "1px solid #c7d2fe", borderRadius: 14, background: "#eef2ff", padding: 14, marginBottom: 16, minWidth: 0 }}>
+                          <div style={{ fontWeight: 800, color: "#312e81", marginBottom: 8 }}>
+                            {categoryLower === "misto" ? "Tappa Misto" : "Preparazione Misto"}
+                          </div>
+                          {mixedState?.loading || !mixed ? (
+                            <p role="status" style={{ color: "#475569", margin: 0 }}>
+                              {mixedState?.error ?? "Caricamento preparazione..."}
+                            </p>
+                          ) : (
+                            <>
+                              <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 16px", color: "#0f172a" }}>
+                                <span>Uomini: <b>{mixed.male_count}</b></span>
+                                <span>Donne: <b>{mixed.female_count}</b></span>
+                                <span>Non indicato: <b>{mixed.unknown_count}</b></span>
+                              </div>
+                              <p style={{ margin: "8px 0", color: "#334155", overflowWrap: "anywhere" }}>
+                                Classifica: {mixed.ranking_category ?? "da selezionare"}{mixed.ranking_level ? ` · ${capitalize(mixed.ranking_level)}` : ""}
+                              </p>
+                              {mixedView.showUnknownHint && <p role="status" style={{ margin: "6px 0" }}>Completa il genere di tutti i giocatori per verificare se la tappa può essere impostata come Misto.</p>}
+                              {mixedView.showBalanceHint && <p role="status" style={{ margin: "6px 0" }}>Per impostare la tappa come Misto servono lo stesso numero di uomini e donne.</p>}
+                              {mixed.reason && !["GENERE_NON_INDICATO", "GENERI_NON_BILANCIATI"].includes(mixed.reason) && <p role="status" style={{ margin: "6px 0" }}>{mixedPreparationReason(mixed.reason)}</p>}
+                              {mixedView.canConvertMisto && (
+                                <button type="button" className="base44-primary-btn" style={{ minHeight: 44, marginTop: 8, maxWidth: "100%", whiteSpace: "normal" }} onClick={() => void prepareMixed(tid, "convert_misto")}>Imposta tappa come Misto</button>
+                              )}
+                              {mixedView.canConvertLibero && (
+                                <button type="button" className="base44-csv-btn" style={{ minHeight: 44, marginTop: 8, maxWidth: "100%", whiteSpace: "normal" }} onClick={() => void prepareMixed(tid, "convert_libero")}>Reimposta come Libero</button>
+                              )}
+                            </>
+                          )}
+                        </section>
+                      )}
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
                         <div style={{ fontWeight: 700, color: "#334155" }}>Iscrizioni ({mainRegs.length})</div>
 
@@ -1494,7 +1607,7 @@ const selectedFormula = formulaOptions.some((o) => o.value === rawSelectedFormul
                           tournamentId={tid}
                           tournamentType={t.type}
                           onCreated={async () => {
-                            await loadRegistrations(tid);
+                            await loadTournamentDetails(tid);
                             await loadList();
                           }}
                         />
@@ -1510,7 +1623,7 @@ const selectedFormula = formulaOptions.some((o) => o.value === rawSelectedFormul
                           {mainRegs.length === 0 ? (
                             <div style={{ color: "#64748b" }}>Nessuna iscrizione per questo torneo</div>
                           ) : (
-                            <div style={{ border: "1px solid #e2e8f0", borderRadius: 14, overflow: "hidden", background: "white" }}>
+                            <div style={{ border: "1px solid #e2e8f0", borderRadius: 14, maxWidth: "100%", overflowX: "auto", background: "white" }}>
                               <Table>
                                 <TableHeader>
                                   <TableRow className="bg-slate-50">
@@ -1529,10 +1642,11 @@ const selectedFormula = formulaOptions.some((o) => o.value === rawSelectedFormul
                                       <TableCell>{idx + 1}</TableCell>
                                       <TableCell>
                                         <div className="min-w-0 space-y-1">
-                                          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                                          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
                                             <span className="base44-player-name">{r.p1_name}</span>
                                             <GenderMark gender={r.p1_gender} />
                                           </div>
+                                          <RegistrationGenderActions playerName={r.p1_name} gender={r.p1_gender} suggestion={r.p1_gender_suggestion} conflict={r.p1_gender_conflict} onGender={mixedView.canEditGender ? (value) => void prepareMixed(tid, "set_gender", r.id, "p1", value) : undefined} />
                                           <AccountStatusBadge status={r.p1_account_status ?? "NEEDS_REVIEW"} onVerify={() => setVerifyTarget(registrationIdentityTarget(tid, r, "p1"))} />
                                         </div>
                                       </TableCell>
@@ -1540,10 +1654,11 @@ const selectedFormula = formulaOptions.some((o) => o.value === rawSelectedFormul
                                       <TableCell>
                                         {r.p2_name ? (
                                           <div className="min-w-0 space-y-1">
-                                            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                                            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
                                               <span className="base44-player-name">{r.p2_name}</span>
                                               <GenderMark gender={r.p2_gender} />
                                             </div>
+                                            <RegistrationGenderActions playerName={r.p2_name} gender={r.p2_gender} suggestion={r.p2_gender_suggestion} conflict={r.p2_gender_conflict} onGender={mixedView.canEditGender ? (value) => void prepareMixed(tid, "set_gender", r.id, "p2", value) : undefined} />
                                             <AccountStatusBadge status={r.p2_account_status ?? "NEEDS_REVIEW"} onVerify={() => setVerifyTarget(registrationIdentityTarget(tid, r, "p2"))} />
                                           </div>
                                         ) : (
@@ -1596,7 +1711,7 @@ const selectedFormula = formulaOptions.some((o) => o.value === rawSelectedFormul
                                 Le riserve subentrano automaticamente in ordine di iscrizione quando qualcuno si cancella.
                               </div>
 
-                              <div style={{ border: "1px solid #fde68a", borderRadius: 14, overflow: "hidden", background: "white" }}>
+                              <div style={{ border: "1px solid #fde68a", borderRadius: 14, maxWidth: "100%", overflowX: "auto", background: "white" }}>
                                 <Table>
                                   <TableHeader>
                                     <TableRow className="bg-amber-50">
@@ -1615,10 +1730,11 @@ const selectedFormula = formulaOptions.some((o) => o.value === rawSelectedFormul
                                         <TableCell>{idx + 1}</TableCell>
                                         <TableCell>
                                           <div className="min-w-0 space-y-1">
-                                            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                                            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
                                               <span className="base44-player-name">{r.p1_name}</span>
                                               <GenderMark gender={r.p1_gender} />
                                             </div>
+                                            <RegistrationGenderActions playerName={r.p1_name} gender={r.p1_gender} suggestion={r.p1_gender_suggestion} conflict={r.p1_gender_conflict} onGender={mixedView.canEditGender ? (value) => void prepareMixed(tid, "set_gender", r.id, "p1", value) : undefined} />
                                             <AccountStatusBadge status={r.p1_account_status ?? "NEEDS_REVIEW"} onVerify={() => setVerifyTarget(registrationIdentityTarget(tid, r, "p1"))} />
                                           </div>
                                         </TableCell>
@@ -1626,10 +1742,11 @@ const selectedFormula = formulaOptions.some((o) => o.value === rawSelectedFormul
                                         <TableCell>
                                           {r.p2_name ? (
                                             <div className="min-w-0 space-y-1">
-                                              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                                              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
                                                 <span className="base44-player-name">{r.p2_name}</span>
                                                 <GenderMark gender={r.p2_gender} />
                                               </div>
+                                              <RegistrationGenderActions playerName={r.p2_name} gender={r.p2_gender} suggestion={r.p2_gender_suggestion} conflict={r.p2_gender_conflict} onGender={mixedView.canEditGender ? (value) => void prepareMixed(tid, "set_gender", r.id, "p2", value) : undefined} />
                                               <AccountStatusBadge status={r.p2_account_status ?? "NEEDS_REVIEW"} onVerify={() => setVerifyTarget(registrationIdentityTarget(tid, r, "p2"))} />
                                             </div>
                                           ) : (
@@ -1702,7 +1819,7 @@ const selectedFormula = formulaOptions.some((o) => o.value === rawSelectedFormul
 
       {verifyTarget && <HistoricalIdentityDialog key={`${verifyTarget.registrationId}:${verifyTarget.slot}`}
         target={verifyTarget} onClose={() => setVerifyTarget(null)}
-        onLinked={() => loadRegistrations(verifyTarget.tournamentId)} />}
+        onLinked={() => loadTournamentDetails(verifyTarget.tournamentId)} />}
 
     </>
   );

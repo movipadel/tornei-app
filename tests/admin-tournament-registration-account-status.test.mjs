@@ -58,7 +58,7 @@ test("actual Admin tournament accordion renders each player status in main and r
   const ui = readFileSync("src/app/admin/tournaments/ui.tsx", "utf8");
   const table = readFileSync("src/app/admin/tournaments/[id]/registrations/_components/RegistrationsTable.tsx", "utf8");
   assert.match(page, /import ClientTournaments from "\.\/ui"/);
-  assert.match(ui, /import \{ AccountStatusBadge \} from "\.\/\[id\]\/registrations\/_components\/RegistrationsTable"/);
+  assert.match(ui, /import \{ AccountStatusBadge, RegistrationGenderActions \} from "\.\/\[id\]\/registrations\/_components\/RegistrationsTable"/);
   assert.match(table, /export function AccountStatusBadge/);
   assert.match(ui, /fetch\(`\/api\/admin\/tournaments\/\$\{tournamentId\}\/registrations`, \{ cache: "no-store" \}\)/);
   assert.match(ui, /p1_account_status: RegistrationAccountStatus/);

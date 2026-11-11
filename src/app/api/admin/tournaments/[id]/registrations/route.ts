@@ -5,6 +5,7 @@ import { sendTelegramMessage } from "@/lib/telegram";
 import { enqueueStaffPushEvent } from "@/lib/staffPush";
 import { schedulePostCommitNotifications } from "@/lib/postCommitNotifications";
 import { registrationAccountStatus } from "@/lib/tournamentRegistrationAccountStatus";
+import { registrationGenderSuggestion } from "@/lib/tournamentRegistrationGenderSuggestion";
 
 export const runtime = "nodejs";
 
@@ -25,9 +26,6 @@ const errorMessages: Record<string, string> = {
   SAME_PLAYER_TWICE: "Seleziona due identità giocatore diverse.",
   GENDER_CONFLICT: "Il sesso selezionato non coincide con l’identità sportiva.",
 };
-
-const knownGender = (value: string | null | undefined): "M" | "F" | null =>
-  value === "M" || value === "F" ? value : null;
 
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const denied = await guardOperatorPermission("tournaments.manage");
@@ -108,10 +106,23 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
     const p1AccountId = p1Canonical?.account_user_id ?? row.user_id;
     const p1Account = p1AccountId ? accounts.get(p1AccountId) : null;
     const p2Account = p2Canonical?.account_user_id ? accounts.get(p2Canonical.account_user_id) : null;
+    const p1Gender = registrationGenderSuggestion(
+      row.p1_gender,
+      p1Canonical?.gender,
+      p1Account?.identity_status === "active" && !p1Account.merged_into_user_id ? p1Account.gender : null,
+      Boolean(p1Canonical?.account_user_id && row.user_id && p1Canonical.account_user_id !== row.user_id),
+    );
+    const p2Gender = registrationGenderSuggestion(
+      row.p2_gender,
+      p2Canonical?.gender,
+      p2Account?.identity_status === "active" && !p2Account.merged_into_user_id ? p2Account.gender : null,
+    );
     return {
       ...row,
-      p1_gender_suggestion: row.p1_gender ? null : knownGender(p1Canonical?.gender) ?? (p1Account?.identity_status === "active" && !p1Account.merged_into_user_id ? knownGender(p1Account.gender) : null),
-      p2_gender_suggestion: row.p2_gender ? null : knownGender(p2Canonical?.gender) ?? (p2Account?.identity_status === "active" && !p2Account.merged_into_user_id ? knownGender(p2Account.gender) : null),
+      p1_gender_suggestion: p1Gender.suggestion,
+      p1_gender_conflict: p1Gender.conflict,
+      p2_gender_suggestion: p2Gender.suggestion,
+      p2_gender_conflict: p2Gender.conflict,
       p1_account_status: registrationAccountStatus(row.p1_player_identity_id, p1Identity, p1Identity?.account_user_id ? accounts.get(p1Identity.account_user_id) : undefined),
       p2_account_status: row.p2_name
         ? registrationAccountStatus(row.p2_player_identity_id, p2Identity, p2Identity?.account_user_id ? accounts.get(p2Identity.account_user_id) : undefined)

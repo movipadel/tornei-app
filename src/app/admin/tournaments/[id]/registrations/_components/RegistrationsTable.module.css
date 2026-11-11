@@ -7,6 +7,16 @@
   overflow-wrap: anywhere;
 }
 
+.genderActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
 .verifyButton {
   display: inline-flex;
   align-items: center;
