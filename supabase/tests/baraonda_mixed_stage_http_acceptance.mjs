@@ -39,13 +39,30 @@ try {
     insert into public.circuit_ranking_groups(id,circuit_id,category,level)
       values('${group}','${circuit}','Libero','principiante');
     insert into public.tournaments(id,name,type,category,level,date,time,location,max_participants,registrations_open,circuit_id,circuit_ranking_group_id)
-      values('${tournament}','Mixed HTTP Tournament','Baraonda','Libero','principiante',current_date,'20:00','Local',8,false,'${circuit}','${group}');
+      values('${tournament}','Mixed HTTP Tournament','Baraonda','Libero','principiante',current_date,'20:00','Local',8,false,'${circuit}',null);
     insert into public.users(id,full_name,phone,email,gender)
       values('${account}','Synthetic Linked Player','+393470099004','mixed-${account}@example.invalid','F');
     ${registrations.map((id, index) => `insert into public.tournament_registrations(id,tournament_id,position,p1_name,p1_phone,p1_gender)
       values('${id}','${tournament}',${index + 1},'Synthetic Player ${index + 1}','+3934700990${String(index + 1).padStart(2, "0")}',${index === 3 ? "null" : `'${index === 1 ? "F" : "M"}'`});`).join("\n")}
     update public.tournament_registrations set user_id='${account}' where id='${registrations[3]}';
     commit;`);
+  const tournamentResponse = await fetch(`${app}/api/admin/tournaments/${tournament}`, { headers: { Cookie: cookie } });
+  assert.equal(tournamentResponse.status, 200);
+  const tournamentBefore = await tournamentResponse.json();
+  assert.equal(tournamentBefore.circuit_ranking_group_id, null);
+  const noDestination = await fetch(app + path, { headers: { Cookie: cookie } });
+  assert.equal(noDestination.status, 200);
+  assert.equal((await noDestination.json()).data.reason, "CLASSIFICA_ESPPLICITA_RICHIESTA");
+  const saveDestination = await fetch(`${app}/api/admin/tournaments/${tournament}`, {
+    method: "PATCH", headers,
+    body: JSON.stringify({ ...tournamentBefore, circuit_ranking_group_id: group }),
+  });
+  assert.equal(saveDestination.status, 200);
+  assert.equal((await saveDestination.json()).data.circuit_ranking_group_id, group);
+  const reloaded = await fetch(`${app}/api/admin/tournaments/${tournament}`, { headers: { Cookie: cookie } });
+  assert.equal((await reloaded.json()).circuit_ranking_group_id, group);
+  const list = await fetch(`${app}/api/admin/tournaments`, { headers: { Cookie: cookie } });
+  assert.equal((await list.json()).data.find((item) => item.id === tournament)?.circuit_ranking_group_id, group);
   const registrationList = await fetch(`${app}/api/admin/tournaments/${tournament}/registrations`, { headers: { Cookie: cookie } });
   assert.equal(registrationList.status, 200);
   const suggested = (await registrationList.json()).main.find((row) => row.id === registrations[3]);
@@ -53,7 +70,11 @@ try {
   assert.equal(suggested.p1_gender_suggestion, "F");
   const before = await fetch(app + path, { headers: { Cookie: cookie } });
   assert.equal(before.status, 200);
-  assert.equal((await before.json()).data.reason, "GENERE_NON_INDICATO");
+  const beforeData = (await before.json()).data;
+  assert.equal(beforeData.reason, "GENERE_NON_INDICATO");
+  assert.equal(beforeData.ranking_group_id, group);
+  assert.equal(beforeData.ranking_category, "Libero");
+  assert.equal(beforeData.ranking_level, "principiante");
   const edit = await fetch(app + path, { method: "PATCH", headers,
     body: JSON.stringify({ action: "set_gender", registration_id: registrations[3], slot: "p1", gender: "F", confirm: true }) });
   assert.equal(edit.status, 200);

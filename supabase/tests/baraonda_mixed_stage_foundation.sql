@@ -45,6 +45,11 @@ begin
     values(tournament,i,'Fixture Player '||i,'+3934700990'||lpad(i::text,2,'0'),case when i<=4 then 'M' else 'F' end)
     returning id into registration;
   end loop;
+  update public.tournaments set registrations_open=true where id=tournament;
+  eligibility := public.admin_tournament_prepare_mixed(actor,tournament,'eligibility');
+  if eligibility->>'reason' <> 'CHIUDI_ISCRIZIONI' or eligibility->>'ranking_group_id' <> destination::text
+  then raise exception 'OPEN_REGISTRATIONS_NOT_BLOCKED'; end if;
+  update public.tournaments set registrations_open=false where id=tournament;
   eligibility := public.admin_tournament_prepare_mixed(actor,tournament,'eligibility');
   if eligibility->>'eligible' <> 'true' or (eligibility->>'male_count')::int <> 4
      or (eligibility->>'female_count')::int <> 4 then raise exception 'BALANCED_ELIGIBILITY_FAILED'; end if;

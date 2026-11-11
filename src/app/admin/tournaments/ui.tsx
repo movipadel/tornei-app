@@ -260,6 +260,14 @@ const [baraondaFormulaById, setBaraondaFormulaById] = useState<
     }
   }
 
+  async function refreshAfterTournamentSave() {
+    const tournamentId = selected?.id;
+    await loadList();
+    if (tournamentId && expandedId === tournamentId) {
+      await loadMixedPreparation(tournamentId);
+    }
+  }
+
   async function loadTournamentDetails(tournamentId: string) {
     const tournament = items.find((item) => String(item.id) === tournamentId);
     if (tournament?.type === "Baraonda" && ["Libero", "Misto"].includes(String(tournament.category))) {
@@ -1815,7 +1823,7 @@ const selectedFormula = formulaOptions.some((o) => o.value === rawSelectedFormul
       />
 
       {/* Dialog tornei */}
-      <TournamentDialogForm open={open} onClose={() => setOpen(false)} tournament={selected} onSaved={loadList} />
+      <TournamentDialogForm open={open} onClose={() => setOpen(false)} tournament={selected} onSaved={refreshAfterTournamentSave} />
 
       {verifyTarget && <HistoricalIdentityDialog key={`${verifyTarget.registrationId}:${verifyTarget.slot}`}
         target={verifyTarget} onClose={() => setVerifyTarget(null)}

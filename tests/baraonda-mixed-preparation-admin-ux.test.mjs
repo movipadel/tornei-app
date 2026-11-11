@@ -9,6 +9,9 @@ const ui = read("src/app/admin/tournaments/ui.tsx");
 const table = read("src/app/admin/tournaments/[id]/registrations/_components/RegistrationsTable.tsx");
 const registrations = read("src/app/api/admin/tournaments/[id]/registrations/route.ts");
 const preparation = read("src/app/api/admin/tournaments/[id]/mixed-preparation/route.ts");
+const form = read("src/app/admin/tournaments/_components/TournamentDialogForm.tsx");
+const edit = read("src/app/api/admin/tournaments/[id]/route.ts");
+const list = read("src/app/api/admin/tournaments/route.ts");
 const migration = read("supabase/migrations/20261111123038_baraonda_mixed_stage_ranking_destination.sql");
 const view = (category, male, female, unknown, eligible, hasRun = false, reason = null) =>
   tournamentMixedPreparationView("Baraonda", category, hasRun, { male_count: male, female_count: female, unknown_count: unknown, eligible, reason }, false);
@@ -25,6 +28,17 @@ test("actual Admin tournament card loads and renders mixed preparation before re
   assert.match(ui, /method: "PATCH"/);
   assert.match(ui, /confirm: true/);
   assert.match(preparation, /\.rpc\("admin_tournament_prepare_mixed"/);
+});
+
+test("saving an explicit ranking destination refreshes the expanded Mixed Preparation card", () => {
+  assert.match(form, /circuit_ranking_group_id: tournament\.circuit_ranking_group_id \?\? null/);
+  assert.match(form, /value=\{form\.circuit_ranking_group_id \?\? ""\}/);
+  assert.match(form, /circuit_ranking_group_id: form\.circuit_ranking_group_id/);
+  assert.match(edit, /circuit_ranking_group_id: rankingGroupId/);
+  assert.match(edit, /\.update\(payload\)\.eq\("id", id\)\.select\("\*"\)\.single\(\)/);
+  assert.match(list, /circuit_id,circuit_ranking_group_id/);
+  assert.match(ui, /async function refreshAfterTournamentSave\(\) \{[\s\S]*?await loadList\(\);[\s\S]*?await loadMixedPreparation\(tournamentId\);/);
+  assert.match(ui, /onSaved=\{refreshAfterTournamentSave\}/);
 });
 
 test("known canonical gender is suggested only for an unknown snapshot and never written automatically", () => {
