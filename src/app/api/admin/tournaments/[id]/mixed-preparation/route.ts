@@ -18,7 +18,6 @@ const messages: Record<string, string> = {
   TAPPA_GIA_CONCLUSA: "La tappa è già chiusa o ha risultati assegnati.",
   CIRCUITO_RICHIESTO: "Associa prima la tappa a un circuito.",
   CLASSIFICA_ESPPLICITA_RICHIESTA: "Seleziona la classifica di destinazione.",
-  CHIUDI_ISCRIZIONI: "Chiudi le iscrizioni prima della conversione.",
   NUMERO_GIOCATORI_NON_PARi: "Serve un numero pari di almeno quattro giocatori.",
   GENERE_NON_INDICATO: "Completa il genere di tutti i giocatori.",
   GENERI_NON_BILANCIATI: "Il numero di uomini e donne deve essere uguale.",

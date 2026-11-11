@@ -4,6 +4,7 @@ import test from "node:test";
 
 const read = (path) => readFileSync(path, "utf8");
 const migration = read("supabase/migrations/20261111123038_baraonda_mixed_stage_ranking_destination.sql");
+const openRegistrationMigration = read("supabase/migrations/20261111172126_baraonda_mixed_open_registration_eligibility.sql");
 const create = read("src/app/api/admin/tournaments/route.ts");
 const edit = read("src/app/api/admin/tournaments/[id]/route.ts");
 const publicRegistration = read("src/app/api/tournaments/[id]/registrations/route.ts");
@@ -69,4 +70,23 @@ test("conversion is explicit, server checked, and frozen after any run", () => {
   assert.match(migration, /source_tournament_id = old\.id/);
   assert.match(migration, /reason := 'TAPPA_GIA_CONCLUSA'/);
   assert.match(migration, /before insert on public\.tournament_runs/);
+});
+
+test("open registrations allow Misto preparation while run insertion revalidates the main roster", () => {
+  const preparation = openRegistrationMigration.split("create or replace function public.admin_tournament_prepare_mixed(")[1]
+    .split("-- Revalidate the actual main roster")[0];
+  assert.ok(preparation);
+  assert.doesNotMatch(preparation, /t\.registrations_open/);
+  assert.match(preparation, /unknown_count > 0 then reason := 'GENERE_NON_INDICATO'/);
+  assert.match(preparation, /male_count <> female_count/);
+  assert.match(preparation, /not is_reserve/);
+  assert.match(openRegistrationMigration, /create or replace function public\.tournament_run_category_lock\(\)/);
+  assert.match(openRegistrationMigration, /where id = new\.tournament_id for update/);
+  assert.match(openRegistrationMigration, /raise exception 'MIXED_PARTICIPANTS_INVALID'/);
+  assert.match(openRegistrationMigration, /update public\.tournaments set registrations_open = false/);
+  assert.match(start, /\.eq\("is_reserve", false\)/);
+  assert.match(start, /if \(category === "misto"\)/);
+  assert.match(start, /runErr\?\.message\.includes\("MIXED_PARTICIPANTS_INVALID"\)/);
+  assert.match(start, /\.update\(\{ registrations_open: false \}\)/);
+  assert.doesNotMatch(openRegistrationMigration, /(?:update|delete|insert into) public\.circuit_results/i);
 });

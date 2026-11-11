@@ -125,7 +125,6 @@ function mixedPreparationReason(reason: string | null) {
     CIRCUITO_RICHIESTO: "Associa prima la tappa a un circuito.",
     CLASSIFICA_ESPPLICITA_RICHIESTA: "Seleziona la classifica di destinazione nel torneo.",
     CLASSIFICA_NON_VALIDA: "La classifica selezionata non è valida per il circuito e livello.",
-    CHIUDI_ISCRIZIONI: "Chiudi le iscrizioni prima di impostare la tappa come Misto.",
     NUMERO_GIOCATORI_NON_PARi: "Servono almeno quattro giocatori e un numero pari di iscritti.",
     GENERE_NON_INDICATO: "Completa il genere di tutti i giocatori per verificare la tappa Misto.",
     GENERI_NON_BILANCIATI: "Per impostare la tappa come Misto servono lo stesso numero di uomini e donne.",

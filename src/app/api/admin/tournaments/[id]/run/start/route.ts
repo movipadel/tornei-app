@@ -332,6 +332,12 @@ export async function POST(
       .single();
 
     if (runErr || !run) {
+      if (runErr?.message.includes("MIXED_PARTICIPANTS_INVALID")) {
+        return NextResponse.json(
+          { error: "La composizione degli iscritti non è più valida per una tappa Misto. Verifica gli iscritti prima di generare il torneo." },
+          { status: 409 }
+        );
+      }
       return NextResponse.json(
         { error: runErr?.message ?? "Run error" },
         { status: 500 }

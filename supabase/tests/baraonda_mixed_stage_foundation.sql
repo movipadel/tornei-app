@@ -47,15 +47,28 @@ begin
   end loop;
   update public.tournaments set registrations_open=true where id=tournament;
   eligibility := public.admin_tournament_prepare_mixed(actor,tournament,'eligibility');
-  if eligibility->>'reason' <> 'CHIUDI_ISCRIZIONI' or eligibility->>'ranking_group_id' <> destination::text
-  then raise exception 'OPEN_REGISTRATIONS_NOT_BLOCKED'; end if;
+  if eligibility->>'eligible' <> 'true' or eligibility->>'ranking_group_id' <> destination::text
+    or (eligibility->>'male_count')::int <> 4 or (eligibility->>'female_count')::int <> 4
+    or (eligibility->>'unknown_count')::int <> 0
+  then raise exception 'OPEN_REGISTRATIONS_NOT_ELIGIBLE'; end if;
   update public.tournaments set registrations_open=false where id=tournament;
   eligibility := public.admin_tournament_prepare_mixed(actor,tournament,'eligibility');
   if eligibility->>'eligible' <> 'true' or (eligibility->>'male_count')::int <> 4
      or (eligibility->>'female_count')::int <> 4 then raise exception 'BALANCED_ELIGIBILITY_FAILED'; end if;
+  update public.tournaments set registrations_open=true where id=tournament;
+  update public.tournament_registrations set p1_gender=null where tournament_id=tournament and position=8;
+  eligibility := public.admin_tournament_prepare_mixed(actor,tournament,'eligibility');
+  if eligibility->>'reason' <> 'GENERE_NON_INDICATO' then raise exception 'OPEN_UNKNOWN_GENDER_NOT_BLOCKED'; end if;
+  update public.tournament_registrations set p1_gender='M' where tournament_id=tournament and position=8;
+  eligibility := public.admin_tournament_prepare_mixed(actor,tournament,'eligibility');
+  if eligibility->>'reason' <> 'GENERI_NON_BILANCIATI' then raise exception 'OPEN_IMBALANCE_NOT_BLOCKED'; end if;
+  update public.tournament_registrations set p1_gender='F' where tournament_id=tournament and position=8;
   perform public.admin_tournament_prepare_mixed(actor,tournament,'convert_misto',null,null,null,true);
-  if not exists(select 1 from public.tournaments where id=tournament and category='Misto' and circuit_ranking_group_id=destination)
-  then raise exception 'RANKING_DESTINATION_MOVED'; end if;
+  if not exists(select 1 from public.tournaments where id=tournament and category='Misto'
+    and circuit_ranking_group_id=destination and registrations_open)
+  then raise exception 'OPEN_CONVERSION_CHANGED_DESTINATION_OR_REGISTRATIONS'; end if;
+  if exists(select 1 from public.tournament_runs where tournament_id=tournament)
+  then raise exception 'CONVERSION_CREATED_RUN'; end if;
   if (select count(*) from public.circuit_results) <> before_results then raise exception 'RESULTS_CHANGED'; end if;
   if (select md5(coalesce(jsonb_agg(to_jsonb(r) order by r.id)::text,'[]')) from public.circuit_results r) <> before_hash
   then raise exception 'RANKING_FIXTURE_CHANGED'; end if;
@@ -81,13 +94,31 @@ begin
   update public.tournament_registrations set p1_gender='M' where tournament_id=tournament and position=5;
   eligibility := public.admin_tournament_prepare_mixed(actor,tournament,'eligibility');
   if eligibility->>'reason' <> 'GENERI_NON_BILANCIATI' then raise exception 'IMBALANCE_NOT_BLOCKED'; end if;
+  begin
+    insert into public.tournament_runs(tournament_id,mode,category,status)
+    values(tournament,'baraonda','misto','locked');
+    raise exception 'INVALID_MISTO_RUN_ACCEPTED';
+  exception when others then if sqlerrm <> 'MIXED_PARTICIPANTS_INVALID' then raise; end if; end;
+  if exists(select 1 from public.tournament_runs where tournament_id=tournament)
+    or not (select registrations_open from public.tournaments where id=tournament)
+  then raise exception 'INVALID_RUN_CHANGED_STATE'; end if;
+  perform public.admin_tournament_prepare_mixed(actor,tournament,'convert_libero',null,null,null,true);
+  if not exists(select 1 from public.tournaments where id=tournament and category='Libero'
+    and circuit_ranking_group_id=destination and registrations_open)
+  then raise exception 'INVALID_MISTO_CANNOT_REVERT'; end if;
   update public.tournament_registrations set p1_gender='F' where tournament_id=tournament and position=5;
+  perform public.admin_tournament_prepare_mixed(actor,tournament,'convert_misto',null,null,null,true);
   update public.tournament_registrations set is_reserve=true where tournament_id=tournament and position=8;
   eligibility := public.admin_tournament_prepare_mixed(actor,tournament,'eligibility');
   if eligibility->>'reason' <> 'NUMERO_GIOCATORI_NON_PARi' then raise exception 'ODD_COUNT_NOT_BLOCKED'; end if;
   update public.tournament_registrations set is_reserve=false where tournament_id=tournament and position=8;
   insert into public.tournament_runs(tournament_id,mode,category,status)
   values(tournament,'baraonda','misto','locked');
+  if (select registrations_open from public.tournaments where id=tournament)
+    or not exists(select 1 from public.tournament_runs where tournament_id=tournament and category='misto')
+  then raise exception 'VALID_MISTO_RUN_DID_NOT_CLOSE_REGISTRATIONS'; end if;
+  eligibility := public.admin_tournament_prepare_mixed(actor,tournament,'eligibility');
+  if eligibility->>'reason' <> 'RUN_GIA_CREATA' then raise exception 'RUN_DID_NOT_FREEZE_CONVERSION'; end if;
   if public.player_identity_materialize_circuit(tournament,
     (select id from public.tournament_runs where tournament_id=tournament),
     jsonb_build_array(jsonb_build_object('circuit_id',circuit,'ranking_group_id',destination,

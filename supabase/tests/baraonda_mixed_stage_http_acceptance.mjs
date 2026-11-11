@@ -30,7 +30,7 @@ const circuit = randomUUID();
 const group = randomUUID();
 const tournament = randomUUID();
 const account = randomUUID();
-const registrations = Array.from({ length: 4 }, () => randomUUID());
+const registrations = Array.from({ length: 8 }, () => randomUUID());
 const path = `/api/admin/tournaments/${tournament}/mixed-preparation`;
 try {
   db(`begin;
@@ -39,12 +39,12 @@ try {
     insert into public.circuit_ranking_groups(id,circuit_id,category,level)
       values('${group}','${circuit}','Libero','principiante');
     insert into public.tournaments(id,name,type,category,level,date,time,location,max_participants,registrations_open,circuit_id,circuit_ranking_group_id)
-      values('${tournament}','Mixed HTTP Tournament','Baraonda','Libero','principiante',current_date,'20:00','Local',8,false,'${circuit}',null);
+      values('${tournament}','Mixed HTTP Tournament','Baraonda','Libero','principiante',current_date,'20:00','Local',8,true,'${circuit}',null);
     insert into public.users(id,full_name,phone,email,gender)
       values('${account}','Synthetic Linked Player','+393470099004','mixed-${account}@example.invalid','F');
     ${registrations.map((id, index) => `insert into public.tournament_registrations(id,tournament_id,position,p1_name,p1_phone,p1_gender)
-      values('${id}','${tournament}',${index + 1},'Synthetic Player ${index + 1}','+3934700990${String(index + 1).padStart(2, "0")}',${index === 3 ? "null" : `'${index === 1 ? "F" : "M"}'`});`).join("\n")}
-    update public.tournament_registrations set user_id='${account}' where id='${registrations[3]}';
+      values('${id}','${tournament}',${index + 1},'Synthetic Player ${index + 1}','+3934700990${String(index + 1).padStart(2, "0")}',${index === 7 ? "null" : `'${index < 4 ? "M" : "F"}'`});`).join("\n")}
+    update public.tournament_registrations set user_id='${account}' where id='${registrations[7]}';
     commit;`);
   const tournamentResponse = await fetch(`${app}/api/admin/tournaments/${tournament}`, { headers: { Cookie: cookie } });
   assert.equal(tournamentResponse.status, 200);
@@ -65,7 +65,7 @@ try {
   assert.equal((await list.json()).data.find((item) => item.id === tournament)?.circuit_ranking_group_id, group);
   const registrationList = await fetch(`${app}/api/admin/tournaments/${tournament}/registrations`, { headers: { Cookie: cookie } });
   assert.equal(registrationList.status, 200);
-  const suggested = (await registrationList.json()).main.find((row) => row.id === registrations[3]);
+  const suggested = (await registrationList.json()).main.find((row) => row.id === registrations[7]);
   assert.equal(suggested.p1_gender, null);
   assert.equal(suggested.p1_gender_suggestion, "F");
   const before = await fetch(app + path, { headers: { Cookie: cookie } });
@@ -76,20 +76,48 @@ try {
   assert.equal(beforeData.ranking_category, "Libero");
   assert.equal(beforeData.ranking_level, "principiante");
   const edit = await fetch(app + path, { method: "PATCH", headers,
-    body: JSON.stringify({ action: "set_gender", registration_id: registrations[3], slot: "p1", gender: "F", confirm: true }) });
+    body: JSON.stringify({ action: "set_gender", registration_id: registrations[7], slot: "p1", gender: "F", confirm: true }) });
   assert.equal(edit.status, 200);
   const ready = await fetch(app + path, { headers: { Cookie: cookie } });
   assert.equal(ready.status, 200);
   const eligibility = (await ready.json()).data;
   assert.equal(eligibility.eligible, true);
-  assert.deepEqual([eligibility.male_count, eligibility.female_count, eligibility.unknown_count], [2, 2, 0]);
+  assert.deepEqual([eligibility.male_count, eligibility.female_count, eligibility.unknown_count], [4, 4, 0]);
   assert.equal(eligibility.ranking_group_id, group);
   const convert = await fetch(app + path, { method: "PATCH", headers, body: JSON.stringify({ action: "convert_misto", confirm: true }) });
   assert.equal(convert.status, 200);
   assert.equal(db(`select category||':'||circuit_ranking_group_id from public.tournaments where id='${tournament}'`), `Misto:${group}`);
+  assert.equal(db(`select registrations_open from public.tournaments where id='${tournament}'`), "t");
+  assert.equal(db(`select count(*) from public.tournament_runs where tournament_id='${tournament}'`), "0");
+  assert.equal(db(`select count(*) from public.circuit_results where source_tournament_id='${tournament}'`), "0");
+  db(`update public.tournament_registrations set p1_gender='M' where id='${registrations[7]}'`);
+  const invalidStart = await fetch(`${app}/api/admin/tournaments/${tournament}/run/start`, {
+    method: "POST", headers, body: "{}",
+  });
+  assert.equal(invalidStart.status, 400);
+  assert.match((await invalidStart.json()).error, /stesso numero di uomini e donne/);
+  assert.equal(db(`select count(*) from public.tournament_runs where tournament_id='${tournament}'`), "0");
+  assert.equal(db(`select registrations_open from public.tournaments where id='${tournament}'`), "t");
+  db(`update public.tournament_registrations set p1_gender='F' where id='${registrations[7]}'`);
+  const validStart = await fetch(`${app}/api/admin/tournaments/${tournament}/run/start`, {
+    method: "POST", headers, body: "{}",
+  });
+  assert.equal(validStart.status, 200);
+  const started = await validStart.json();
+  assert.equal(started.reused, false);
+  assert.equal(db(`select category from public.tournament_runs where id='${started.runId}'`), "misto");
+  assert.equal(db(`select registrations_open from public.tournaments where id='${tournament}'`), "f");
   assert.equal(db(`select count(*) from public.circuit_results where source_tournament_id='${tournament}'`), "0");
 } finally {
   db(`begin;
+    delete from public.tournament_run_matches where turn_id in
+      (select id from public.tournament_run_turns where run_id in
+        (select id from public.tournament_runs where tournament_id='${tournament}'));
+    delete from public.tournament_run_turns where run_id in
+      (select id from public.tournament_runs where tournament_id='${tournament}');
+    delete from public.tournament_run_participants where run_id in
+      (select id from public.tournament_runs where tournament_id='${tournament}');
+    delete from public.tournament_runs where tournament_id='${tournament}';
     delete from public.tournament_registrations where tournament_id='${tournament}';
     delete from public.tournaments where id='${tournament}';
     delete from public.users where id='${account}';
