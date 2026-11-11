@@ -112,7 +112,7 @@ function isPastTournamentDate(date?: string | null) {
 }
 
 function GenderMark({ gender }: { gender: "M" | "F" | null }) {
-  if (!gender) return null;
+  if (!gender) return <span className="base44-gender-mark" aria-label="Genere non indicato">Non indicato</span>;
   const cls = gender === "M" ? "male" : "female";
   return (
     <span className={`base44-gender-mark ${cls}`} aria-label={gender === "M" ? "Uomo" : "Donna"}>

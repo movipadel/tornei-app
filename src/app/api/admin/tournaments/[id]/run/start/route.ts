@@ -26,6 +26,7 @@ type TournamentRow = {
 type ParticipantRow = { id: string; name: string; sex: "m" | "f" };
 
 function toSex(g: "M" | "F" | null): "m" | "f" {
+  if (g !== "M" && g !== "F") throw new Error("Genere del giocatore non indicato");
   return g === "F" ? "f" : "m";
 }
 
@@ -212,6 +213,14 @@ export async function POST(
     if (rerr) return NextResponse.json({ error: rerr.message }, { status: 500 });
 
     const main = (regs ?? []) as RegRow[];
+
+    // The run participant schema has only m/f. Never persist an unknown as male.
+    if (main.some((r) => r.p1_gender !== "M" && r.p1_gender !== "F")) {
+      return NextResponse.json(
+        { error: "Completa il genere di tutti i giocatori prima di avviare la tappa." },
+        { status: 400 }
+      );
+    }
 
     const MAX_BARAONDA_SUPPORTED = 20;
 

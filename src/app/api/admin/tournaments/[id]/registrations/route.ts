@@ -26,6 +26,9 @@ const errorMessages: Record<string, string> = {
   GENDER_CONFLICT: "Il sesso selezionato non coincide con l’identità sportiva.",
 };
 
+const knownGender = (value: string | null | undefined): "M" | "F" | null =>
+  value === "M" || value === "F" ? value : null;
+
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const denied = await guardOperatorPermission("tournaments.manage");
   if (denied) return denied;
@@ -76,7 +79,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
 
   const { data, error } = await sb
     .from("tournament_registrations")
-    .select("id,tournament_id,position,is_reserve,p1_name,p1_phone,p1_gender,p2_name,p2_phone,p2_gender,notes,created_at,p1_player_identity_id,p2_player_identity_id")
+    .select("id,tournament_id,position,is_reserve,p1_name,p1_phone,p1_gender,p2_name,p2_phone,p2_gender,notes,created_at,user_id,p1_player_identity_id,p2_player_identity_id")
     .eq("tournament_id", id)
     .order("is_reserve", { ascending: true })
     .order("position", { ascending: true })
@@ -87,21 +90,28 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
   const all = data ?? [];
   const identityIds = [...new Set(all.flatMap((row) => [row.p1_player_identity_id, row.p2_player_identity_id]).filter((value): value is string => Boolean(value)))];
   const identitiesResult = identityIds.length
-    ? await sb.from("player_identities").select("id,status,merged_into_player_id,account_user_id").in("id", identityIds)
+    ? await sb.from("player_identities").select("id,status,merged_into_player_id,account_user_id,gender").in("id", identityIds)
     : { data: [], error: null };
   if (identitiesResult.error) return NextResponse.json({ error: "Stato account non disponibile" }, { status: 500 });
   const identities = new Map((identitiesResult.data ?? []).map((identity) => [identity.id, identity]));
-  const accountIds = [...new Set((identitiesResult.data ?? []).map((identity) => identity.account_user_id).filter((value): value is string => Boolean(value)))];
+  const accountIds = [...new Set([...(identitiesResult.data ?? []).map((identity) => identity.account_user_id), ...all.map((row) => row.user_id)].filter((value): value is string => Boolean(value)))];
   const accountsResult = accountIds.length
-    ? await sb.from("users").select("id,identity_status,merged_into_user_id").in("id", accountIds)
+    ? await sb.from("users").select("id,identity_status,merged_into_user_id,gender").in("id", accountIds)
     : { data: [], error: null };
   if (accountsResult.error) return NextResponse.json({ error: "Stato account non disponibile" }, { status: 500 });
   const accounts = new Map((accountsResult.data ?? []).map((account) => [account.id, account]));
   const rows = all.map((row) => {
     const p1Identity = row.p1_player_identity_id ? identities.get(row.p1_player_identity_id) : undefined;
     const p2Identity = row.p2_player_identity_id ? identities.get(row.p2_player_identity_id) : undefined;
+    const p1Canonical = p1Identity?.status === "active" && !p1Identity.merged_into_player_id ? p1Identity : null;
+    const p2Canonical = p2Identity?.status === "active" && !p2Identity.merged_into_player_id ? p2Identity : null;
+    const p1AccountId = p1Canonical?.account_user_id ?? row.user_id;
+    const p1Account = p1AccountId ? accounts.get(p1AccountId) : null;
+    const p2Account = p2Canonical?.account_user_id ? accounts.get(p2Canonical.account_user_id) : null;
     return {
       ...row,
+      p1_gender_suggestion: row.p1_gender ? null : knownGender(p1Canonical?.gender) ?? (p1Account?.identity_status === "active" && !p1Account.merged_into_user_id ? knownGender(p1Account.gender) : null),
+      p2_gender_suggestion: row.p2_gender ? null : knownGender(p2Canonical?.gender) ?? (p2Account?.identity_status === "active" && !p2Account.merged_into_user_id ? knownGender(p2Account.gender) : null),
       p1_account_status: registrationAccountStatus(row.p1_player_identity_id, p1Identity, p1Identity?.account_user_id ? accounts.get(p1Identity.account_user_id) : undefined),
       p2_account_status: row.p2_name
         ? registrationAccountStatus(row.p2_player_identity_id, p2Identity, p2Identity?.account_user_id ? accounts.get(p2Identity.account_user_id) : undefined)

@@ -65,10 +65,14 @@ async function validateCircuitCompatibility(params: {
   type: LegacyType;
   category: LegacyCategory;
   level: string | null;
+  rankingGroupId: string | null;
 }) {
-  const { sb, circuitId, type, category, level } = params;
+  const { sb, circuitId, type, category, level, rankingGroupId } = params;
 
-  if (!circuitId) return;
+  if (!circuitId) {
+    if (rankingGroupId) throw new Error("Seleziona un circuito per la classifica");
+    return;
+  }
 
   const { data: circuit, error: circuitErr } = await sb
     .from("circuits")
@@ -89,14 +93,13 @@ async function validateCircuitCompatibility(params: {
     throw new Error("Per associare un torneo a un circuito serve il livello");
   }
 
-  const { data: rankingGroup, error: groupErr } = await sb
+  let groupQuery = sb
     .from("circuit_ranking_groups")
     .select("id")
     .eq("circuit_id", circuitId)
-    .eq("category", category)
-    .eq("level", effectiveLevel)
-    .limit(1)
-    .maybeSingle();
+    .eq("level", effectiveLevel);
+  groupQuery = rankingGroupId ? groupQuery.eq("id", rankingGroupId) : groupQuery.eq("category", category);
+  const { data: rankingGroup, error: groupErr } = await groupQuery.limit(1).maybeSingle();
 
   if (groupErr) {
     throw new Error(groupErr.message);
@@ -115,7 +118,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
 
   const { data, error } = await sb
     .from("tournaments")
-    .select("id,name,type,category,level,location,date,time,max_participants,image_url,show_participants,circuit_id,created_at,updated_at")
+    .select("id,name,type,category,level,location,date,time,max_participants,image_url,show_participants,circuit_id,circuit_ranking_group_id,registrations_open,created_at,updated_at")
     .eq("id", id)
     .single();
 
@@ -160,8 +163,18 @@ const circuitId =
   typeof body?.circuit_id === "string" && body.circuit_id.trim()
     ? body.circuit_id.trim()
     : null;
-
     const sb = supabaseAdmin();
+    const existingResult = await sb.from("tournaments").select("category,circuit_ranking_group_id").eq("id", id).maybeSingle();
+    if (existingResult.error || !existingResult.data) return NextResponse.json({ error: "Torneo non trovato" }, { status: 404 });
+    if (existingResult.data.category !== category &&
+      (existingResult.data.category === "Libero" || existingResult.data.category === "Misto") &&
+      (category === "Libero" || category === "Misto")) {
+      return NextResponse.json({ error: "Usa la preparazione tappa per modificare Libero/Misto." }, { status: 409 });
+    }
+    const rankingGroupId = body?.circuit_ranking_group_id === undefined
+      ? existingResult.data.circuit_ranking_group_id
+      : typeof body.circuit_ranking_group_id === "string" && body.circuit_ranking_group_id.trim()
+        ? body.circuit_ranking_group_id.trim() : null;
 
 try {
   await validateCircuitCompatibility({
@@ -170,6 +183,7 @@ try {
     type,
     category,
     level,
+    rankingGroupId,
   });
 } catch (e: unknown) {
   return NextResponse.json(
@@ -188,6 +202,7 @@ try {
   location: body?.location ? String(body.location).trim() : null,
   show_participants: Boolean(body?.show_participants),
   circuit_id: circuitId,
+  circuit_ranking_group_id: rankingGroupId,
   updated_at: new Date().toISOString(),
 };
   
@@ -200,7 +215,7 @@ try {
 
   const { data, error } = await sb.from("tournaments").update(payload).eq("id", id).select("*").single();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return NextResponse.json({ error: error.message.includes("TOURNAMENT_CATEGORY_FROZEN") ? "Categoria e classifica non modificabili dopo la run o i risultati." : error.message }, { status: error.message.includes("TOURNAMENT_CATEGORY_FROZEN") ? 409 : 500 });
 
   return NextResponse.json({ data });
 }

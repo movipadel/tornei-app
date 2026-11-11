@@ -12,6 +12,7 @@ type TournamentRow = {
   level: string | null;
   date: string | null;
   circuit_id: string | null;
+  circuit_ranking_group_id: string | null;
 };
 
 type RunRow = {
@@ -204,7 +205,7 @@ export async function POST(
     // 1) torneo
     const { data: t, error: terr } = await sb
       .from("tournaments")
-      .select("id,name,type,category,level,date,circuit_id")
+      .select("id,name,type,category,level,date,circuit_id,circuit_ranking_group_id")
       .eq("id", tournamentId)
       .single();
 
@@ -271,13 +272,15 @@ export async function POST(
     let rules: CircuitRuleRow[] = [];
 
     if (tournament.circuit_id) {
-      const { data: group, error: gerr } = await sb
+      let groupQuery = sb
         .from("circuit_ranking_groups")
         .select("id")
         .eq("circuit_id", tournament.circuit_id)
-        .eq("category", String(tournament.category ?? ""))
-        .eq("level", String(tournament.level ?? "").toLowerCase())
-        .maybeSingle();
+        .eq("level", String(tournament.level ?? "").toLowerCase());
+      groupQuery = tournament.circuit_ranking_group_id
+        ? groupQuery.eq("id", tournament.circuit_ranking_group_id)
+        : groupQuery.eq("category", String(tournament.category ?? ""));
+      const { data: group, error: gerr } = await groupQuery.maybeSingle();
 
       if (gerr) {
         return NextResponse.json({ error: gerr.message }, { status: 500 });

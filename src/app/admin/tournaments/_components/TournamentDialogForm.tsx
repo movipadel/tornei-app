@@ -18,6 +18,7 @@ export type TournamentDTO = {
   image_url?: string | null;
   show_participants?: boolean; // ✅ nuovo
   circuit_id?: string | null;
+  circuit_ranking_group_id?: string | null;
 };
 
 type FormState = {
@@ -31,6 +32,7 @@ type FormState = {
   max_participants: number;
   show_participants: boolean; // ✅ nuovo
   circuit_id: string | null;
+  circuit_ranking_group_id: string | null;
 };
 
 const DEFAULTS: FormState = {
@@ -44,6 +46,7 @@ const DEFAULTS: FormState = {
   max_participants: 16,
   show_participants: false, // ✅ default OFF
   circuit_id: null,
+  circuit_ranking_group_id: null,
 };
 
 const LOCATIONS = [
@@ -74,6 +77,7 @@ export default function TournamentDialogForm({
     name: string;
     tournament_type: string;
     circuit_ranking_groups?: Array<{
+      id: string;
       category: string;
       level: string;
     }>;
@@ -101,6 +105,7 @@ const [circuitsLoading, setCircuitsLoading] = useState(false);
         max_participants: tournament.max_participants ?? 16,
         show_participants: Boolean(tournament.show_participants),
         circuit_id: tournament.circuit_id ?? null,
+        circuit_ranking_group_id: tournament.circuit_ranking_group_id ?? null,
       });
     } else {
       setForm(DEFAULTS);
@@ -158,11 +163,9 @@ const [circuitsLoading, setCircuitsLoading] = useState(false);
 
     const groups = Array.isArray(c.circuit_ranking_groups) ? c.circuit_ranking_groups : [];
 
-    return groups.some(
-      (g) => g.category === form.category && g.level === form.level
-    );
+    return groups.some((g) => g.level === form.level);
   });
-}, [circuits, form.type, form.category, form.level]);
+}, [circuits, form.type, form.level]);
 
 useEffect(() => {
   if (!form.circuit_id) return;
@@ -173,6 +176,7 @@ useEffect(() => {
     setForm((prev) => ({
       ...prev,
       circuit_id: null,
+      circuit_ranking_group_id: null,
     }));
   }
 }, [availableCircuits, form.circuit_id]);
@@ -200,6 +204,7 @@ useEffect(() => {
         max_participants: form.max_participants,
         show_participants: Boolean(form.show_participants), // ✅ nuovo
         circuit_id: form.circuit_id,
+        circuit_ranking_group_id: form.circuit_ranking_group_id,
       };
 
       const url = isEdit ? `/api/admin/tournaments/${tournament!.id}` : `/api/admin/tournaments`;
@@ -320,7 +325,7 @@ useEffect(() => {
                 </div>
 
                 <div>
-                  <div style={{ fontWeight: 800, marginBottom: 6 }}>Categoria</div>
+                  <div style={{ fontWeight: 800, marginBottom: 6 }}>Categoria della tappa</div>
                   <select
                     className="base44-input"
                     value={form.category}
@@ -360,6 +365,7 @@ useEffect(() => {
       setForm({
         ...form,
         circuit_id: e.target.value || null,
+        circuit_ranking_group_id: null,
       })
     }
     disabled={circuitsLoading}
@@ -374,8 +380,23 @@ useEffect(() => {
   </select>
 
   <div style={{ color: "#64748b", fontSize: 13, lineHeight: 1.25, marginTop: 6 }}>
-    Sono mostrati solo i circuiti compatibili con tipo, categoria e livello attualmente selezionati.
+    Sono mostrati i circuiti compatibili con tipo e livello.
   </div>
+  {form.circuit_id && <div style={{ marginTop: 12 }}>
+    <label htmlFor="ranking-destination" style={{ display: "block", fontWeight: 800, marginBottom: 6 }}>Classifica di destinazione</label>
+    <select id="ranking-destination" className="base44-input" value={form.circuit_ranking_group_id ?? ""}
+      onChange={(e) => setForm({ ...form, circuit_ranking_group_id: e.target.value || null })}>
+      <option value="">Categoria e livello della tappa (compatibilità)</option>
+      {circuits.find((c) => c.id === form.circuit_id)?.circuit_ranking_groups?.filter((g) => g.level === form.level).map((g) =>
+        <option key={g.id} value={g.id}>{g.category} · {g.level}</option>)}
+    </select>
+    {form.circuit_ranking_group_id && (() => {
+      const group = circuits.find((c) => c.id === form.circuit_id)?.circuit_ranking_groups?.find((g) => g.id === form.circuit_ranking_group_id);
+      return group && group.category !== form.category
+        ? <p style={{ color: "#475569", fontSize: 13 }}>La tappa sarà {form.category}, ma i punti confluiranno nella classifica {group.category} del circuito.</p>
+        : null;
+    })()}
+  </div>}
 </div>
 
                             {/* Mostra iscritti (solo nome) */}

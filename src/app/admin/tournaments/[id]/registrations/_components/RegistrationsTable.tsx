@@ -32,9 +32,11 @@ type Reg = {
   p1_name: string;
   p1_phone: string;
   p1_gender: "M" | "F" | null;
+  p1_gender_suggestion?: "M" | "F" | null;
   p2_name: string | null;
   p2_phone: string | null;
   p2_gender: "M" | "F" | null;
+  p2_gender_suggestion?: "M" | "F" | null;
   p1_account_status: RegistrationAccountStatus;
   p2_account_status: RegistrationAccountStatus | null;
   p1_player_identity_id: string | null;
@@ -59,12 +61,17 @@ export function AccountStatusBadge({ status, onVerify }: { status: RegistrationA
   </Badge>;
 }
 
-function PlayerDetails({ name, phone, gender, status, onVerify }: { name: string; phone: string | null; gender: "M" | "F" | null; status: RegistrationAccountStatus; onVerify?: () => void }) {
+function PlayerDetails({ name, phone, gender, suggestion, status, onVerify, onGender }: { name: string; phone: string | null; gender: "M" | "F" | null; suggestion?: "M" | "F" | null; status: RegistrationAccountStatus; onVerify?: () => void; onGender?: (value: "M" | "F") => void }) {
   return <div className="min-w-0 space-y-1">
     <div className="flex flex-wrap items-center gap-1.5">
       <span className="min-w-0 break-words">{name}</span>
-      {gender && <Badge variant="outline" className="text-xs">{gender === "M" ? "♂" : "♀"}</Badge>}
+      <Badge variant="outline" className="text-xs">Genere iscrizione: {gender ?? "Non indicato"}</Badge>
     </div>
+    {!gender && onGender && <div className="flex flex-wrap items-center gap-1 text-xs">
+      {suggestion && <span>Profilo MOVI: {suggestion} (suggerimento)</span>}
+      {(["M", "F"] as const).map((value) => <button key={value} type="button" className={styles.verifyButton}
+        onClick={() => onGender(value)}>{suggestion === value ? `Usa ${value}` : `Imposta ${value}`}</button>)}
+    </div>}
     <AccountStatusBadge status={status} onVerify={onVerify} />
     {phone && <span className={`${styles.phoneInline} text-xs text-slate-500`}>{phone}</span>}
   </div>;
@@ -79,6 +86,7 @@ export default function RegistrationsTable({
   onDemote,
   onDelete,
   onVerify,
+  onGender,
 }: {
   title: string;
   emptyLabel: string;
@@ -88,6 +96,7 @@ export default function RegistrationsTable({
   onDemote?: (id: string) => void | Promise<void>;
   onDelete: (id: string) => void | Promise<void>;
   onVerify?: (row: Reg, slot: "p1" | "p2") => void;
+  onGender?: (row: Reg, slot: "p1" | "p2", value: "M" | "F") => void;
 }) {
   if (rows.length === 0) {
     return (
@@ -123,9 +132,9 @@ export default function RegistrationsTable({
 
                 <TableCell>
                   <div className="space-y-3">
-                    <PlayerDetails name={r.p1_name} phone={r.p1_phone} gender={r.p1_gender} status={r.p1_account_status} onVerify={onVerify ? () => onVerify(r, "p1") : undefined} />
+                    <PlayerDetails name={r.p1_name} phone={r.p1_phone} gender={r.p1_gender} suggestion={r.p1_gender_suggestion} status={r.p1_account_status} onVerify={onVerify ? () => onVerify(r, "p1") : undefined} onGender={onGender ? (value) => onGender(r, "p1", value) : undefined} />
                     {showP2 && r.p2_name ? (
-                      <PlayerDetails name={r.p2_name} phone={r.p2_phone} gender={r.p2_gender} status={r.p2_account_status ?? "NEEDS_REVIEW"} onVerify={onVerify ? () => onVerify(r, "p2") : undefined} />
+                      <PlayerDetails name={r.p2_name} phone={r.p2_phone} gender={r.p2_gender} suggestion={r.p2_gender_suggestion} status={r.p2_account_status ?? "NEEDS_REVIEW"} onVerify={onVerify ? () => onVerify(r, "p2") : undefined} onGender={onGender ? (value) => onGender(r, "p2", value) : undefined} />
                     ) : null}
                   </div>
                 </TableCell>

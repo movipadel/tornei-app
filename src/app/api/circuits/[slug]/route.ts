@@ -41,6 +41,7 @@ type PublicStage = {
 type UpcomingStage = {
   id: string;
   name: string;
+  category: string | null;
   date: string | null;
   time: string | null;
   location: string | null;
@@ -51,6 +52,7 @@ type FutureTournamentRow = {
   id: string;
   name: string | null;
   category: string | null;
+  circuit_ranking_group_id: string | null;
   level: string | null;
   date: string | null;
   time: string | null;
@@ -125,7 +127,7 @@ export async function GET(
     const { data: futureTournaments, error: futureErr } = await perf.db(() =>
       sb
         .from("tournaments")
-        .select("id,name,type,category,level,date,time,location,registrations_open,circuit_id")
+        .select("id,name,type,category,level,date,time,location,registrations_open,circuit_id,circuit_ranking_group_id")
         .eq("circuit_id", circuit.id)
         .gte("date", todayRome)
         .order("date", { ascending: true })
@@ -209,11 +211,14 @@ export async function GET(
           const tournamentCategory = normalizeValue(t.category);
           const tournamentLevel = normalizeValue(t.level);
 
-          return tournamentCategory === groupCategory && tournamentLevel === groupLevel;
+          return t.circuit_ranking_group_id
+            ? t.circuit_ranking_group_id === group.id && tournamentLevel === groupLevel
+            : tournamentCategory === groupCategory && tournamentLevel === groupLevel;
         })
         .map((t) => ({
           id: String(t.id),
           name: String(t.name ?? "Tappa"),
+          category: t.category,
           date: t.date ?? null,
           time: t.time ?? null,
           location: t.location ?? null,

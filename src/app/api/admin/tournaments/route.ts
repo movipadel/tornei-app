@@ -71,10 +71,14 @@ async function validateCircuitCompatibility(params: {
   type: LegacyType;
   category: LegacyCategory;
   level: string | null;
+  rankingGroupId: string | null;
 }) {
-  const { sb, circuitId, type, category, level } = params;
+  const { sb, circuitId, type, category, level, rankingGroupId } = params;
 
-  if (!circuitId) return;
+  if (!circuitId) {
+    if (rankingGroupId) throw new Error("Seleziona un circuito per la classifica");
+    return;
+  }
 
   const { data: circuit, error: circuitErr } = await sb
     .from("circuits")
@@ -95,14 +99,13 @@ async function validateCircuitCompatibility(params: {
     throw new Error("Per associare un torneo a un circuito serve il livello");
   }
 
-  const { data: rankingGroup, error: groupErr } = await sb
+  let groupQuery = sb
     .from("circuit_ranking_groups")
     .select("id")
     .eq("circuit_id", circuitId)
-    .eq("category", category)
-    .eq("level", effectiveLevel)
-    .limit(1)
-    .maybeSingle();
+    .eq("level", effectiveLevel);
+  groupQuery = rankingGroupId ? groupQuery.eq("id", rankingGroupId) : groupQuery.eq("category", category);
+  const { data: rankingGroup, error: groupErr } = await groupQuery.limit(1).maybeSingle();
 
   if (groupErr) {
     throw new Error(groupErr.message);
@@ -123,7 +126,7 @@ export async function GET() {
   // 1) tornei
   const { data, error } = await sb
     .from("tournaments")
-    .select("id,name,type,category,date,time,location,max_participants,registrations_open,image_url,level,show_participants,circuit_id,created_at,updated_at")
+    .select("id,name,type,category,date,time,location,max_participants,registrations_open,image_url,level,show_participants,circuit_id,circuit_ranking_group_id,created_at,updated_at")
     .order("date", { ascending: true })
     .order("time", { ascending: true });
 
@@ -250,6 +253,8 @@ const circuitId =
   typeof body?.circuit_id === "string" && body.circuit_id.trim()
     ? body.circuit_id.trim()
     : null;
+const rankingGroupId = typeof body?.circuit_ranking_group_id === "string" && body.circuit_ranking_group_id.trim()
+  ? body.circuit_ranking_group_id.trim() : null;
 
   const sb = supabaseAdmin();
 
@@ -260,6 +265,7 @@ try {
     type,
     category,
     level,
+    rankingGroupId,
   });
 } catch (e: unknown) {
   return NextResponse.json(
@@ -279,6 +285,7 @@ try {
   notes: body?.notes ? String(body.notes) : null,
   show_participants: Boolean(body?.show_participants),
   circuit_id: circuitId,
+  circuit_ranking_group_id: rankingGroupId,
   updated_at: new Date().toISOString(),
 };
 

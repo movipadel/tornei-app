@@ -301,6 +301,7 @@ export async function GET() {
       created_at,
       updated_at,
       circuit_ranking_groups (
+        id,
         category,
         level
       )

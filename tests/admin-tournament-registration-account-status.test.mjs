@@ -38,8 +38,8 @@ test("Admin list uses read-only identity/account evidence and distinct badges", 
   const get = route.split("export async function GET")[1]?.split("export async function DELETE")[0] ?? "";
   assert.match(get, /guardOperatorPermission\("tournaments\.manage"\)/);
   assert.match(get, /p1_player_identity_id,p2_player_identity_id/);
-  assert.match(get, /from\("player_identities"\)\.select\("id,status,merged_into_player_id,account_user_id"\)/);
-  assert.match(get, /from\("users"\)\.select\("id,identity_status,merged_into_user_id"\)/);
+  assert.match(get, /from\("player_identities"\)\.select\("id,status,merged_into_player_id,account_user_id,gender"\)/);
+  assert.match(get, /from\("users"\)\.select\("id,identity_status,merged_into_user_id,gender"\)/);
   assert.match(get, /p1_account_status: registrationAccountStatus/);
   assert.match(get, /p2_account_status: row\.p2_name/);
   assert.doesNotMatch(get, /\.rpc\(|\.insert\(|\.update\(|\.delete\(/);

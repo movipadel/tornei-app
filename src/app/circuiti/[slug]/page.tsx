@@ -11,7 +11,7 @@ import styles from "./CircuitDetail.module.css";
 type RankingRow = { position: number; player_name: string; total_points: number; events_played: number };
 type StageResult = { player_name: string; points: number; placement: number | null };
 type Stage = { source_tournament_id: string | null; tournament_name: string; tournament_type: string; tournament_date: string | null; results: StageResult[] };
-type UpcomingStage = { id: string; name: string; date: string | null; time: string | null; location: string | null; registrations_open: boolean };
+type UpcomingStage = { id: string; name: string; category: string | null; date: string | null; time: string | null; location: string | null; registrations_open: boolean };
 type RankingGroup = { id: string; category: string | null; level: string | null; ranking: RankingRow[]; played_stages: Stage[]; upcoming_stages: UpcomingStage[] };
 type Circuit = {
   id: string; name: string; slug: string; tournament_type: string; status: string;
@@ -208,7 +208,7 @@ export default function CircuitPage() {
       <div className={styles.sectionHeading}><div><span className={styles.eyebrow}>Calendario</span><h2 id="next-stage-title">Prossima tappa</h2></div></div>
       {nextStage ? <article className={styles.nextStage}>
         <div className={styles.dateTile} aria-label={formatDate(nextStage.date) ?? undefined}><CalendarDays size={19} aria-hidden /><strong>{formatDate(nextStage.date) ?? "Data da definire"}</strong></div>
-        <div className={styles.stageBody}><div className={styles.stageTags}>{selectedGroup?.category ? <span>{selectedGroup.category}</span> : null}{selectedGroup?.level ? <span>{levelLabel(selectedGroup.level)}</span> : null}</div><h3>{nextStage.name}</h3><div className={styles.stageMeta}>{nextStage.location ? <span><MapPin size={15} aria-hidden />{nextStage.location}</span> : null}{nextStage.time ? <span><Clock3 size={15} aria-hidden />Ore {formatTime(nextStage.time)}</span> : null}</div></div>
+        <div className={styles.stageBody}><div className={styles.stageTags}>{nextStage.category ? <span>{nextStage.category}</span> : null}{selectedGroup?.level ? <span>{levelLabel(selectedGroup.level)}</span> : null}</div><h3>{nextStage.name}</h3><div className={styles.stageMeta}>{nextStage.location ? <span><MapPin size={15} aria-hidden />{nextStage.location}</span> : null}{nextStage.time ? <span><Clock3 size={15} aria-hidden />Ore {formatTime(nextStage.time)}</span> : null}</div></div>
         <span className={`${styles.registration} ${nextStage.registrations_open ? styles.open : styles.closed}`}>{nextStage.registrations_open ? "Iscrizioni aperte" : "Iscrizioni chiuse"}</span>
       </article> : <div className={styles.empty}>Nessuna tappa futura programmata per questa classifica.</div>}
     </section>

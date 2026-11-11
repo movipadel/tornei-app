@@ -19,9 +19,11 @@ type Reg = {
   p1_name: string;
   p1_phone: string;
   p1_gender: "M" | "F" | null;
+  p1_gender_suggestion?: "M" | "F" | null;
   p2_name: string | null;
   p2_phone: string | null;
   p2_gender: "M" | "F" | null;
+  p2_gender_suggestion?: "M" | "F" | null;
   p1_account_status: RegistrationAccountStatus;
   p2_account_status: RegistrationAccountStatus | null;
   p1_player_identity_id: string | null;
@@ -33,6 +35,8 @@ type TournamentLite = {
   name: string;
   type: string;
   category?: string | null;
+  circuit_ranking_group_id?: string | null;
+  registrations_open?: boolean;
   location?: string | null;
   date?: string;
   time?: string;
@@ -51,6 +55,7 @@ export default function AdminTournamentRegistrationsPage({
   const [reserve, setReserve] = useState<Reg[]>([]);
   const [loading, setLoading] = useState(true);
   const [verifyTarget, setVerifyTarget] = useState<RegistrationIdentityTarget | null>(null);
+  const [mixed, setMixed] = useState<{ eligible: boolean; reason: string | null; male_count: number; female_count: number; unknown_count: number; player_count: number; ranking_category: string | null; ranking_level: string | null } | null>(null);
 
   const showP2 = useMemo(() => tournament?.type === "Coppie fisse", [tournament?.type]);
 
@@ -67,6 +72,12 @@ export default function AdminTournamentRegistrationsPage({
     if (!res.ok) throw new Error(json.error ?? "Errore caricamento iscrizioni");
     setMain(json.main ?? []);
     setReserve(json.reserve ?? []);
+    await loadMixed();
+  }
+
+  async function loadMixed() {
+    const response = await fetch(`/api/admin/tournaments/${id}/mixed-preparation`, { cache: "no-store" });
+    if (response.ok) setMixed((await response.json()).data);
   }
 
   async function loadAll() {
@@ -118,6 +129,23 @@ export default function AdminTournamentRegistrationsPage({
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Errore");
     }
+  }
+
+  async function prepareMixed(action: "set_gender" | "convert_misto" | "convert_libero", registrationId?: string, slot?: "p1" | "p2", gender?: "M" | "F") {
+    const message = action === "set_gender"
+      ? `Confermi ${gender} come genere per questa iscrizione? Il profilo MOVI non sarà modificato.`
+      : action === "convert_misto"
+        ? `Imposta la tappa come Misto? Giocatori: ${mixed?.player_count ?? 0}, uomini: ${mixed?.male_count ?? 0}, donne: ${mixed?.female_count ?? 0}, genere non indicato: ${mixed?.unknown_count ?? 0}. I punti resteranno nella classifica ${mixed?.ranking_category ?? "selezionata"} · ${mixed?.ranking_level ?? ""}.`
+        : "Riporta la tappa a Libero prima della run? La classifica di destinazione resterà invariata.";
+    if (!window.confirm(message)) return;
+    const response = await fetch(`/api/admin/tournaments/${id}/mixed-preparation`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action, registration_id: registrationId, slot, gender, confirm: true }),
+    });
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok) { toast.error(json.error ?? "Operazione non riuscita"); return; }
+    await Promise.all([loadTournament(), loadRegs()]);
+    toast.success(action === "set_gender" ? "Genere iscrizione aggiornato" : "Categoria tappa aggiornata");
   }
 
   useEffect(() => {
@@ -180,6 +208,15 @@ export default function AdminTournamentRegistrationsPage({
 
       {loading ? <div className="text-sm text-slate-500">Caricamento...</div> : null}
 
+      {tournament?.type === "Baraonda" && mixed && <section className="rounded-lg border border-slate-200 bg-white p-4 space-y-2">
+        <h2 className="text-lg font-semibold">Preparazione tappa Misto</h2>
+        <p>Giocatori: {mixed.player_count} · Uomini: {mixed.male_count} · Donne: {mixed.female_count} · Genere non indicato: {mixed.unknown_count}</p>
+        <p>Classifica: {mixed.ranking_category ?? "da selezionare"} · {mixed.ranking_level ?? ""}</p>
+        {mixed.reason && <p role="status">Conversione non disponibile: {mixed.reason.replaceAll("_", " ").toLowerCase()}.</p>}
+        {tournament.category === "Libero" && <Button disabled={!mixed.eligible} onClick={() => void prepareMixed("convert_misto")}>Imposta tappa come Misto</Button>}
+        {tournament.category === "Misto" && <Button variant="outline" onClick={() => void prepareMixed("convert_libero")}>Riporta tappa a Libero</Button>}
+      </section>}
+
       <div className="rounded-lg border border-slate-200 bg-white p-4">
         <RegistrationForm tournamentId={id} tournamentType={tournament?.type} onCreated={loadRegs} />
 
@@ -205,6 +242,7 @@ export default function AdminTournamentRegistrationsPage({
         onDemote={(rid) => setReserveFlag(rid, true)}
         onDelete={remove}
         onVerify={(row, slot) => setVerifyTarget(registrationIdentityTarget(id, row, slot))}
+        onGender={(row, slot, value) => void prepareMixed("set_gender", row.id, slot, value)}
       />
 
       <RegistrationsTable
@@ -215,6 +253,7 @@ export default function AdminTournamentRegistrationsPage({
         onPromote={(rid) => setReserveFlag(rid, false)}
         onDelete={remove}
         onVerify={(row, slot) => setVerifyTarget(registrationIdentityTarget(id, row, slot))}
+        onGender={(row, slot, value) => void prepareMixed("set_gender", row.id, slot, value)}
       />
       {verifyTarget && <HistoricalIdentityDialog key={`${verifyTarget.registrationId}:${verifyTarget.slot}`}
         target={verifyTarget} onClose={() => setVerifyTarget(null)} onLinked={loadRegs} />}

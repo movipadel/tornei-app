@@ -37,7 +37,7 @@ async function handlePost(req: Request, ctx: { params: Promise<{ id: string }> }
   // torneo
   const { data: t, error: terr } = await sb
     .from("tournaments")
-    .select("id,type,category,level,max_participants,registrations_open,circuit_id")
+    .select("id,type,category,level,max_participants,registrations_open,circuit_id,circuit_ranking_group_id")
     .eq("id", id)
     .single();
 
@@ -56,13 +56,15 @@ async function handlePost(req: Request, ctx: { params: Promise<{ id: string }> }
   const max = Number(t.max_participants);
 
   if (circuitId) {
-    const { data: group, error: gerr } = await sb
+    let groupQuery = sb
       .from("circuit_ranking_groups")
       .select("id")
       .eq("circuit_id", circuitId)
-      .eq("category", tournamentCategory)
-      .eq("level", tournamentLevel)
-      .maybeSingle();
+      .eq("level", tournamentLevel);
+    groupQuery = t.circuit_ranking_group_id
+      ? groupQuery.eq("id", t.circuit_ranking_group_id)
+      : groupQuery.eq("category", tournamentCategory);
+    const { data: group, error: gerr } = await groupQuery.maybeSingle();
 
     if (gerr) {
       return NextResponse.json({ error: gerr.message }, { status: 500 });
