@@ -18,13 +18,12 @@ type User = {
   full_name: string;
   phone: string;
   email: string;
-  gender: "M" | "F";
+  gender: "M" | "F" | null;
 };
 
 type PlayerSuggestion = {
-  player_key: string;
-  player_name: string;
-  player_phone: string;
+  player_identity_id: string;
+  display_name: string;
   masked_phone: string;
 };
 
@@ -52,11 +51,12 @@ export default function RegistrationDialog({
   const [suggestions, setSuggestions] = useState<PlayerSuggestion[]>([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
+  const [selectedCompanion, setSelectedCompanion] = useState<PlayerSuggestion | null>(null);
 
   const [formData, setFormData] = useState({
     p2_name: "",
     p2_phone: "",
-    p2_gender: "M" as "M" | "F",
+    p2_gender: null as "M" | "F" | null,
   });
 
   const isCouple = useMemo(() => tournament?.type === "Coppie fisse", [tournament?.type]);
@@ -65,18 +65,16 @@ export default function RegistrationDialog({
   useEffect(() => {
     if (!open || !tournament) return;
 
-    const defaultP2Gender: "M" | "F" =
-      tournament.category === "Femminile" ? "F" : "M";
-
     setFormData({
       p2_name: "",
       p2_phone: "",
-      p2_gender: defaultP2Gender,
+      p2_gender: null,
     });
-  }, [open, tournament?.id]);
+    setSelectedCompanion(null);
+  }, [open, tournament]);
 
     useEffect(() => {
-    if (!open || !tournament || !isCouple) {
+    if (!open || !tournament || !isCouple || selectedCompanion) {
       setSuggestions([]);
       setSuggestionsOpen(false);
       return;
@@ -84,7 +82,7 @@ export default function RegistrationDialog({
 
     const q = formData.p2_name.trim();
 
-    if (q.length < 2) {
+    if (q.length < 3) {
       setSuggestions([]);
       setSuggestionsOpen(false);
       return;
@@ -95,7 +93,7 @@ export default function RegistrationDialog({
         setLoadingSuggestions(true);
 
         const res = await fetch(
-          `/api/tournaments/${tournament.id}/circuit-player-suggestions?q=${encodeURIComponent(q)}`,
+          `/api/tournaments/${tournament.id}/players/search?q=${encodeURIComponent(q)}`,
           { cache: "no-store" }
         );
 
@@ -116,7 +114,7 @@ export default function RegistrationDialog({
     }, 250);
 
     return () => window.clearTimeout(timer);
-  }, [open, tournament?.id, isCouple, formData.p2_name]);
+  }, [open, tournament, isCouple, formData.p2_name, selectedCompanion]);
 
   if (!tournament) return null;
   if (!user) return null;
@@ -131,22 +129,23 @@ export default function RegistrationDialog({
     try {
       setSaving(true);
 
-      const payload: any = {
-        p1_name: currentUser.full_name.trim().toUpperCase(),
-        p1_phone: normalizePhone(currentUser.phone),
-        p1_gender: isMisto ? currentUser.gender : null,
-      };
-
-      if (!payload.p1_name) throw new Error("Nome obbligatorio");
-      if (!payload.p1_phone) throw new Error("Telefono obbligatorio");
+      const payload: {
+        p2_player_identity_id?: string;
+        p2_name?: string;
+        p2_phone?: string;
+        p2_gender?: "M" | "F" | null;
+      } = {};
 
       if (isCouple) {
-        payload.p2_name = formData.p2_name.trim().toUpperCase();
-        payload.p2_phone = normalizePhone(formData.p2_phone);
-        payload.p2_gender = formData.p2_gender;
-
-        if (!payload.p2_name) throw new Error("Nome giocatore 2 obbligatorio");
-        if (!payload.p2_phone) throw new Error("Telefono giocatore 2 obbligatorio");
+        if (selectedCompanion) {
+          payload.p2_player_identity_id = selectedCompanion.player_identity_id;
+        } else {
+          payload.p2_name = formData.p2_name.trim();
+          payload.p2_phone = normalizePhone(formData.p2_phone);
+          payload.p2_gender = formData.p2_gender;
+          if (!payload.p2_name) throw new Error("Nome giocatore 2 obbligatorio");
+          if (!payload.p2_phone) throw new Error("Telefono giocatore 2 obbligatorio");
+        }
       }
 
       const res = await fetch(`/api/tournaments/${tournamentId}/registrations`, {
@@ -160,8 +159,8 @@ export default function RegistrationDialog({
 
       toast.success(json?.data?.is_reserve ? "Inserito in lista riserva!" : "Iscrizione completata!");
       await onSuccess();
-    } catch (e: any) {
-      toast.error(e?.message ?? "Errore");
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Errore");
     } finally {
       setSaving(false);
     }
@@ -201,7 +200,7 @@ export default function RegistrationDialog({
 
             {isMisto && (
               <div style={{ color: "#475569", fontSize: 14 }}>
-                {currentUser.gender === "M" ? "Uomo" : "Donna"}
+                {currentUser.gender === "M" ? "Uomo" : currentUser.gender === "F" ? "Donna" : "Sesso non indicato"}
               </div>
             )}
           </div>
@@ -218,9 +217,15 @@ export default function RegistrationDialog({
   <div style={{ fontWeight: 700, marginBottom: 6 }}>Nome e Cognome</div>
   <input
     className="base44-input"
+    style={{ minHeight: 44, width: "100%" }}
     value={formData.p2_name}
+    role="combobox"
+    aria-autocomplete="list"
+    aria-expanded={suggestionsOpen && suggestions.length > 0}
+    aria-controls="public-companion-suggestions"
     onChange={(e) => {
-      setFormData({ ...formData, p2_name: e.target.value });
+      setSelectedCompanion(null);
+      setFormData({ ...formData, p2_name: e.target.value, p2_phone: selectedCompanion ? "" : formData.p2_phone });
       setSuggestionsOpen(true);
     }}
     onFocus={() => {
@@ -231,27 +236,32 @@ export default function RegistrationDialog({
   />
 
   {loadingSuggestions ? (
-    <div style={suggestionHint}>Cerco giocatori del circuito...</div>
+    <div style={suggestionHint}>Cerco identità giocatore MOVI...</div>
   ) : null}
 
   {suggestionsOpen && suggestions.length > 0 ? (
-    <div style={suggestionsBox}>
-      {suggestions.map((s) => (
+    <div id="public-companion-suggestions" role="listbox" aria-label="Giocatori MOVI" style={suggestionsBox}>
+      {suggestions.map((s, index) => (
         <button
-          key={s.player_key}
+          key={s.player_identity_id}
           type="button"
+          role="option"
+          aria-selected={selectedCompanion?.player_identity_id === s.player_identity_id}
+          id={`public-companion-option-${index}`}
           style={suggestionItem}
           onClick={() => {
             setFormData({
               ...formData,
-              p2_name: s.player_name,
-              p2_phone: s.player_phone,
+              p2_name: s.display_name,
+              p2_phone: "",
+              p2_gender: null,
             });
+            setSelectedCompanion(s);
             setSuggestionsOpen(false);
           }}
         >
-          <span style={{ fontWeight: 900, color: "#0f172a" }}>
-            {s.player_name}
+          <span style={{ fontWeight: 900, color: "#0f172a", overflowWrap: "anywhere" }}>
+            {s.display_name}
           </span>
           <span style={{ color: "#64748b", fontSize: 12, fontWeight: 700 }}>
             Tel. {s.masked_phone}
@@ -264,21 +274,33 @@ export default function RegistrationDialog({
 
                 <div>
                   <div style={{ fontWeight: 700, marginBottom: 6 }}>Telefono</div>
-                  <input
+                  {selectedCompanion ? <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                    <span>Tel. {selectedCompanion.masked_phone}</span>
+                    <button type="button" className="base44-csv-btn" style={{ minHeight: 44 }} onClick={() => {
+                      setSelectedCompanion(null);
+                      setFormData({ ...formData, p2_phone: "" });
+                    }}>Modifica compagno</button>
+                  </div> : <input
                     className="base44-input"
+                    style={{ minHeight: 44, width: "100%" }}
                     value={formData.p2_phone}
-                    onChange={(e) => setFormData({ ...formData, p2_phone: e.target.value })}
+                    onChange={(e) => {
+                      setSelectedCompanion(null);
+                      setFormData({ ...formData, p2_phone: e.target.value });
+                    }}
                     required
-                  />
+                  />}
                 </div>
 
-                <div>
+                {selectedCompanion && <div style={suggestionHint}>Identità MOVI selezionata. Nome, telefono e sesso saranno verificati dal profilo.</div>}
+                {!selectedCompanion && <div>
                   <div style={{ fontWeight: 700, marginBottom: 6 }}>Sesso</div>
                   <div style={{ display: "flex", gap: 10 }}>
                     <button
                       type="button"
                       className="base44-csv-btn"
                       style={{
+                        minHeight: 44,
                         borderColor: formData.p2_gender === "M" ? "#c7d2fe" : "#e2e8f0",
                         background: formData.p2_gender === "M" ? "#eef2ff" : "#fff",
                       }}
@@ -291,6 +313,7 @@ export default function RegistrationDialog({
                       type="button"
                       className="base44-csv-btn"
                       style={{
+                        minHeight: 44,
                         borderColor: formData.p2_gender === "F" ? "#c7d2fe" : "#e2e8f0",
                         background: formData.p2_gender === "F" ? "#eef2ff" : "#fff",
                       }}
@@ -299,13 +322,13 @@ export default function RegistrationDialog({
                       Donna
                     </button>
                   </div>
-                </div>
+                </div>}
               </div>
             </div>
           )}
 
           <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 8 }}>
-            <button type="button" className="base44-csv-btn" onClick={onClose}>
+            <button type="button" className="base44-csv-btn" style={{ minHeight: 44 }} onClick={onClose}>
               Annulla
             </button>
 
@@ -313,7 +336,7 @@ export default function RegistrationDialog({
               className="base44-primary-btn"
               type="submit"
               disabled={saving}
-              style={{ opacity: saving ? 0.75 : 1 }}
+              style={{ minHeight: 44, opacity: saving ? 0.75 : 1 }}
             >
               {saving ? (
                 <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
@@ -348,6 +371,8 @@ const suggestionsBox: React.CSSProperties = {
   background: "#ffffff",
   border: "1px solid #e2e8f0",
   boxShadow: "0 18px 40px rgba(15,23,42,0.16)",
+  maxHeight: 240,
+  overflowY: "auto",
 };
 
 const suggestionItem: React.CSSProperties = {
@@ -355,6 +380,7 @@ const suggestionItem: React.CSSProperties = {
   border: 0,
   background: "#ffffff",
   padding: "11px 13px",
+  minHeight: 44,
   display: "flex",
   flexDirection: "column",
   alignItems: "flex-start",

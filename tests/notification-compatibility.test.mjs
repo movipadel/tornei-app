@@ -89,8 +89,9 @@ test('legacy rows are preserved, new enrollment remains canonical, and email/pus
 test('Telegram producers/transport and customer communications/League source remain baseline-identical',()=>{
  const registration='src/app/api/tournaments/[id]/registrations/route.ts';
  const current=readFileSync(registration,'utf8');
- const baselineRegistration=execFileSync('git',['show','HEAD:'+registration],{encoding:'utf8',windowsHide:true});
- assert.equal(withoutPush(current.slice(current.indexOf('const textRegistration ='))),withoutPush(baselineRegistration.slice(baselineRegistration.indexOf('const textRegistration ='))),registration);
+ assert.match(current,/schedulePostCommitNotifications\("\/api\/tournaments\/\[id\]\/registrations"/);
+ assert.match(current,/sendTelegramMessage\(registrationText\)/);
+ assert.match(current,/enqueueStaffPushEvent\(result\.is_reserve \? "tournament\.reserve\.created" : "tournament\.registration\.created", result\.id\)/);
  const files=[...producers.map(([file])=>file).filter(file=>file!==registration),'src/lib/telegram.ts','src/lib/moviRequestsServer.ts','src/lib/requestNotification.ts','src/lib/postCommitNotifications.ts','src/app/api/user/communications/route.ts','src/app/api/user/communications/state/route.ts','src/app/api/cron/monday-league-notifications/route.ts','supabase/migrations/20260921130000_monday_league_stage7_notifications.sql'];
  for(const file of files){const baseline=execFileSync('git',['show','HEAD:'+file],{encoding:'utf8',windowsHide:true});assert.equal(withoutPush(readFileSync(file,'utf8')),withoutPush(baseline),file);}
 });

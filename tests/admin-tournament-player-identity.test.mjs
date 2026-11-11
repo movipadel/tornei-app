@@ -70,10 +70,11 @@ test("new identity and registration share one guarded SQL transaction", () => {
   assert.match(admin, /tournament\.registration\.created/);
 });
 
-test("public user link requires player-one name and phone correspondence", () => {
-  assert.match(publicPost, /normalizePlayerName\(String\(user\.full_name/);
-  assert.match(publicPost, /buildPlayerKey\(String\(user\.phone/);
-  assert.match(publicPost, /publicUserIsPlayer1 && user/);
+test("public registration derives player one from the authenticated account in a single RPC", () => {
+  assert.match(publicPost, /getUserIdFromCookie\(\)/);
+  assert.match(publicPost, /if \(!uid\).*401/);
+  assert.match(publicPost, /rpc\("public_tournament_register_self"/);
+  assert.doesNotMatch(publicPost, /body\.p1_name|body\.p1_phone|body\.p1_gender/);
 });
 
 test("Baraonda synthetic fixture ranking and materialization remain unchanged", () => {
