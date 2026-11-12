@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { guardOperatorPermission } from "@/lib/operatorAuthorization";
 import { calendarDaysAfter, romeCalendarDate } from "@/lib/movibackEligibility";
+import { getMovibackGlobalBalance } from "@/lib/movibackBalanceServer";
 
 export const runtime = "nodejs";
 
@@ -60,10 +61,7 @@ export async function GET() {
   }
   const certs = [...currentByUser.values()];
 
-  const totalPointsBalance = allTx.reduce(
-    (sum: number, tx) => sum + Number(tx.points_delta || 0),
-    0
-  );
+  const totalPointsBalance = await getMovibackGlobalBalance(sb);
 
   const monthEarnedPoints = monthTx
     .filter((tx) => tx.type === "earn")

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { guardOperatorPermission } from "@/lib/operatorAuthorization";
+import { getMovibackBalance } from "@/lib/movibackBalanceServer";
 
 export const runtime = "nodejs";
 
@@ -43,16 +44,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Membership non trovata" }, { status: 404 });
   }
 
-  const [userResult, transactionsResult, certificateResult] = await Promise.all([
+  const [userResult, points, certificateResult] = await Promise.all([
     sb
       .from("users")
       .select("id,full_name,phone,email")
       .eq("id", membership.user_id)
       .single(),
-    sb
-      .from("loyalty_transactions")
-      .select("points_delta")
-      .eq("membership_id", membership.id),
+    getMovibackBalance(sb, membership.id),
     sb
       .from("medical_certificates")
       .select("status,expiry_date,uploaded_at")
@@ -67,17 +65,6 @@ export async function POST(req: Request) {
   if (userErr) {
     return NextResponse.json({ error: userErr.message }, { status: 500 });
   }
-
-  const { data: transactions, error: txErr } = transactionsResult;
-
-  if (txErr) {
-    return NextResponse.json({ error: txErr.message }, { status: 500 });
-  }
-
-  const points = (transactions ?? []).reduce(
-    (sum, t) => sum + Number(t.points_delta ?? 0),
-    0
-  );
 
   const { data: cert, error: certErr } = certificateResult;
 

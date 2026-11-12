@@ -4,6 +4,7 @@ import { guardAdmin } from "@/lib/adminGuard";
 import { guardOperatorPermission } from "@/lib/operatorAuthorization";
 import { isSupportedTaxCode, normalizeTaxCode } from "@/lib/movibackEligibility";
 import { readMovibackEligibility } from "@/lib/movibackEligibilityServer";
+import { getMovibackBalance } from "@/lib/movibackBalanceServer";
 
 export const runtime = "nodejs";
 
@@ -83,10 +84,7 @@ export async function GET(_req: Request, { params }: Params) {
     return NextResponse.json({ error: txErr.message }, { status: 500 });
   }
 
-  const pointsBalance = (txRows || []).reduce(
-    (sum: number, tx: any) => sum + Number(tx.points_delta || 0),
-    0
-  );
+  const pointsBalance = await getMovibackBalance(sb, id);
 
   const { data: certificate, error: certErr } = await sb
     .from("medical_certificates")

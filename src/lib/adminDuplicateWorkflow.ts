@@ -1,6 +1,7 @@
 import "server-only";
 
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { getMovibackBalances } from "@/lib/movibackBalanceServer";
 
 type RawPreview = {
   conflicts?: string[];
@@ -283,11 +284,8 @@ async function buildPreview(groupId: string, keepId: string, actorId: string, ch
   if (counts.error) throw counts.error;
   const totals: Record<string, number> = {};
   for (const row of counts.data ?? []) for (const [key, value] of Object.entries(row.reference_counts as Record<string, number>)) totals[key] = (totals[key] ?? 0) + Number(value ?? 0);
-  const transactions = memberships.data?.length
-    ? await supabaseAdmin().from("loyalty_transactions").select("membership_id,points_delta").in("membership_id", memberships.data.map((membership) => membership.id))
-    : { data: [], error: null };
-  if (transactions.error) throw transactions.error;
-  totals.moviback_points = (transactions.data ?? []).reduce((sum, transaction) => sum + Number(transaction.points_delta), 0);
+  const balances = await getMovibackBalances(supabaseAdmin(), (memberships.data ?? []).map((membership) => membership.id));
+  totals.moviback_points = [...balances.values()].reduce((sum, balance) => sum + balance, 0);
 
   const codes = unique(rawBlockers);
   return {

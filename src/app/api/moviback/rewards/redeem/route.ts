@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { getMovibackBalance } from "@/lib/movibackBalanceServer";
 import { getUserIdFromCookie } from "@/lib/userAuth";
 import { sendTelegramMessage } from "@/lib/telegram";
 import { enqueueStaffPushEvent } from "@/lib/staffPush";
@@ -341,19 +342,7 @@ async function handleLegacyPost(req: Request) {
     selectedStock = stockRow;
   }
 
-  const { data: txs, error: txErr } = await sb
-    .from("loyalty_transactions")
-    .select("points_delta")
-    .eq("membership_id", membership.id);
-
-  if (txErr) {
-    return NextResponse.json({ error: txErr.message }, { status: 500 });
-  }
-
-  const balance = (txs || []).reduce(
-    (sum, tx) => sum + Number(tx.points_delta || 0),
-    0
-  );
+  const balance = await getMovibackBalance(sb, membership.id);
 
   if (balance < reward.points_cost) {
     return NextResponse.json(

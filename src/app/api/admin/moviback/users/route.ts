@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { guardOperatorPermission } from "@/lib/operatorAuthorization";
+import { getMovibackBalances } from "@/lib/movibackBalanceServer";
 
 export const runtime = "nodejs";
 
@@ -59,28 +60,11 @@ export async function GET(req: Request) {
 
   const membershipIds = rows.map((r: any) => r.id);
 
-  let balances: Record<string, number> = {};
-
-  if (membershipIds.length > 0) {
-    const { data: txRows, error: txErr } = await sb
-      .from("loyalty_transactions")
-      .select("membership_id,points_delta")
-      .in("membership_id", membershipIds);
-
-    if (txErr) {
-      return NextResponse.json({ error: txErr.message }, { status: 500 });
-    }
-
-    balances = (txRows || []).reduce((acc: Record<string, number>, tx: any) => {
-      const id = String(tx.membership_id);
-      acc[id] = (acc[id] || 0) + Number(tx.points_delta || 0);
-      return acc;
-    }, {});
-  }
+  const balances = await getMovibackBalances(sb, membershipIds);
 
   const enriched = rows.map((row: any) => ({
     ...row,
-    points_balance: balances[row.id] || 0,
+    points_balance: balances.get(row.id) ?? 0,
   }));
 
   return NextResponse.json({ data: enriched });

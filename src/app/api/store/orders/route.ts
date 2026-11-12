@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { getMovibackBalance } from "@/lib/movibackBalanceServer";
 import { getUserIdFromCookie } from "@/lib/userAuth";
 import { sendStoreOrderEmail } from "@/lib/email";
 import { sendTelegramMessage } from "@/lib/telegram";
@@ -20,17 +21,6 @@ type CheckoutItem = {
   size_id?: string | null;
   quantity?: number;
 };
-
-async function getPointsBalance(sb: ReturnType<typeof supabaseAdmin>, membershipId: string) {
-  const { data, error } = await sb
-    .from("loyalty_transactions")
-    .select("points_delta")
-    .eq("membership_id", membershipId);
-
-  if (error) throw new Error(error.message);
-
-  return (data ?? []).reduce((sum, row) => sum + Number(row.points_delta ?? 0), 0);
-}
 
 async function insertStorePointsTransaction({
   sb,
@@ -139,7 +129,7 @@ async function handlePost(req: Request) {
     membership = membershipRow;
 
     try {
-      pointsBalance = await getPointsBalance(sb, membership.id);
+      pointsBalance = await getMovibackBalance(sb, membership.id);
     } catch (e: any) {
       return NextResponse.json({ error: e.message || "Errore saldo punti" }, { status: 500 });
     }

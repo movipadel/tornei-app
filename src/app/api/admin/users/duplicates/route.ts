@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { guardAdmin } from "@/lib/adminGuard";
 import { getStaffSessionFromCookie } from "@/lib/staffSession";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { getMovibackBalances } from "@/lib/movibackBalanceServer";
 import { reconcileDuplicateQueue } from "@/lib/adminDuplicateWorkflow";
 
 export const runtime = "nodejs";
@@ -88,16 +89,8 @@ export async function GET(request: Request) {
   if (membershipError) return NextResponse.json({ error: membershipError.message }, { status: 500 });
   const memberships = membershipResults.flatMap((result) => result.data ?? []);
   const membershipIds = (memberships ?? []).map((membership) => membership.id);
-  const balances = new Map<string, number>();
-  if (membershipIds.length) {
-    const transactionResults = await Promise.all(chunks(membershipIds).map((ids) =>
-      sb.from("loyalty_transactions").select("membership_id,points_delta").in("membership_id", ids),
-    ));
-    const transactionError = transactionResults.find((result) => result.error)?.error;
-    if (transactionError) return NextResponse.json({ error: transactionError.message }, { status: 500 });
-    const transactions = transactionResults.flatMap((result) => result.data ?? []);
-    for (const transaction of transactions ?? []) balances.set(transaction.membership_id, (balances.get(transaction.membership_id) ?? 0) + transaction.points_delta);
-  }
+  const balanceResults = await Promise.all(chunks(membershipIds).map((ids) => getMovibackBalances(sb, ids)));
+  const balances = new Map(balanceResults.flatMap((result) => [...result.entries()]));
   const playerResults = await Promise.all(chunks(userIds).map((ids) =>
     sb.from("league_team_players").select("id,user_id,team_id,is_active").in("user_id", ids),
   ));

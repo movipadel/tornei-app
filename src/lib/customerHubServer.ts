@@ -4,6 +4,7 @@ import { customerAuthAccess } from "@/lib/customerHub";
 import { computeMovibackEligibility } from "@/lib/movibackEligibility";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { mediaConsentRpcMissing } from "@/lib/mediaConsentCompatibility";
+import { getMovibackBalance } from "@/lib/movibackBalanceServer";
 
 export async function loadCustomerAccount(userId: string) {
   const sb = supabaseAdmin();
@@ -39,14 +40,14 @@ export async function loadCustomerAccount(userId: string) {
       sb.from("reward_redemptions").select("id,points_cost,status,requested_at,approved_at,delivered_at,cancelled_at,notes,reward:rewards_catalog(id,name,category)").eq("membership_id", membership.id).order("requested_at", { ascending: false }).limit(10),
       sb.from("loyalty_user_promos").select("id,multiplier,starts_at,ends_at,is_active,notes").eq("membership_id", membership.id).eq("is_active", true).lte("starts_at", now).gte("ends_at", now).order("created_at", { ascending: false }).limit(1).maybeSingle(),
       sb.from("moviback_agreement_entitlements").select("id,status,activation_source,effective_from,effective_until,revoked_at,not_activation_reason,created_at,agreement:moviback_agreements(id,name,status,multiplier,valid_from,valid_until),code:moviback_agreement_codes(code_suffix,status)").eq("membership_id", membership.id).in("status", ["pending", "active", "scheduled", "not_activated"]).is("revoked_at", null).order("created_at", { ascending: false }).limit(1).maybeSingle(),
-      sb.from("loyalty_transactions").select("points_delta").eq("membership_id", membership.id),
+      getMovibackBalance(sb, membership.id),
     ]);
-    if (txResult.error || redemptionsResult.error || promoResult.error || entitlementResult.error || balance.error) throw new Error("Attività MoviBack non disponibile");
+    if (txResult.error || redemptionsResult.error || promoResult.error || entitlementResult.error) throw new Error("Attività MoviBack non disponibile");
     transactions = txResult.data ?? [];
     redemptions = redemptionsResult.data ?? [];
     activePromo = promoResult.data ?? null;
     agreementEntitlement = entitlementResult.data ?? null;
-    pointsBalance = (balance.data ?? []).reduce((sum, item) => sum + Number(item.points_delta ?? 0), 0);
+    pointsBalance = balance;
   }
 
   return {

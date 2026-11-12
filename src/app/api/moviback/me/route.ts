@@ -7,6 +7,7 @@ import {
 } from "@/lib/movibackContracts";
 import { createRuntimePerf } from "@/lib/runtimePerf";
 import { computeMovibackEligibility } from "@/lib/movibackEligibility";
+import { getMovibackBalance } from "@/lib/movibackBalanceServer";
 
 export const runtime = "nodejs";
 
@@ -98,13 +99,14 @@ export async function GET() {
 
   if (membership?.id) {
     const now = new Date().toISOString();
-    const [transactionsResult, redemptionsResult, entitlementResult, agreementHistoryResult] = await Promise.all([
+    const [transactionsResult, redemptionsResult, entitlementResult, agreementHistoryResult, balance] = await Promise.all([
       perf.db(() =>
         sb
           .from("loyalty_transactions")
           .select("id,type,source,euro_amount,points_delta,notes,created_at")
           .eq("membership_id", membership.id)
           .order("created_at", { ascending: false })
+          .limit(20)
       ),
       perf.db(() =>
         sb
@@ -154,6 +156,7 @@ export async function GET() {
           p_membership_id: membership.id,
         })
       ),
+      perf.db(() => getMovibackBalance(sb, membership.id)),
     ]);
 
     const { data: txRows, error: txErr } = transactionsResult;
@@ -162,12 +165,8 @@ export async function GET() {
       return perf.json({ error: txErr.message }, { status: 500 });
     }
 
-    const allTransactions = txRows ?? [];
-    transactions = allTransactions.slice(0, 20);
-    points = allTransactions.reduce(
-      (sum, row) => sum + Number(row.points_delta ?? 0),
-      0
-    );
+    transactions = txRows ?? [];
+    points = balance;
 
     const { data: redemptionRows, error: redemptionErr } = redemptionsResult;
 
