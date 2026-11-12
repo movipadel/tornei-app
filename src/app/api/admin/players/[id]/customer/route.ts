@@ -21,7 +21,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     : Promise.resolve({ data: [], error: null });
   if (!player.account_user_id) {
     const cases = await casePromise;
-    return NextResponse.json({ data: { player, account: null, account_drift: null, open_cases: cases.data ?? [], membership: null, membership_count: 0, eligibility: null, certificate: null, certificates: [], points_balance: 0, transactions: [], redemptions: [], active_promo: null } });
+    return NextResponse.json({ data: { player, account: null, account_drift: null, open_cases: cases.data ?? [], membership: null, membership_count: 0, eligibility: null, certificate: null, certificates: [], certificate_review_allowed: false, reactivation: { allowed: false, reason: "Account non collegato" }, audit_events: [], recent_tournaments: [], points_balance: 0, transactions: [], redemptions: [], active_promo: null } });
   }
   const userId = player.account_user_id;
   let customer;
@@ -32,9 +32,19 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ error: "Customer Hub non disponibile" }, { status: 503 });
   }
   if (!customer) return NextResponse.json({ error: "Customer Hub non disponibile" }, { status: 503 });
+  const registrations = await sb.from("tournament_registrations")
+    .select("id,tournament_id,is_reserve,created_at")
+    .or(`p1_player_identity_id.eq.${id},p2_player_identity_id.eq.${id}`)
+    .order("created_at", { ascending: false }).limit(8);
+  if (registrations.error) return NextResponse.json({ error: "Partecipazioni non disponibili" }, { status: 503 });
+  const tournamentIds = [...new Set((registrations.data ?? []).map((row) => row.tournament_id))];
+  const tournaments = tournamentIds.length ? await sb.from("tournaments").select("id,name,circuit_id").in("id", tournamentIds) : { data: [], error: null };
+  if (tournaments.error) return NextResponse.json({ error: "Tornei non disponibili" }, { status: 503 });
+  const tournamentById = new Map((tournaments.data ?? []).map((row) => [row.id, row]));
+  const recentTournaments = (registrations.data ?? []).map((row) => ({ ...row, tournament: tournamentById.get(row.tournament_id) ?? null }));
   const account = customer.account;
   const accountDrift = account ? { name: account.full_name.trim().toLocaleLowerCase("it") !== player.full_name.trim().toLocaleLowerCase("it"), phone: account.phone.replace(/\D/g, "") !== player.normalized_phone.replace(/\D/g, ""), gender: Boolean(account.gender && player.gender && account.gender !== player.gender) } : null;
-  return NextResponse.json({ data: { player, ...customer, account_drift: accountDrift, open_cases: cases.data ?? [] } });
+  return NextResponse.json({ data: { player, ...customer, account_drift: accountDrift, open_cases: cases.data ?? [], recent_tournaments: recentTournaments } });
 }
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {

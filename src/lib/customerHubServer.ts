@@ -5,6 +5,7 @@ import { computeMovibackEligibility } from "@/lib/movibackEligibility";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { mediaConsentRpcMissing } from "@/lib/mediaConsentCompatibility";
 import { getMovibackBalance } from "@/lib/movibackBalanceServer";
+import { customerReactivationDecision, canReviewCustomerCertificate } from "@/lib/movibackCustomerAdmin";
 
 export async function loadCustomerAccount(userId: string) {
   const sb = supabaseAdmin();
@@ -31,22 +32,30 @@ export async function loadCustomerAccount(userId: string) {
   let redemptions: unknown[] = [];
   let activePromo: unknown = null;
   let agreementEntitlement: unknown = null;
+  let auditEvents: unknown[] = [];
   let pointsBalance = 0;
+  const reactivation = customerReactivationDecision({
+    membership, membershipCount: memberships.length, accountActive: safeAccount.identity_status === "active", certificates,
+  });
+  const certificateReviewAllowed = canReviewCustomerCertificate(membership, memberships.length,
+    safeAccount.identity_status === "active", certificates[0] ?? null);
 
   if (membership) {
     const now = new Date().toISOString();
-    const [txResult, redemptionsResult, promoResult, entitlementResult, balance] = await Promise.all([
+    const [txResult, redemptionsResult, promoResult, entitlementResult, auditResult, balance] = await Promise.all([
       sb.from("loyalty_transactions").select("id,type,source,euro_amount,points_delta,club,notes,created_at").eq("membership_id", membership.id).order("created_at", { ascending: false }).limit(20),
       sb.from("reward_redemptions").select("id,points_cost,status,requested_at,approved_at,delivered_at,cancelled_at,notes,reward:rewards_catalog(id,name,category)").eq("membership_id", membership.id).order("requested_at", { ascending: false }).limit(10),
       sb.from("loyalty_user_promos").select("id,multiplier,starts_at,ends_at,is_active,notes").eq("membership_id", membership.id).eq("is_active", true).lte("starts_at", now).gte("ends_at", now).order("created_at", { ascending: false }).limit(1).maybeSingle(),
       sb.from("moviback_agreement_entitlements").select("id,status,activation_source,effective_from,effective_until,revoked_at,not_activation_reason,created_at,agreement:moviback_agreements(id,name,status,multiplier,valid_from,valid_until),code:moviback_agreement_codes(code_suffix,status)").eq("membership_id", membership.id).in("status", ["pending", "active", "scheduled", "not_activated"]).is("revoked_at", null).order("created_at", { ascending: false }).limit(1).maybeSingle(),
+      sb.from("moviback_customer_audit_events").select("id,event_type,actor_staff_id,before_state,after_state,reason,created_at").eq("membership_id", membership.id).order("created_at", { ascending: false }).limit(10),
       getMovibackBalance(sb, membership.id),
     ]);
-    if (txResult.error || redemptionsResult.error || promoResult.error || entitlementResult.error) throw new Error("Attività MoviBack non disponibile");
+    if (txResult.error || redemptionsResult.error || promoResult.error || entitlementResult.error || auditResult.error) throw new Error("Attività MoviBack non disponibile");
     transactions = txResult.data ?? [];
     redemptions = redemptionsResult.data ?? [];
     activePromo = promoResult.data ?? null;
     agreementEntitlement = entitlementResult.data ?? null;
+    auditEvents = auditResult.data ?? [];
     pointsBalance = balance;
   }
 
@@ -68,5 +77,8 @@ export async function loadCustomerAccount(userId: string) {
     redemptions,
     active_promo: activePromo,
     agreement_entitlement: agreementEntitlement,
+    certificate_review_allowed: certificateReviewAllowed,
+    reactivation,
+    audit_events: auditEvents,
   };
 }

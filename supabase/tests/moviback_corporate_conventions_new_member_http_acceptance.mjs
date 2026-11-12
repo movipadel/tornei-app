@@ -73,6 +73,7 @@ const cleanup = `
 begin; set local session_replication_role=replica;
 delete from public.moviback_membership_enrollment_requests where user_id in ('${users.join("','")}');
 delete from public.moviback_agreement_audit_events where agreement_id='${agreement}';
+delete from public.moviback_customer_audit_events where membership_id in (select id from public.loyalty_memberships where user_id in ('${users.join("','")}'));
 delete from public.moviback_agreement_entitlements where membership_id in (select id from public.loyalty_memberships where user_id in ('${users.join("','")}'));
 delete from public.moviback_agreement_codes where agreement_id='${agreement}';
 delete from public.moviback_agreements where id='${agreement}';

@@ -330,7 +330,7 @@ await load();
             <Field label="Stato">
               <select
                 value={form.status}
-                onChange={(e) => setForm({ ...form, status: e.target.value })}
+                disabled
                 style={inputStyle}
               >
                 <option style={optionStyle} value="pending_review">pending_review</option>

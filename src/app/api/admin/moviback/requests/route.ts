@@ -75,13 +75,13 @@ export async function GET() {
   const replacementUserIds = [...new Set((pendingCertificates.data ?? []).map((item) => item.user_id).filter((id) => !existingUsers.has(id)))];
   if (replacementUserIds.length) {
     const replacements = await sb.from("loyalty_memberships")
-      .select("id,user_id,membership_code,membership_type,has_existing_membership,existing_membership_type,existing_membership_number,fee_points,fee_paid,created_at,status,users(full_name,phone)")
+      .select("id,user_id,membership_code,membership_type,has_existing_membership,existing_membership_type,existing_membership_number,fee_points,fee_paid,created_at,status,suspension_reason,users(full_name,phone)")
       .in("user_id", replacementUserIds);
     if (replacements.error) return NextResponse.json({ error: replacements.error.message }, { status: 500 });
     const latest = new Map<string, Record<string, unknown>>();
     for (const cert of pendingCertificates.data ?? []) if (!latest.has(cert.user_id)) latest.set(cert.user_id, cert);
     for (const membership of replacements.data ?? []) {
-      if (membership.status !== "approved") continue;
+      if (membership.status !== "approved" && !(membership.status === "suspended" && membership.suspension_reason === "Uscita volontaria utente")) continue;
       const certificate = latest.get(membership.user_id) as CertificateRow | undefined;
       if (!certificate) continue;
       enriched.push({ ...membership, membership_id: membership.id, certificate_id: certificate.id,
@@ -119,10 +119,10 @@ export async function POST(request: Request) {
   if (!id || !certificateId || !["membership_review", "certificate_review"].includes(queueKind) || !["approve", "reject"].includes(action)) return NextResponse.json({ error: "Dati mancanti o non validi" }, { status: 400 });
 
   const sb = supabaseAdmin();
-  const certificate = await sb.from("loyalty_memberships").select("user_id,status").eq("id", id).maybeSingle();
+  const certificate = await sb.from("loyalty_memberships").select("user_id,status,suspension_reason").eq("id", id).maybeSingle();
   if (certificate.error || !certificate.data) return NextResponse.json({ error: "Richiesta non trovata" }, { status: 404 });
   if ((queueKind === "membership_review" && certificate.data.status !== "pending_review") ||
-      (queueKind === "certificate_review" && certificate.data.status !== "approved")) {
+      (queueKind === "certificate_review" && certificate.data.status !== "approved" && !(certificate.data.status === "suspended" && certificate.data.suspension_reason === "Uscita volontaria utente"))) {
     return NextResponse.json({ error: "La richiesta non è più in revisione" }, { status: 409 });
   }
   const latest = await sb.from("medical_certificates").select("id,file_path,user_id,status")

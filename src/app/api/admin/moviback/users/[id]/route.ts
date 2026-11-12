@@ -176,7 +176,7 @@ export async function PATCH(req: Request, { params }: Params) {
 
   const { data: membership, error: readErr } = await sb
     .from("loyalty_memberships")
-    .select("id,user_id")
+    .select("id,user_id,status")
     .eq("id", id)
     .single();
 
@@ -230,6 +230,10 @@ export async function PATCH(req: Request, { params }: Params) {
 
   if (!Number.isFinite(feePoints) || feePoints < 0) {
     return NextResponse.json({ error: "Quota punti non valida" }, { status: 400 });
+  }
+
+  if (status !== membership.status) {
+    return NextResponse.json({ error: "Cambia lo stato MoviBack tramite l’azione di revisione o riattivazione dedicata" }, { status: 409 });
   }
 
   if (status === "approved") {

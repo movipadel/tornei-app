@@ -45,7 +45,7 @@ test('queue and Customer Hub distinguish membership and certificate review', () 
   const queue = read('src/app/api/admin/moviback/requests/route.ts');
   assert.match(queue, /queue_kind: "membership_review"/);
   assert.match(queue, /queue_kind: "certificate_review"/);
-  assert.match(queue, /if \(membership\.status !== "approved"\) continue/);
+  assert.match(queue, /membership\.status !== "approved" && !\(membership\.status === "suspended" && membership\.suspension_reason === "Uscita volontaria utente"\)/);
   assert.match(queue, /certificate_id: certificate\.id/);
   assert.match(queue, /\.rpc\("review_moviback_certificate"/);
   const customers = read('src/app/api/admin/players/route.ts');
