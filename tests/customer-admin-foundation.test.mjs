@@ -82,6 +82,17 @@ test("normal, access, identity, grace, and standby issue states are specific", (
   }
 });
 
+test("incomplete account activation and circuit review remain separate Admin issues", () => {
+  const result = issues({ account: { identity_status: "active", auth_access: { key: "to_activate" } },
+    activationRepairState: "eligible", identityCaseCount: 1,
+    identityCaseTypes: ["circuit_identity_ambiguity"], membership: null,
+    certificate: null, eligibility: null });
+  assert.deepEqual(result.map((issue) => [issue.key, issue.title, issue.action]), [
+    ["access", "Attivazione non completata", "access_repair"],
+    ["identity", "Risultato circuito da associare", "identity"],
+  ]);
+});
+
 test("full-ledger helper remains separate from paginated transaction history", () => {
   const loader = read("src/lib/customerHubServer.ts");
   assert.match(loader, /getMovibackBalance\(sb, membership\.id\)/);

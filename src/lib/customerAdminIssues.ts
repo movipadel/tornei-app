@@ -25,6 +25,7 @@ export function customerAdminIssues(input: {
   account: { identity_status: string; auth_access: { key: string } } | null;
   playerStatus: string;
   identityCaseCount: number;
+  identityCaseTypes?: string[];
   membership: { status: string; suspension_reason?: string | null } | null;
   membershipCount: number;
   certificate: { status: string; expiry_date: string | null } | null;
@@ -46,7 +47,10 @@ export function customerAdminIssues(input: {
     }
   }
   if (input.playerStatus === "merged" || input.identityCaseCount > 0) {
-    add("identity", "Identità sportiva da verificare", "È presente una verifica o una fusione dell’identità giocatore.", "I collegamenti sportivi richiedono controllo Admin.", "identity");
+    const circuitResult = input.identityCaseTypes?.includes("circuit_identity_ambiguity");
+    add("identity", circuitResult ? "Risultato circuito da associare" : "Identità sportiva da verificare",
+      circuitResult ? "Un risultato del circuito richiede una verifica dell’identità sportiva." : "È presente una verifica o una fusione dell’identità giocatore.",
+      "I collegamenti sportivi richiedono controllo Admin.", "identity");
   }
   if (input.accountIdentityConsistency?.severity === "CONFLICT") {
     add("account_identity_conflict", "Dati account e sportivi in conflitto",

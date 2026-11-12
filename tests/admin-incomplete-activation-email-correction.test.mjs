@@ -4,9 +4,12 @@ import { readFileSync } from "node:fs";
 
 const read = (path) => readFileSync(new URL(path, import.meta.url), "utf8");
 const migration = read("../supabase/migrations/20261112121613_admin_incomplete_activation_email_correction.sql");
+const separation = read("../supabase/migrations/20261112143000_account_activation_repair_customer_identity_scope.sql");
+const participantLink = read("../supabase/migrations/20261112144500_player_identity_participant_link_source_qualification.sql");
 const route = read("../src/app/api/admin/players/[id]/activation-email-correction/route.ts");
 const ui = read("../src/app/admin/players/[id]/ActivationEmailCorrection.tsx");
 const detail = read("../src/app/admin/players/[id]/PlayerDetail.tsx");
+const identityReview = read("../src/components/PlayerIdentityAdmin.tsx");
 
 test("incomplete activation repair restricts eligibility and target addresses", () => {
   for (const condition of [
@@ -42,6 +45,35 @@ test("Customer Hub exposes correction only for incomplete activation", () => {
   assert.match(ui, /\/attiva-account/);
   assert.match(ui, /repair\.state === "eligible"/);
   assert.match(detail, /<ActivationEmailCorrection/);
+});
+
+test("account recovery excludes sporting reviews but retains customer ownership guards", () => {
+  assert.match(separation, /create or replace function public\.admin_prepare_incomplete_activation_email_repair/);
+  assert.match(separation, /c\.source_kind in \('account','account_profile','account_merge','circuit_account'\)/);
+  assert.match(separation, /c\.case_type='identity_data_conflict' and c\.source_kind='admin_identity'/);
+  assert.doesNotMatch(separation, /v_user\.id=any\(c\.account_ids\) or v_player_id=any\(c\.player_ids\)/);
+  assert.match(separation, /user_duplicate_review_groups/);
+  assert.match(separation, /account_activation_repair_email_conflict/);
+  assert.match(detail, /identityCaseTypes:hub\.open_cases\.map\(item=>item\.case_type\)/);
+  assert.match(detail, /issue\.action==='access'\|\|issue\.action==='access_repair'/);
+  assert.match(detail, /issue\.action==='identity'/);
+});
+
+test("sporting case link requires an Admin reason and refreshes after success", () => {
+  assert.match(identityReview, /disabled=\{busy\|\|!reason\.trim\(\)\}/);
+  assert.match(identityReview, /Indica il motivo della decisione per abilitare/);
+  assert.match(identityReview, /resolve\('confirm',\{player_id:p\.id\}\)/);
+  assert.match(identityReview, /await load\(\)/);
+  assert.doesNotMatch(identityReview, /activation-email-correction/);
+});
+
+test("circuit participant resolver qualifies source phone without changing account ownership", () => {
+  assert.match(participantLink, /create or replace function public\.player_identity_command/);
+  assert.match(participantLink, /select trp\.name source_name,trp\.phone source_phone into rec from tournament_run_participants trp where trp\.id=/);
+  assert.match(participantLink, /if nullif\(btrim\(p_data->>'reason'\),''\) is null then raise exception 'REASON_REQUIRED'/);
+  assert.match(participantLink, /insert into player_identity_identifiers/);
+  assert.match(participantLink, /update circuit_results set player_identity_id=p\.id/);
+  assert.doesNotMatch(participantLink, /update (public\.)?users set|update auth\.users set/i);
 });
 
 test("repair audit is append-only and does not edit other business data", () => {

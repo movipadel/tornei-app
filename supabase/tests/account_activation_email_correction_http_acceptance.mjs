@@ -89,6 +89,31 @@ try {
     p_reason: null, p_operation_id: null, p_dry_run: true,
   });
   assert.equal(probe.state, "eligible", JSON.stringify(probe));
+  for (const [caseType, sourceKind, accountIds] of [
+    ["circuit_identity_ambiguity", "circuit", "'{}'::uuid[]"],
+    ["league_identity_confirmation", "league", `array['${ids.user}'::uuid]`],
+  ]) {
+    const state = sql(`begin;
+      insert into public.player_identity_cases(dedupe_key,case_type,source_kind,source_ref,player_ids,account_ids)
+      values('repair-sport-${randomUUID()}','${caseType}','${sourceKind}','synthetic-review',
+        array['${ids.player}'::uuid],${accountIds});
+      select public.admin_prepare_incomplete_activation_email_repair(
+        '${ids.user}',null,null,null,null,true)->>'state'; rollback;`);
+    assert.ok(state.split(/\r?\n/).includes("eligible"), `${caseType} must not block account recovery: ${state}`);
+  }
+  for (const [caseType, sourceKind, playerIds, accountIds] of [
+    ["ambiguous_account_link", "account_profile", "'{}'::uuid[]", `array['${ids.user}'::uuid]`],
+    ["identity_data_conflict", "admin_identity", `array['${ids.player}'::uuid]`, "'{}'::uuid[]"],
+    ["sporting_merge_conflict", "account_merge", "'{}'::uuid[]", `array['${ids.user}'::uuid]`],
+  ]) {
+    const reason = sql(`begin;
+      insert into public.player_identity_cases(dedupe_key,case_type,source_kind,source_ref,player_ids,account_ids)
+      values('repair-account-${randomUUID()}','${caseType}','${sourceKind}','synthetic-review',
+        ${playerIds},${accountIds});
+      select public.admin_prepare_incomplete_activation_email_repair(
+        '${ids.user}',null,null,null,null,true)->>'reason'; rollback;`);
+    assert.ok(reason.split(/\r?\n/).includes("identity_review_required"), `${caseType} must protect account ownership: ${reason}`);
+  }
   if (process.env.VISUAL_HOLD === "1") {
     console.log(`LOCAL_VISUAL_FIXTURE player=${ids.player} staff_email=repair-admin-${suffix}@example.invalid password=Synthetic-Repair-Admin-2026!`);
     await new Promise((resolve) => process.stdin.once("data", resolve));
