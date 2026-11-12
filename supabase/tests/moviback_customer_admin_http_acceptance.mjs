@@ -63,6 +63,9 @@ try {
   assert.equal(detail.status, 200, JSON.stringify(detail.body));
   assert.equal(detail.body.data.account.auth_linked, true);
   assert.equal(detail.body.data.player.account_user_id, user);
+  assert.equal(detail.body.data.account_identity_consistency.severity, "CONSISTENT");
+  assert.deepEqual(detail.body.data.account_identity_consistency.findings, []);
+  assert.equal(detail.body.data.account_drift.phone, false);
   assert.equal(detail.body.data.points_balance, 81);
   assert.equal(detail.body.data.transactions.length, 20);
   assert.equal(detail.body.data.certificate_review_allowed, true);

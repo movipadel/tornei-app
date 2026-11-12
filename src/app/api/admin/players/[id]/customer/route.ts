@@ -3,6 +3,7 @@ import { getCurrentOperator, guardOperatorPermission } from "@/lib/operatorAutho
 import { loadCustomerAccount } from "@/lib/customerHubServer";
 import { isSupportedTaxCode, normalizeTaxCode } from "@/lib/movibackEligibility";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { classifyAccountIdentityConsistency } from "@/lib/customerAccountIdentityConsistency";
 
 export const dynamic = "force-dynamic";
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -21,7 +22,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     : Promise.resolve({ data: [], error: null });
   if (!player.account_user_id) {
     const cases = await casePromise;
-    return NextResponse.json({ data: { player, account: null, account_drift: null, open_cases: cases.data ?? [], membership: null, membership_count: 0, eligibility: null, certificate: null, certificates: [], certificate_review_allowed: false, reactivation: { allowed: false, reason: "Account non collegato" }, audit_events: [], recent_tournaments: [], points_balance: 0, transactions: [], redemptions: [], active_promo: null } });
+    return NextResponse.json({ data: { player, account: null, account_drift: null, account_identity_consistency: null, open_cases: cases.data ?? [], membership: null, membership_count: 0, eligibility: null, certificate: null, certificates: [], certificate_review_allowed: false, reactivation: { allowed: false, reason: "Account non collegato" }, audit_events: [], recent_tournaments: [], points_balance: 0, transactions: [], redemptions: [], active_promo: null } });
   }
   const userId = player.account_user_id;
   let customer;
@@ -43,8 +44,19 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const tournamentById = new Map((tournaments.data ?? []).map((row) => [row.id, row]));
   const recentTournaments = (registrations.data ?? []).map((row) => ({ ...row, tournament: tournamentById.get(row.tournament_id) ?? null }));
   const account = customer.account;
-  const accountDrift = account ? { name: account.full_name.trim().toLocaleLowerCase("it") !== player.full_name.trim().toLocaleLowerCase("it"), phone: account.phone.replace(/\D/g, "") !== player.normalized_phone.replace(/\D/g, ""), gender: Boolean(account.gender && player.gender && account.gender !== player.gender) } : null;
-  return NextResponse.json({ data: { player, ...customer, account_drift: accountDrift, open_cases: cases.data ?? [], recent_tournaments: recentTournaments } });
+  const [accountPhone, playerPhone] = await Promise.all([
+    sb.rpc("normalize_user_mobile_e164", { p_phone: account.phone }),
+    sb.rpc("normalize_user_mobile_e164", { p_phone: player.normalized_phone }),
+  ]);
+  if (accountPhone.error || playerPhone.error) return NextResponse.json({ error: "Confronto anagrafico non disponibile" }, { status: 503 });
+  const accountIdentityConsistency = classifyAccountIdentityConsistency({
+    account, player: { full_name: player.full_name, phone: player.normalized_phone, gender: player.gender },
+    accountPhoneE164: typeof accountPhone.data === "string" ? accountPhone.data : null,
+    playerPhoneE164: typeof playerPhone.data === "string" ? playerPhone.data : null,
+  });
+  const accountDrift = Object.fromEntries(["name", "phone", "gender"].map((field) =>
+    [field, accountIdentityConsistency.findings.some((item) => item.field === field && item.kind === "conflict")]));
+  return NextResponse.json({ data: { player, ...customer, account_drift: accountDrift, account_identity_consistency: accountIdentityConsistency, open_cases: cases.data ?? [], recent_tournaments: recentTournaments } });
 }
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {

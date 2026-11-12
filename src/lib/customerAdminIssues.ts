@@ -1,4 +1,5 @@
 import { canReviewCustomerCertificate, VOLUNTARY_MOVIBACK_EXIT } from "@/lib/movibackCustomerAdminShared";
+import type { AccountIdentityConsistency } from "@/lib/customerAccountIdentityConsistency";
 
 export type CustomerAdminIssue = {
   key: string;
@@ -29,6 +30,7 @@ export function customerAdminIssues(input: {
   certificate: { status: string; expiry_date: string | null } | null;
   eligibility: { eligibility_state: string; reason_code: string; human_message: string } | null;
   canReactivate: boolean;
+  accountIdentityConsistency?: AccountIdentityConsistency | null;
 }): CustomerAdminIssue[] {
   const issues: CustomerAdminIssue[] = [];
   const add = (key: string, title: string, cause: string, consequence: string, action: string | null = null) =>
@@ -38,6 +40,11 @@ export function customerAdminIssues(input: {
   }
   if (input.playerStatus === "merged" || input.identityCaseCount > 0) {
     add("identity", "Identità sportiva da verificare", "È presente una verifica o una fusione dell’identità giocatore.", "I collegamenti sportivi richiedono controllo Admin.", "identity");
+  }
+  if (input.accountIdentityConsistency?.severity === "CONFLICT") {
+    add("account_identity_conflict", "Dati account e sportivi in conflitto",
+      input.accountIdentityConsistency.findings.filter((item) => item.kind === "conflict").map((item) => item.message).join(" "),
+      "Controlla i singoli campi prima di correggerli.");
   }
   const membership = input.membership;
   if (membership?.status === "suspended") {
