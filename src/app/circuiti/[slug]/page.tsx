@@ -7,8 +7,9 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import styles from "./CircuitDetail.module.css";
+import { formatCircuitRankingDisplayName } from "@/lib/circuitRankingDisplayName";
 
-type RankingRow = { position: number; player_name: string; total_points: number; events_played: number };
+type RankingRow = { position: number; player_name: string; display_name: string; total_points: number; events_played: number };
 type StageResult = { player_name: string; points: number; placement: number | null };
 type Stage = { source_tournament_id: string | null; tournament_name: string; tournament_type: string; tournament_date: string | null; results: StageResult[] };
 type UpcomingStage = { id: string; name: string; category: string | null; date: string | null; time: string | null; location: string | null; registrations_open: boolean };
@@ -74,8 +75,8 @@ function Podium({ rows }: { rows: RankingRow[] }) {
   return <ol className={styles.podium} aria-label="Prime posizioni">{visualOrder.map((row) => (
     <li key={`${row.position}-${row.player_name}`} className={`${styles.podiumCard} ${styles[`podium${row.position}`] ?? ""}`}>
       <span className={styles.medal} aria-label={`${row.position}ª posizione`}>{row.position === 1 ? <Crown className={styles.crown} size={19} strokeWidth={2.6} fill="currentColor" aria-hidden /> : row.position}</span>
-      <span className={styles.avatar} aria-hidden>{initials(row.player_name)}</span>
-      <strong>{row.player_name}</strong><span>{row.total_points} pt</span>
+      <span className={styles.avatar} aria-hidden>{initials(row.display_name)}</span>
+      <strong>{formatCircuitRankingDisplayName(row.display_name)}</strong><span>{row.total_points} pt</span>
     </li>
   ))}</ol>;
 }
@@ -138,7 +139,7 @@ export default function CircuitPage() {
   const normalizedSearch = search.trim().toLocaleLowerCase("it");
   const ranking = useMemo(() => {
     const rows = selectedGroup?.ranking ?? [];
-    return normalizedSearch ? rows.filter((row) => row.player_name.toLocaleLowerCase("it").includes(normalizedSearch)) : rows;
+    return normalizedSearch ? rows.filter((row) => row.display_name.toLocaleLowerCase("it").includes(normalizedSearch)) : rows;
   }, [selectedGroup, normalizedSearch]);
   const playedStages = useMemo(() => {
     const stages = selectedGroup?.played_stages ?? [];
@@ -224,7 +225,7 @@ export default function CircuitPage() {
       <Podium rows={ranking.slice(0, 3)} />
       <label className={styles.search}><Search size={18} aria-hidden /><span className="sr-only">Cerca giocatore</span><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Cerca giocatore" />{search ? <button type="button" onClick={() => setSearch("")} aria-label="Cancella ricerca">×</button> : null}</label>
       <div className={styles.rankingTableWrap}><table className={styles.rankingTable}><caption className="sr-only">Classifica del circuito per categoria e livello selezionati</caption><thead><tr><th scope="col">#</th><th scope="col">Giocatore</th><th scope="col">Punti</th><th scope="col">Tappe</th></tr></thead><tbody>
-        {ranking.length ? ranking.map((row) => <tr key={`${row.position}-${row.player_name}`}><td><span className={styles.position}>{row.position}</span></td><th scope="row">{row.player_name}</th><td>{row.total_points}</td><td>{row.events_played}</td></tr>) : <tr><td colSpan={4} className={styles.noRows}>Nessun giocatore trovato.</td></tr>}
+        {ranking.length ? ranking.map((row) => <tr key={`${row.position}-${row.player_name}`}><td><span className={styles.position}>{row.position}</span></td><th scope="row">{formatCircuitRankingDisplayName(row.display_name)}</th><td>{row.total_points}</td><td>{row.events_played}</td></tr>) : <tr><td colSpan={4} className={styles.noRows}>Nessun giocatore trovato.</td></tr>}
       </tbody></table></div>
     </section>
 

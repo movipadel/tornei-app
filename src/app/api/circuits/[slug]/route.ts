@@ -1,4 +1,5 @@
 import { buildPublicCircuitRanking } from '@/lib/circuitPublicRanking';
+import { withCanonicalCircuitRankingNames, type RankingPlayerIdentity } from '@/lib/circuitRankingDisplayName';
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { createRuntimePerf } from "@/lib/runtimePerf";
 import { sortPublicCircuitStageResults } from "@/lib/circuitStageResults";
@@ -8,6 +9,7 @@ export const runtime = "nodejs";
 type PublicRankingRow = {
   position: number;
   player_name: string;
+  display_name: string;
   total_points: number;
   events_played: number;
 };
@@ -20,6 +22,7 @@ type PublicStageResult = {
 
 type PublicResultRow = {
   ranking_group_id: string;
+  player_identity_id: string | null;
   source_tournament_id: string | null;
   tournament_name: string | null;
   tournament_type: string | null;
@@ -146,7 +149,7 @@ export async function GET(
         sb
           .from("circuit_results")
           .select(
-            "ranking_group_id,source_tournament_id,tournament_name,tournament_type,tournament_date,player_name,points,placement,created_at"
+            "ranking_group_id,player_identity_id,source_tournament_id,tournament_name,tournament_type,tournament_date,player_name,points,placement,created_at"
           )
           .in("ranking_group_id", groupIds)
           .order("tournament_date", { ascending: false, nullsFirst: false })
@@ -164,12 +167,24 @@ export async function GET(
       }
     }
 
+    const canonicalNames = new Map<string, RankingPlayerIdentity>();
+    const identityIds = [...new Set([...resultsByGroupId.values()].flatMap((rows) => rows.map((row) => row.player_identity_id)))]
+      .filter((id): id is string => Boolean(id));
+    for (let offset = 0; offset < identityIds.length; offset += 100) {
+      const { data: identities } = await perf.db(() => sb.from("player_identities")
+        .select("id,full_name,status,merged_into_player_id")
+        .in("id", identityIds.slice(offset, offset + 100)));
+      for (const identity of identities ?? []) canonicalNames.set(identity.id, identity);
+    }
+
     const rankingGroups: PublicRankingGroup[] = [];
 
     for (const group of groups ?? []) {
       const results = resultsByGroupId.get(group.id) ?? [];
 
-      const ranking: PublicRankingRow[] = buildPublicCircuitRanking(results);
+      const ranking: PublicRankingRow[] = withCanonicalCircuitRankingNames(
+        buildPublicCircuitRanking(results), results, canonicalNames,
+      );
 
       const stageMap = new Map<string, PublicStage>();
 
