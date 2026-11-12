@@ -54,3 +54,13 @@
 :global(.admin-ui[data-admin-theme="light"]) .score{background:#ede9fe;color:#5b21b6;border:1px solid #c4b5fd}
 :global(.admin-ui[data-admin-theme="light"]) .sportOnly{background:#d1fae5;color:#065f46;border:1px solid #6ee7b7}
 :global(.admin-ui[data-admin-theme="light"]) .matchedClub{background:#dbeafe;color:#1e40af;border:1px solid #93c5fd}
+
+.repairPanel{display:grid;gap:8px;min-width:0;margin-top:16px;padding:16px;border:1px solid var(--admin-border);border-radius:14px;background:var(--admin-panel-soft)}
+.repairPanel p{margin:0;overflow-wrap:anywhere}.repairPanel button{justify-self:start}
+.repairBackdrop{position:fixed;inset:0;z-index:1000;display:grid;place-items:center;padding:16px;background:rgba(2,6,23,.76)}
+.repairDialog{width:min(100%,560px);max-height:calc(100dvh - 32px);overflow:auto;padding:clamp(18px,4vw,28px);border:1px solid var(--admin-border);border-radius:18px;background:var(--admin-panel);color:var(--admin-text);box-shadow:0 24px 70px rgba(0,0,0,.4)}
+.repairDialog h2{margin:0 0 12px;font-size:clamp(20px,4vw,26px)}.repairDialog p{overflow-wrap:anywhere}
+.repairForm{display:grid;gap:14px}.repairForm .field{min-width:0}.repairForm input,.repairForm textarea{min-width:0;width:100%;overflow-wrap:anywhere}
+.repairConfirm{display:flex;align-items:flex-start;gap:10px;line-height:1.4}.repairConfirm input{width:20px;min-width:20px;height:20px;margin-top:2px}
+.repairActions{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:10px}.repairActions button,.repairPanel button{min-height:44px}
+@media(max-width:390px){.repairActions{display:grid;grid-template-columns:1fr}.repairActions button,.repairPanel button{width:100%}}

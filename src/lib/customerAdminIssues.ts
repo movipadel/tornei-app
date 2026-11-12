@@ -31,12 +31,19 @@ export function customerAdminIssues(input: {
   eligibility: { eligibility_state: string; reason_code: string; human_message: string } | null;
   canReactivate: boolean;
   accountIdentityConsistency?: AccountIdentityConsistency | null;
+  activationRepairState?: string | null;
 }): CustomerAdminIssue[] {
   const issues: CustomerAdminIssue[] = [];
   const add = (key: string, title: string, cause: string, consequence: string, action: string | null = null) =>
     issues.push({ key, title, cause, consequence, action });
   if (input.account && input.account.auth_access.key !== "active") {
-    add("access", "Accesso MOVI da completare", "Il nuovo accesso non è ancora attivo.", "Il cliente potrebbe non accedere alle aree personali.", "access");
+    if (input.activationRepairState === "eligible" || input.activationRepairState === "prepared") {
+      add("access", "Attivazione non completata", "L’attivazione del nuovo accesso non è stata completata.",
+        "Il cliente non può ancora usare il nuovo accesso MOVI.", "access_repair");
+    } else {
+      add("access", "Nuovo accesso da completare", "Il nuovo accesso non è ancora attivo.",
+        "Il cliente potrebbe non accedere alle aree personali.", "access");
+    }
   }
   if (input.playerStatus === "merged" || input.identityCaseCount > 0) {
     add("identity", "Identità sportiva da verificare", "È presente una verifica o una fusione dell’identità giocatore.", "I collegamenti sportivi richiedono controllo Admin.", "identity");
