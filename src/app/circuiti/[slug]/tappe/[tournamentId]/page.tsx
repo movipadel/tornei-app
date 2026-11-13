@@ -53,7 +53,7 @@ export default function CircuitStagePage() {
     <Link className={styles.back} href={backHref}><ArrowLeft size={18} aria-hidden />Torna al circuito</Link>
     <header className={styles.hero}>
       {data.circuit.hero_logo_url ? <img src={data.circuit.hero_logo_url} alt={`Logo ${data.circuit.name}`} /> : null}
-      <div className={styles.tags}><span>{data.group.category}</span><span>{levelLabel(data.group.level)}</span></div>
+      <div className={styles.tags}>{data.stage.category ? <span>{data.stage.category}</span> : null}<span>Classifica {data.group.category}</span><span>{levelLabel(data.stage.level)}</span></div>
       <p>{data.circuit.name}</p><h1>{data.stage.name}</h1>
       <div className={styles.meta}>
         <span><CalendarDays size={18} aria-hidden />{dateLabel(data.stage.date)}</span>

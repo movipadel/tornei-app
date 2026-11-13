@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { sortPublicCircuitStageResults } from "../src/lib/circuitStageResults.ts";
+import { buildCircuitStageDetail, sortPublicCircuitStageResults } from "../src/lib/circuitStageResults.ts";
 import { buildPersonalCircuitStages, resolvePersonalCircuit } from "../src/lib/personalCircuit.ts";
 import { buildPublicCircuitRanking } from "../src/lib/circuitPublicRanking.ts";
 import { ownsCircuitResult } from "../src/lib/playerIdentity.ts";
@@ -50,6 +50,49 @@ test("stage result ordering exactly preserves Phase 1 semantics", () => {
     { player_name: "Gamma", points: 200, placement: null },
   ]);
   assert.deepEqual(rows.map((row) => row.player_name), ["Gamma", "Alfa", "Zeta", "Beta"]);
+});
+
+test("stage detail uses durable result snapshots with or without the source tournament", () => {
+  const rows = [
+    { tournament_name: "Tappa storica", tournament_type: "Baraonda", tournament_date: "2026-11-11", player_name: "Giocatore A", points: 250, placement: 2 },
+    { tournament_name: "Tappa storica", tournament_type: "Baraonda", tournament_date: "2026-11-11", player_name: "Giocatore B", points: 450, placement: 1 },
+  ];
+  const original = structuredClone(rows);
+  const existing = buildCircuitStageDetail("stage-11", rows, "principiante", {
+    category: "Misto", level: "principiante", time: "20:00", location: "Saluzzo",
+  });
+  assert.equal(existing.stage.name, "Tappa storica");
+  assert.equal(existing.stage.category, "Misto");
+  assert.equal(existing.stage.time, "20:00");
+  assert.deepEqual(existing.results.map((row) => row.points), [450, 250]);
+
+  const historical = buildCircuitStageDetail("stage-04", rows.map((row) => ({ ...row, tournament_date: "2026-11-04" })), "principiante", null);
+  assert.equal(historical.stage.id, "stage-04");
+  assert.equal(historical.stage.date, "2026-11-04");
+  assert.equal(historical.stage.category, null);
+  assert.equal(historical.stage.level, "principiante");
+  assert.equal(historical.stage.location, null);
+  assert.deepEqual(historical.results.map((row) => row.points), [450, 250]);
+  assert.deepEqual(rows, original);
+  assert.equal(rows.reduce((sum, row) => sum + row.points, 0), historical.results.reduce((sum, row) => sum + row.points, 0));
+  assert.deepEqual(buildPublicCircuitRanking(rows), buildPublicCircuitRanking(original));
+});
+
+test("stage detail rejects missing or conflicting snapshots and keeps source/group routing", () => {
+  const row = { tournament_name: "Prima tappa", tournament_type: "Baraonda", tournament_date: "2026-11-04", player_name: "Giocatore", points: 100, placement: 1 };
+  assert.equal(buildCircuitStageDetail("missing", [], "principiante", null), null);
+  assert.equal(buildCircuitStageDetail("conflict", [row, { ...row, tournament_name: "Altra tappa" }], "principiante", null), null);
+
+  const stageRoute = readFileSync("src/app/api/circuits/[slug]/stages/[tournamentId]/route.ts", "utf8");
+  const circuitPage = readFileSync("src/app/circuiti/[slug]/page.tsx", "utf8");
+  const detailPage = readFileSync("src/app/circuiti/[slug]/tappe/[tournamentId]/page.tsx", "utf8");
+  assert.match(stageRoute, /\.eq\("source_tournament_id", tournamentId\)/);
+  assert.match(stageRoute, /resultsRequest = resultsRequest\.eq\("ranking_group_id", requestedGroup\)/);
+  assert.doesNotMatch(stageRoute, /if \(!tournamentResult\.data\) return editorialJson\(\{ error: "Tappa non trovata"/);
+  assert.doesNotMatch(stageRoute, /normalized\(candidate\.category\) === normalized\(tournament\.category\)/);
+  assert.match(circuitPage, /tappe\/\$\{stage\.source_tournament_id\}\?group=/);
+  assert.match(detailPage, /Torna al circuito/);
+  assert.match(detailPage, /data\.stage\.category \?/);
 });
 
 test("routes derive identity from session, reject selector parameters, and bind stages to circuit", () => {
