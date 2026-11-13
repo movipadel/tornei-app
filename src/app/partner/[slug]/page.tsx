@@ -1,8 +1,8 @@
-/* eslint-disable @next/next/no-img-element -- Partner logos are short-lived signed storage URLs. */
 import { ArrowLeft, ExternalLink, Facebook, Globe2, Instagram, MapPin, Phone, Tags, WalletCards } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { MediaFrame } from "@/components/public/PublicPrimitives";
+import { PartnerLogo } from "@/components/partner/PartnerLogo";
 import { publicPartnerBySlug } from "@/lib/partnersServer";
 import { callablePhone, contactCtaLabel, whatsappPhone } from "@/lib/partners";
 import styles from "./PartnerDetail.module.css";
@@ -35,15 +35,17 @@ export default async function PartnerDetailPage({ params }: { params: Promise<{ 
     <article className={styles.article} aria-labelledby="partner-detail-title">
       <Link className={styles.back} href="/partner"><ArrowLeft size={18} aria-hidden />Tutti i Partner</Link>
 
-      <div className={`${styles.heroMedia} ${!partner.cover_url ? styles.logoHero : ""}`}>
-        <MediaFrame src={heroImage} alt={heroImage ? partner.name : ""} fit={partner.cover_url ? "cover" : "contain"} />
+      <div className={`${styles.heroMedia} ${!partner.cover_url && partner.logo_url ? styles.logoHero : ""}`}>
+        {partner.cover_url ? <MediaFrame src={heroImage} alt={partner.name} fit="cover" />
+          : partner.logo_url ? <PartnerLogo src={partner.logo_url} alt={partner.name} variant="hero" />
+            : <MediaFrame alt="" />}
       </div>
 
       <header className={styles.header}>
         <span className={styles.category}><Tags size={14} aria-hidden />{partner.category}</span>
         <div className={styles.identity}>
           <div><h1 id="partner-detail-title">{partner.name}</h1>{partner.short_description ? <p className={styles.subtitle}>{partner.short_description}</p> : null}</div>
-          {partner.logo_url && partner.cover_url ? <img className={styles.logo} src={partner.logo_url} alt={`Logo ${partner.name}`} /> : null}
+          {partner.logo_url && partner.cover_url ? <PartnerLogo src={partner.logo_url} alt={`Logo ${partner.name}`} /> : null}
         </div>
       </header>
 

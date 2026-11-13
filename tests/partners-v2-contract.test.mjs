@@ -44,7 +44,8 @@ test('Partner public display keeps safe legacy fallback and correct media geomet
  assert.match(detail,/callablePhone\(legacyPhone,'legacy'\)/);
  assert.match(detail,/whatsappPhone\(location\.mobile_phone\)/);
  assert.match(css,/\.heroMedia>div\{width:100%;max-height:none/);
- assert.match(css,/\.logo\{[^}]*padding:3px/);
+ assert.match(detail,/PartnerLogo src=\{partner\.logo_url\}/);
+ assert.match(css,/\.logoHero\{border:0;box-shadow:none\}/);
  assert.match(editor,/1600×900 px \(16:9\), minimo 1200×675 px/);
  assert.match(editor,/Aggiungi seconda sede/);
  assert.match(directory,/const availableCategories = categories/);

@@ -1,0 +1,25 @@
+.frame {
+  display: block;
+  overflow: hidden;
+  flex: 0 0 auto;
+  border: 0;
+  padding: 0;
+  background: transparent;
+}
+
+.frame img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+}
+
+.badge { width: 92px; height: 92px; border-radius: 18px; }
+.hero { width: 100%; aspect-ratio: 16 / 9; border-radius: 20px; }
+.directory { width: 100%; height: 100%; border-radius: 0; }
+.editor { width: 100%; aspect-ratio: 1; border-radius: 12px; }
+
+@media (max-width: 420px) {
+  .badge { width: 72px; height: 72px; }
+}

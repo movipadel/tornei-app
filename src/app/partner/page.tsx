@@ -4,6 +4,7 @@ import { ArrowRight, Loader2, Tags } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { MediaFrame, PublicButton, PublicState } from "@/components/public/PublicPrimitives";
+import { PartnerLogo } from "@/components/partner/PartnerLogo";
 import { categories, type Partner } from "@/lib/partners";
 import styles from "./PartnerDirectory.module.css";
 
@@ -62,7 +63,9 @@ export default function PartnerDirectoryPage() {
             const image = partner.cover_url ?? partner.logo_url ?? undefined;
             return <Link className={styles.cardLink} href={`/partner/${partner.slug}`} aria-label={`Apri Partner ${partner.name}`} key={partner.id}>
               <article className={styles.card}>
-                <MediaFrame src={image} alt={image ? partner.name : ""} fit={partner.cover_url ? "cover" : "contain"} />
+                {partner.cover_url ? <MediaFrame src={image} alt={partner.name} fit="cover" />
+                  : partner.logo_url ? <PartnerLogo src={partner.logo_url} alt={partner.name} variant="directory" />
+                    : <MediaFrame alt="" />}
                 <div className={styles.cardBody}>
                   <span className={styles.category}><Tags size={13} aria-hidden />{partner.category}</span>
                   <div className={styles.cardHeading}><h2>{partner.name}</h2><ArrowRight size={20} aria-hidden /></div>
