@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { access, readFile } from "node:fs/promises";
 import test from "node:test";
-import { filterHomeTournaments, getHomeTournamentWindow } from "../src/lib/homeTournamentWindow.ts";
+import { filterHomeTournaments, getHomeFeaturedTournamentWindow, getHomeTournamentCta, getHomeTournamentWindow, todayRomeISODate } from "../src/lib/homeTournamentWindow.ts";
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
@@ -53,6 +53,7 @@ test("Home tournament cards expose only the real level from the public read mode
 test("Home tournament window is the current Italian calendar week plus the following week", () => {
   assert.deepEqual(getHomeTournamentWindow("2026-09-30"), { start: "2026-09-28", end: "2026-10-11" });
   assert.deepEqual(getHomeTournamentWindow("2026-10-04"), { start: "2026-09-28", end: "2026-10-11" });
+  assert.deepEqual(getHomeFeaturedTournamentWindow("2026-09-30"), { start: "2026-09-30", end: "2026-10-11" });
 
   const tournaments = [
     { id: "before", date: "2026-09-27", time: "20:00" },
@@ -62,7 +63,56 @@ test("Home tournament window is the current Italian calendar week plus the follo
     { id: "sunday", date: "2026-10-11", time: "23:00" },
     { id: "after", date: "2026-10-12", time: "09:00" },
   ];
-  assert.deepEqual(filterHomeTournaments(tournaments, "2026-09-30").map(({ id }) => id), ["monday", "earlier-time", "later-time", "sunday"]);
+  assert.deepEqual(filterHomeTournaments(tournaments, "2026-09-30").map(({ id }) => id), ["earlier-time", "later-time", "sunday"]);
+});
+
+test("Home keeps today's tournaments all day and excludes earlier dates without changing order", () => {
+  const tournaments = [
+    { id: "next-week", date: "2026-11-16", time: "09:00" },
+    { id: "today-late", date: "2026-11-12", time: "20:00" },
+    { id: "yesterday-results", date: "2026-11-11", time: "20:00", hasLive: true },
+    { id: "tomorrow", date: "2026-11-13", time: "19:00" },
+    { id: "today-completed", date: "2026-11-12", time: "10:00", hasLive: true },
+    { id: "week-after-next", date: "2026-11-23", time: "09:00" },
+  ];
+  assert.deepEqual(filterHomeTournaments(tournaments, "2026-11-12").map(({ id }) => id), ["today-completed", "today-late", "tomorrow", "next-week"]);
+  assert.deepEqual(filterHomeTournaments(tournaments, "2026-11-13").map(({ id }) => id), ["tomorrow", "next-week"]);
+});
+
+test("Home day boundary follows Europe/Rome across Sunday, Monday and daylight saving", () => {
+  assert.equal(todayRomeISODate(new Date("2026-03-29T21:30:00Z")), "2026-03-29");
+  assert.equal(todayRomeISODate(new Date("2026-03-29T22:30:00Z")), "2026-03-30");
+  assert.equal(todayRomeISODate(new Date("2026-10-25T22:30:00Z")), "2026-10-25");
+  assert.equal(todayRomeISODate(new Date("2026-10-25T23:30:00Z")), "2026-10-26");
+  assert.deepEqual(getHomeFeaturedTournamentWindow("2026-10-25"), { start: "2026-10-25", end: "2026-11-01" });
+  assert.deepEqual(getHomeFeaturedTournamentWindow("2026-10-26"), { start: "2026-10-26", end: "2026-11-08" });
+  assert.deepEqual(filterHomeTournaments([{ date: "2026-10-25" }, { date: "2026-10-26" }], "2026-10-26"), [{ date: "2026-10-26" }]);
+});
+
+test("Home CTA changes from registration to live after generation and remains live when completed", async () => {
+  const tournament = { date: "2026-11-12", time: "10:00", registrations_open: true, max_participants: 8, counts: { main: 3 }, hasLive: false };
+  assert.equal(filterHomeTournaments([tournament], "2026-11-12").length, 1);
+  assert.equal(getHomeTournamentCta(tournament, "none"), "register");
+  assert.equal(getHomeTournamentCta({ ...tournament, counts: { main: 8 } }, "none"), "waitlist");
+  assert.equal(getHomeTournamentCta({ ...tournament, registrations_open: false }, "none"), "closed");
+  const running = { ...tournament, registrations_open: false, hasLive: true };
+  assert.equal(filterHomeTournaments([running], "2026-11-12").length, 1);
+  assert.equal(getHomeTournamentCta(running, "none"), "live");
+  assert.equal(getHomeTournamentCta(running, "main"), "live");
+  assert.equal(getHomeTournamentCta(running, "reserve"), "live");
+  assert.equal(getHomeTournamentCta({ ...running }, "none"), "live");
+  assert.equal(filterHomeTournaments([running], "2026-11-13").length, 0);
+
+  const [home, publicRoute, liveRoute] = await Promise.all([
+    read("src/app/page.tsx"), read("src/app/api/tournaments/route.ts"), read("src/app/api/tournaments/[id]/live/route.ts"),
+  ]);
+  assert.match(home, /getHomeTournamentCta\(tournament, status\)/);
+  assert.match(home, /<TournamentLiveDialog tournamentId=\{tournament\.id\}/);
+  assert.match(home, /cta === "closed" \? <PublicButton variant="secondary" disabled>Iscrizioni chiuse/);
+  assert.match(publicRoute, /\.in\("status", \["running", "completed"\]\)/);
+  assert.match(liveRoute, /\.in\("status", \["running", "completed"\]\)/);
+  assert.match(liveRoute, /\.eq\("tournament_id", tournamentId\)/);
+  assert.match(await read("src/components/tournaments/TournamentLiveDialog.tsx"), /fetch\(`\/api\/tournaments\/\$\{requestedTournamentId\}\/live`/);
 });
 
 test("Home renders every qualifying tournament in one vertical list while Tornei keeps its catalogue query", async () => {
@@ -80,6 +130,7 @@ test("Home renders every qualifying tournament in one vertical list while Tornei
   assert.match(css, /\.tournamentList \{ display: grid; gap:/);
   assert.doesNotMatch(css, /\.tournamentList[^}]*grid-template-columns:/);
   assert.match(route, /homeScope \? homeWindow\.start : todayRome/);
+  assert.match(route, /getHomeFeaturedTournamentWindow\(todayRome\)/);
   assert.match(route, /query = query\.lte\("date", homeWindow\.end\)/);
   assert.match(tournamentsPage, /fetch\("\/api\/tournaments"/);
   assert.doesNotMatch(tournamentsPage, /scope=home/);

@@ -17,7 +17,7 @@ import RegistrationDialog from "@/components/tournaments/RegistrationDialog";
 import TournamentLiveDialog from "@/components/tournaments/TournamentLiveDialog";
 import type { PublicTournament } from "@/components/tournaments/TournamentCard";
 import type { ContentItem } from "@/lib/padelleria";
-import { filterHomeTournaments } from "@/lib/homeTournamentWindow";
+import { filterHomeTournaments, getHomeTournamentCta } from "@/lib/homeTournamentWindow";
 import { getTournamentHomeBackground, normalizeTournamentHomeCategory } from "@/lib/tournamentHomeBackground";
 import home from "./HomeV2.module.css";
 
@@ -66,6 +66,7 @@ function EditorialCarousel({ title, label, items, href }: { title: string; label
 function HomeTournamentCard({ tournament, circuit, status, onRegister }: { tournament: HomeTournament; circuit?: PublicCircuit; status: "none" | "main" | "reserve"; onRegister: () => void }) {
   const background = getTournamentHomeBackground(tournament.type, tournament.category);
   const category = normalizeTournamentHomeCategory(tournament.category);
+  const cta = getHomeTournamentCta(tournament, status);
   const dateBadgeCategoryClass = category === "maschile" ? home.tournamentDateBadgeMaschile
     : category === "femminile" ? home.tournamentDateBadgeFemminile
     : category === "misto" ? home.tournamentDateBadgeMisto
@@ -85,7 +86,7 @@ function HomeTournamentCard({ tournament, circuit, status, onRegister }: { tourn
         <div className={home.metaLine}><CalendarDays size={15} aria-hidden />{formatDate(tournament.date, { weekday: "long", day: "numeric", month: "long" })}{tournament.time ? <><Clock3 size={15} aria-hidden /><span>{tournament.time.slice(0, 5)}</span></> : null}</div>
         {tournament.location ? <div className={home.metaLine}><MapPin size={15} aria-hidden />{tournament.location}</div> : null}
       </div>
-      <div className={home.tournamentAction}>{tournament.hasLive ? <TournamentLiveDialog tournamentId={tournament.id} tournamentName={tournament.name} trigger={<PublicButton variant="danger">LIVE</PublicButton>} /> : status === "main" ? <StatusBadge tone="success">Iscritto</StatusBadge> : status === "reserve" ? <StatusBadge tone="warning">Riserva</StatusBadge> : <PublicButton onClick={onRegister}>Iscriviti</PublicButton>}</div>
+      <div className={home.tournamentAction}>{cta === "live" ? <TournamentLiveDialog tournamentId={tournament.id} tournamentName={tournament.name} trigger={<PublicButton variant="danger">LIVE</PublicButton>} /> : cta === "registered" ? <StatusBadge tone="success">Iscritto</StatusBadge> : cta === "reserve" ? <StatusBadge tone="warning">Riserva</StatusBadge> : cta === "closed" ? <PublicButton variant="secondary" disabled>Iscrizioni chiuse</PublicButton> : <PublicButton onClick={onRegister}>{cta === "waitlist" ? "Lista riserva" : "Iscriviti"}</PublicButton>}</div>
     </div>
   </PublicCard>;
 }

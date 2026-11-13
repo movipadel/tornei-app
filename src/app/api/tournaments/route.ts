@@ -1,6 +1,6 @@
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { createRuntimePerf } from "@/lib/runtimePerf";
-import { getHomeTournamentWindow } from "@/lib/homeTournamentWindow";
+import { getHomeFeaturedTournamentWindow, todayRomeISODate } from "@/lib/homeTournamentWindow";
 
 export const runtime = "nodejs";
 
@@ -11,11 +11,6 @@ type RegRow = {
   p2_gender: "M" | "F" | null;
 };
 
-function todayRomeISODate() {
-  // "en-CA" => YYYY-MM-DD
-  return new Date().toLocaleDateString("en-CA", { timeZone: "Europe/Rome" });
-}
-
 export async function GET(req: Request) {
   const perf = createRuntimePerf("/api/tournaments");
   try {
@@ -23,7 +18,7 @@ export async function GET(req: Request) {
 
   const todayRome = todayRomeISODate();
   const homeScope = new URL(req.url).searchParams.get("scope") === "home";
-  const homeWindow = getHomeTournamentWindow(todayRome);
+  const homeWindow = getHomeFeaturedTournamentWindow(todayRome);
 
   // 1) Lista tornei (solo oggi+futuro)
   const { data: tournaments, error: tErr } = await perf.db(() => {
@@ -71,7 +66,7 @@ export async function GET(req: Request) {
         .from("tournament_runs")
         .select("tournament_id,status")
         .in("tournament_id", ids)
-        .in("status", ["running", "finished"])
+        .in("status", ["running", "completed"])
     );
 
     if (rErr) return perf.json({ error: rErr.message }, { status: 500 });

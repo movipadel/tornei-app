@@ -107,13 +107,13 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   const sb = supabaseAdmin();
 
 
-  // ultima run (running/finished) con mode
+  // ultima run avviata o completata con mode
   const { data: run, error: runErr } = await perf.db(() =>
     sb
       .from("tournament_runs")
       .select("id,status,created_at,mode,rules")
       .eq("tournament_id", tournamentId)
-      .in("status", ["running", "finished"])
+      .in("status", ["running", "completed"])
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle()
