@@ -2,7 +2,7 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { pageBounds } from '@/lib/padelleria';
 import { parsePartner } from '@/lib/partners';
 import { editorialOperator, editorialJson } from '@/lib/padelleriaServer';
-import { partnerDTO } from '@/lib/partnersServer';
+import { existingPartner, partnerDTO } from '@/lib/partnersServer';
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
 export async function GET(req:Request){return editorialOperator(req,'partners.manage',async()=>{
@@ -13,7 +13,7 @@ export async function GET(req:Request){return editorialOperator(req,'partners.ma
  if(error)return editorialJson({error:'Lista non disponibile'},500);return editorialJson({data:await partnerDTO(data??[]),limit,offset});
 });}
 export async function POST(req:Request){return editorialOperator(req,'partners.manage',async()=>{
- const input=parsePartner(await req.json());const {data,error}=await supabaseAdmin().from('movi_partners').insert(input).select('*').single();
+ const {locations,...input}=parsePartner(await req.json());const {data:id,error}=await supabaseAdmin().rpc('movi_partner_save',{p_id:null,p_expected_updated_at:null,p_partner:input,p_locations:locations});
  if(error)return editorialJson({error:error.code==='23505'?'Slug già utilizzato':'Creazione non riuscita'},error.code==='23505'?409:500);
- return editorialJson({data:(await partnerDTO([data]))[0]},201);
+ const data=await existingPartner(id);if(!data)return editorialJson({error:'Creazione non disponibile'},500);return editorialJson({data:(await partnerDTO([data]))[0]},201);
 });}

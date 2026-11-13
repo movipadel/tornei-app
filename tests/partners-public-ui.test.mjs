@@ -7,7 +7,7 @@ const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 test("Partner directory uses the real public API, categories and canonical slug links", async () => {
   const source = await read("src/app/partner/page.tsx");
   assert.match(source, /fetch\(`\/api\/partners\?limit=\$\{PAGE_SIZE\}&offset=\$\{offset\}`/);
-  assert.match(source, /categories\.filter\(\(category\) => items\.some\(\(item\) => item\.category === category\)\)/);
+  assert.match(source, /const availableCategories = categories;/);
   assert.match(source, /href=\{`\/partner\/\$\{partner\.slug\}`\}/);
   assert.match(source, /partner\.benefit_title/);
   assert.match(source, /partner\.benefit_description/);
@@ -36,8 +36,9 @@ test("Partner detail instructs visual membership verification and contains no QR
 
 test("Partner contacts are conditional and use external directions rather than an embedded map", async () => {
   const source = await read("src/app/partner/[slug]/page.tsx");
-  assert.match(source, /address \? <div className=\{styles\.contactRow\}/);
-  assert.match(source, /phone \? <div className=\{styles\.contactRow\}/);
+  assert.match(source, /locations\.map\(\(location\)/);
+  assert.match(source, /callablePhone\(legacyPhone,'legacy'\)/);
+  assert.match(source, /whatsappPhone\(location\.mobile_phone\)/);
   assert.match(source, /website \? <div className=\{styles\.contactRow\}/);
   assert.match(source, /contact \? <div className=\{styles\.contactRow\}/);
   assert.match(source, /instagram \? <div className=\{styles\.contactRow\}/);

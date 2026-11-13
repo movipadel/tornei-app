@@ -43,5 +43,27 @@ try{
  r=await request(`/api/admin/partners/${item.id}`,'PUT',{...item,status:'active',valid_from:new Date(Date.now()-86400000).toISOString(),valid_until:new Date(Date.now()+86400000).toISOString()});assert.equal(r.status,200);item=r.json.data;assert.equal((await request(`/api/partners/${item.slug}`)).status,200);ok();
  r=await request(`/api/admin/partners/${item.id}/media`,'DELETE',{role:'logo'});assert.equal(r.status,200);assert.equal(r.json.data.logo_url,null);assert.ok(r.json.data.cover_url);ok();
  assert.equal((await request(`/api/admin/partners/${item.id}`,'DELETE')).status,200);assert.equal((await request(`/api/partners/${item.slug}`)).status,404);assert.equal((await request(`/api/admin/partners/${item.id}`)).status,404);ok();
+ const one={slot:1,label:'Torino',address:'Via Test 1',locality:'Torino',landline_phone:'011 1234567',mobile_phone:'333 1234567',mobile_action:'whatsapp'};
+ const two={slot:2,label:'Saluzzo',address:'Via Test 2',locality:'Saluzzo',landline_phone:'0175 123456',mobile_phone:'334 1234567',mobile_action:'call'};
+ const fixtures=[
+  {...sample,name:'Synthetic one location',slug:`${sample.slug}-one`,status:'active',locations:[one]},
+  {...sample,name:'Synthetic two locations',slug:`${sample.slug}-two`,status:'active',locations:[one,two]},
+  {...sample,name:'Synthetic legacy only',slug:`${sample.slug}-legacy`,status:'active',phone:'011 1234567 - 333 1234567',address:'Via Legacy',locality:'Torino'},
+  {...sample,name:'Synthetic jeweller',slug:`${sample.slug}-jewel`,status:'active',category:'Gioielleria'},
+  {...sample,name:'Synthetic technology',slug:`${sample.slug}-tech`,status:'active',category:'Tecnologia e Telefonia'},
+ ];
+ const created=[];
+ for(const fixture of fixtures){r=await request('/api/admin/partners','POST',fixture);assert.equal(r.status,201,JSON.stringify(r.json));created.push(r.json.data);ids.push(r.json.data.id);ok();}
+ assert.equal(created[0].locations.length,1);assert.equal(created[1].locations.length,2);assert.equal(created[2].locations.length,0);ok();
+ for(const fixture of created){r=await request(`/api/partners/${fixture.slug}`);assert.equal(r.status,200);assert.equal(r.json.data.locations.length,fixture.locations.length);assert.ok(r.json.data.locations.every(l=>!('id' in l)&&!('partner_id' in l)));ok();}
+ let categoryItem=created[3];
+ for(const category of ['Ristorazione','Sport','Benessere','Abbigliamento','Gioielleria','Tecnologia e Telefonia','Casa e Design','Salute','Automotive','Turismo','Servizi','Professionisti','Altro']){
+  r=await request(`/api/admin/partners/${categoryItem.id}`,'PUT',{...categoryItem,category});assert.equal(r.status,200);categoryItem=r.json.data;
+  assert.equal((await request(`/api/partners/${categoryItem.slug}`)).json.data.category,category);ok();
+ }
+ for(const invalid of [[one,two,{...two,slot:3}],[one,{...two,slot:1}],[{...one,mobile_phone:'333 1234567 / 334 1234567'}]]){r=await request(`/api/admin/partners/${created[0].id}`,'PUT',{...created[0],locations:invalid});assert.equal(r.status,400);ok();}
+ r=await request(`/api/admin/partners/${created[0].id}`,'PUT',{...created[0],name:'Should roll back',locations:[{...one,mobile_phone:'bad'}]});assert.equal(r.status,400);assert.equal((await request(`/api/admin/partners/${created[0].id}`)).json.data.name,created[0].name);ok();
+ r=await request(`/api/admin/partners/${created[0].id}`,'PUT',{...created[0],locations:[one,two]});assert.equal(r.status,200);assert.equal(r.json.data.locations.length,2);ok();
+ r=await request(`/api/admin/partners/${created[0].id}`,'PUT',{...r.json.data,locations:[one]});assert.equal(r.status,200);assert.equal(r.json.data.locations.length,1);ok();
  console.log(`Partner HTTP/security/CRUD/media PASS: ${checks} checks`);
 }finally{if(paths.length)await db.storage.from('movi-partners-media').remove(paths);if(ids.length)await db.from('movi_partners').delete().in('id',ids);}

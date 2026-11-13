@@ -2,7 +2,7 @@
 
 import { ArrowRight, Loader2, Tags } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { MediaFrame, PublicButton, PublicState } from "@/components/public/PublicPrimitives";
 import { categories, type Partner } from "@/lib/partners";
 import styles from "./PartnerDirectory.module.css";
@@ -38,7 +38,7 @@ export default function PartnerDirectoryPage() {
 
   useEffect(() => { void load(); }, [load]);
 
-  const availableCategories = useMemo(() => categories.filter((category) => items.some((item) => item.category === category)), [items]);
+  const availableCategories = categories;
   const filteredItems = selectedCategory === "Tutti" ? items : items.filter((item) => item.category === selectedCategory);
 
   return <main className={styles.page}>
@@ -74,7 +74,7 @@ export default function PartnerDirectoryPage() {
           })}</div>}
       </section>
 
-      {hasMore && selectedCategory === "Tutti" ? <div className={styles.more}><PublicButton variant="secondary" disabled={loadingMore} onClick={() => void load(items.length)}>{loadingMore ? "Caricamento…" : "Carica altri Partner"}</PublicButton></div> : null}
+      {hasMore ? <div className={styles.more}><PublicButton variant="secondary" disabled={loadingMore} onClick={() => void load(items.length)}>{loadingMore ? "Caricamento…" : "Carica altri Partner"}</PublicButton></div> : null}
     </div>
   </main>;
 }

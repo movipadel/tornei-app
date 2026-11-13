@@ -4,7 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { MediaFrame } from "@/components/public/PublicPrimitives";
 import { publicPartnerBySlug } from "@/lib/partnersServer";
-import { contactCtaLabel } from "@/lib/partners";
+import { callablePhone, contactCtaLabel, whatsappPhone } from "@/lib/partners";
 import styles from "./PartnerDetail.module.css";
 
 export const dynamic = "force-dynamic";
@@ -24,9 +24,7 @@ export default async function PartnerDetailPage({ params }: { params: Promise<{ 
   if (!partner) notFound();
 
   const heroImage = partner.cover_url ?? partner.logo_url ?? undefined;
-  const address = [partner.address, partner.locality].filter(Boolean).join(", ");
-  const directions = address ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}` : null;
-  const phone = partner.phone.replace(/[^+0-9]/g, "");
+  const locations = partner.locations.length ? partner.locations : (partner.address || partner.locality || partner.phone ? [{slot:1 as const,label:'',address:partner.address,locality:partner.locality,landline_phone:'',mobile_phone:'',mobile_action:'call' as const}] : []);
   const website = safeHttps(partner.website_url);
   const contact = safeHttps(partner.contact_url);
   const instagram = safeHttps(partner.instagram_url);
@@ -58,11 +56,25 @@ export default async function PartnerDetailPage({ params }: { params: Promise<{ 
 
       <div className={styles.membershipInstruction}><WalletCards size={23} aria-hidden /><p>Mostra la tua tessera MOVI per usufruire del vantaggio.</p></div>
 
-      {address || phone || website || contact || instagram || facebook ? <section className={styles.contacts} aria-labelledby="partner-contacts-title">
+      {locations.length ? <section className={styles.contacts} aria-labelledby="partner-locations-title"><h2 id="partner-locations-title">Sedi e contatti</h2>{locations.map((location)=>{
+        const address=[location.address,location.locality].filter(Boolean).join(', ');
+        const directions=address?`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}`:null;
+        const landline=callablePhone(location.landline_phone,'landline');
+        const mobile=callablePhone(location.mobile_phone,'mobile');
+        const whatsapp=location.mobile_action==='whatsapp'?whatsappPhone(location.mobile_phone):null;
+        const legacyPhone=location.slot===1&&!location.landline_phone&&!location.mobile_phone?partner.phone:'';
+        const legacyCall=callablePhone(legacyPhone,'legacy');
+        return <div className={styles.contactList} key={location.slot}>
+          <h3 className={styles.locationTitle}>{location.label||location.locality||`Sede ${location.slot}`}</h3>
+          {address?<div className={styles.contactRow}><MapPin size={21} aria-hidden/><span>{address}</span>{directions?<a href={directions} target="_blank" rel="noopener noreferrer">Indicazioni<ExternalLink size={15} aria-hidden/></a>:null}</div>:null}
+          {location.landline_phone?<div className={styles.contactRow}><Phone size={21} aria-hidden/><span>{location.landline_phone}</span>{landline?<a href={`tel:${landline}`}>Chiama</a>:null}</div>:null}
+          {location.mobile_phone?<div className={styles.contactRow}><Phone size={21} aria-hidden/><span>{location.mobile_phone}</span>{whatsapp?<a href={whatsapp} target="_blank" rel="noopener noreferrer">WhatsApp</a>:mobile?<a href={`tel:${mobile}`}>Chiama</a>:null}</div>:null}
+          {legacyPhone?<div className={styles.contactRow}><Phone size={21} aria-hidden/><span>{legacyPhone}</span>{legacyCall?<a href={`tel:${legacyCall}`}>Chiama</a>:null}</div>:null}
+        </div>;
+      })}</section>:null}
+      {website || contact || instagram || facebook ? <section className={styles.contacts} aria-labelledby="partner-contacts-title">
         <h2 id="partner-contacts-title">Informazioni e contatti</h2>
         <div className={styles.contactList}>
-          {address ? <div className={styles.contactRow}><MapPin size={21} aria-hidden /><span>{address}</span>{directions ? <a href={directions} target="_blank" rel="noopener noreferrer">Indicazioni<ExternalLink size={15} aria-hidden /></a> : null}</div> : null}
-          {phone ? <div className={styles.contactRow}><Phone size={21} aria-hidden /><span>{partner.phone}</span><a href={`tel:${phone}`}>Chiama</a></div> : null}
           {website ? <div className={styles.contactRow}><Globe2 size={21} aria-hidden /><span>{new URL(website).hostname.replace(/^www\./, "")}</span><a href={website} target="_blank" rel="noopener noreferrer">Visita il sito<ExternalLink size={15} aria-hidden /></a></div> : null}
           {contact ? <div className={styles.contactRow}><ExternalLink size={21} aria-hidden /><span>Contatto online</span><a href={contact} target="_blank" rel="noopener noreferrer">{contactLabel}<ExternalLink size={15} aria-hidden /></a></div> : null}
           {instagram ? <div className={styles.contactRow}><Instagram size={21} aria-hidden /><span>Instagram</span><a href={instagram} target="_blank" rel="noopener noreferrer">Apri Instagram<ExternalLink size={15} aria-hidden /></a></div> : null}

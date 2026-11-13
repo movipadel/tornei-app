@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { registerHooks } from 'node:module';
 // Resolve the extensionless browser import when executing TypeScript directly in Node.
-registerHooks({resolve(s,c,next){return next(s==='./padelleria'&&c.parentURL?.endsWith('/partners.ts')?'./padelleria.ts':s,c);}});
+registerHooks({resolve(s,c,next){return next(c.parentURL?.endsWith('/partners.ts')&&['./padelleria','./partnerPhones'].includes(s)?`${s}.ts`:s,c);}});
 const {parsePartner,slugify,partnerVisible,contactCtaLabel}=await import('../../src/lib/partners.ts');
 const {romeToUtc,romeInput}=await import('../../src/lib/padelleria.ts');
 const base={status:'active',name:'MÀSE Demo',slug:'mase-demo',category:'Ristorazione',short_description:'',full_description:'<script>text only</script>',benefit_title:'10%',benefit_description:'',conditions:'',website_url:null,contact_url:null,phone:'',address:'',locality:'',valid_from:null,valid_until:null,sort_order:0,featured:false};
