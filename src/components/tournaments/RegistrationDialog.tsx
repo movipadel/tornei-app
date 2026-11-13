@@ -43,7 +43,7 @@ export default function RegistrationDialog({
   tournament: Tournament | null;
   open: boolean;
   onClose: () => void;
-  onSuccess: () => void | Promise<void>;
+  onSuccess: (registration: { id: string; is_reserve: boolean }) => void | Promise<void>;
   user: User | null;
 }) {
   const [saving, setSaving] = useState(false);
@@ -158,7 +158,7 @@ export default function RegistrationDialog({
       if (!res.ok) throw new Error(json.error || "Errore durante l'iscrizione");
 
       toast.success(json?.data?.is_reserve ? "Inserito in lista riserva!" : "Iscrizione completata!");
-      await onSuccess();
+      await onSuccess({ id: json.data.id, is_reserve: Boolean(json.data.is_reserve) });
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Errore");
     } finally {

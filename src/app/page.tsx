@@ -19,10 +19,11 @@ import type { PublicTournament } from "@/components/tournaments/TournamentCard";
 import type { ContentItem } from "@/lib/padelleria";
 import { filterHomeTournaments, getHomeTournamentCta } from "@/lib/homeTournamentWindow";
 import { getTournamentHomeBackground, normalizeTournamentHomeCategory } from "@/lib/tournamentHomeBackground";
+import { ownedTournamentStatus, removeOwnedTournamentRegistration, upsertOwnedTournamentRegistration, type OwnedTournamentRegistration } from "@/lib/tournamentRegistrationOwnership";
 import home from "./HomeV2.module.css";
 
 type User = { id: string; full_name: string; phone: string; email: string; gender: "M" | "F"; privacy_accepted_at?: string | null; terms_accepted_at?: string | null; age_confirmed_at?: string | null; marketing_accepted?: boolean | null; marketing_accepted_at?: string | null };
-type MyReg = { id: string; tournament_id: string; is_reserve: boolean; p1_phone: string; p2_phone?: string | null };
+type MyReg = OwnedTournamentRegistration;
 type HomeCommunication = { id: string; target: string; tournament_id: string | null; title: string; body: string; image_path: string | null; cta_label: string | null; cta_url: string | null; created_at: string; read_at: string | null; dismissed_at: string | null };
 type PublicCircuit = { id: string; name: string; slug: string; tournament_type: string; status: string; home_image_url: string | null; ranking_groups_count: number; played_stages_count: number; rules_url: string | null };
 type HomeTournament = PublicTournament & { circuit_id?: string | null };
@@ -103,6 +104,9 @@ export default function HomePage() {
   const [user, setUser] = useState<User | null>(null);
   const [moviBack, setMoviBack] = useState<MoviBackHome>({ points: null, membershipStatus: null, membershipCode: null, membership: null, eligibility: null });
   const [myRegs, setMyRegs] = useState<MyReg[]>([]);
+  const [myRegsReadyForUserId, setMyRegsReadyForUserId] = useState<string | null>(null);
+  const [myRegsLoadError, setMyRegsLoadError] = useState(false);
+  const myRegsRequestRef = useRef(0);
   const [communications, setCommunications] = useState<HomeCommunication[]>([]);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [userDialogOpen, setUserDialogOpen] = useState(false);
@@ -174,16 +178,19 @@ export default function HomePage() {
     } finally { if (!silent) setLoading(false); }
   }
 
-  async function searchMy(phone: string) {
-    const normalized = normalizePhone(phone);
-    if (!isValidPhone(normalized)) { setMyRegs([]); return; }
+  async function loadMyRegistrations() {
+    const requestId = ++myRegsRequestRef.current;
+    const requestedUserId = user?.id ?? null;
+    setMyRegsLoadError(false);
     try {
-      const response = await fetch("/api/registrations/search", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ phone: normalized }) });
+      const response = await fetch("/api/registrations/mine", { cache: "no-store" });
       const json = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(json.error || "Errore ricerca iscrizioni");
-      const exact = ((json.data ?? []) as MyReg[]).filter((registration) => normalized === normalizePhone(registration.p1_phone) || normalized === normalizePhone(registration.p2_phone ?? ""));
-      setMyRegs(exact.map((registration) => ({ ...registration, is_reserve: Boolean(registration.is_reserve), p2_phone: registration.p2_phone ?? null })));
-    } catch (error) { toast.error(errorMessage(error, "Errore ricerca iscrizioni")); }
+      if (!response.ok) throw new Error(json.error || "Errore caricamento iscrizioni");
+      if (requestId === myRegsRequestRef.current) {
+        setMyRegs((json.data ?? []) as MyReg[]);
+        setMyRegsReadyForUserId(requestedUserId);
+      }
+    } catch (error) { if (requestId === myRegsRequestRef.current) { setMyRegsLoadError(true); toast.error(errorMessage(error, "Errore caricamento iscrizioni")); } }
   }
 
   async function cancelRegistrationByTournament(tournamentId: string) {
@@ -194,7 +201,7 @@ export default function HomePage() {
       const response = await fetch(`/api/registrations/${registration.id}`, { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ phone: effectivePhone }) });
       const json = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(json.error || "Errore cancellazione");
-      toast.success("Iscrizione cancellata"); await searchMy(effectivePhone); await loadAll();
+      toast.success("Iscrizione cancellata"); ++myRegsRequestRef.current; setMyRegs((current) => removeOwnedTournamentRegistration(current, registration.id)); await loadMyRegistrations(); await loadAll();
     } catch (error) { toast.error(errorMessage(error, "Errore cancellazione")); }
   }
 
@@ -220,9 +227,8 @@ export default function HomePage() {
   }
 
   function statusForTournament(tournamentId: string): "none" | "main" | "reserve" {
-    if (!isValidPhone(effectivePhone)) return "none";
-    const registration = myRegs.find((item) => item.tournament_id === tournamentId);
-    return registration ? registration.is_reserve ? "reserve" : "main" : "none";
+    if (!user) return "none";
+    return ownedTournamentStatus(myRegs, tournamentId);
   }
   function canUserJoinTournament(tournament: PublicTournament) {
     if (!user?.gender) return true;
@@ -252,9 +258,14 @@ export default function HomePage() {
     return () => { document.removeEventListener("visibilitychange", onVisibility); listAbortRef.current?.abort(); if (listTimerRef.current) window.clearInterval(listTimerRef.current); };
   }, []);
   useEffect(() => { if (user && (!user.privacy_accepted_at || !user.terms_accepted_at || !user.age_confirmed_at)) { setPendingTournament(null); setUserDialogOpen(true); } }, [user]);
-  useEffect(() => { const timer = window.setTimeout(() => { void searchMy(effectivePhone); }, 300); return () => window.clearTimeout(timer); }, [effectivePhone]);
+  useEffect(() => {
+    void loadMyRegistrations();
+    // Reload ownership when the signed-in customer changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   const upcomingTournaments = filterHomeTournaments(tournaments);
+  const ownershipPending = Boolean(user && myRegsReadyForUserId !== user.id);
 
   if (loading) return <main className={home.page}><div className={home.skeletonGrid} aria-label="Caricamento Home"><div className={home.skeletonBlock} /><div className={home.skeletonBlock} /><div className={home.skeletonBlock} /></div></main>;
   if (homeError) return <main className={home.page}><PublicState kind="error" title="Home non disponibile" message={homeError} action={<PublicButton variant="secondary" onClick={() => void loadAll()}>Riprova</PublicButton>} /></main>;
@@ -296,7 +307,7 @@ export default function HomePage() {
       </PublicCard>}</section>
       <section className={home.section} aria-label="Azioni principali"><div className={home.primaryGrid}><Link className={`${home.quickAction} ${home.quickActionPlay}`} href="/richieste/gioca"><span className={home.quickIcon}><UsersRound size={28} aria-hidden /></span><strong>Gioca</strong><span className={home.quickCopy}>Trova una partita.</span><span className={home.quickArrow} aria-hidden><ArrowRight size={17} /></span></Link><Link className={`${home.quickAction} ${home.quickActionTrain}`} href="/richieste/allenati"><span className={home.quickIcon}><Dumbbell size={28} aria-hidden /></span><strong>Allenati</strong><span className={home.quickCopy}>Trova il gruppo giusto.</span><span className={home.quickArrow} aria-hidden><ArrowRight size={17} /></span></Link><Link className={`${home.quickAction} ${home.quickActionBook}`} href="/prenota"><span className={home.quickIcon}><CalendarDays size={28} aria-hidden /></span><strong>Prenota</strong><span className={home.quickCopy}>Prenota un campo.</span><span className={home.quickArrow} aria-hidden><ArrowRight size={17} /></span></Link></div></section>
       <div id="public-sticky-sentinel" className={home.sentinel} aria-hidden />
-      <section className={home.section}><SectionHeader title="Tornei in evidenza" copy="Questa settimana e la prossima." href="/tornei" linkLabel="Vedi tutti" />{upcomingTournaments.length ? <div className={home.tournamentList}>{upcomingTournaments.map((tournament) => <HomeTournamentCard tournament={tournament} circuit={circuits.find((circuit) => circuit.id === tournament.circuit_id)} status={statusForTournament(tournament.id)} onRegister={() => openTournamentRegistration(tournament)} key={tournament.id} />)}</div> : <PublicState kind="empty" title="Nessun torneo nelle prossime due settimane" message="Consulta il calendario completo per tutte le prossime date." action={<Link className={`${publicStyles.button} ${publicStyles.tertiary}`} href="/tornei">Vai ai tornei</Link>} />}{myRegs.length ? <div className={home.registrationList} aria-label="Le tue iscrizioni">{myRegs.map((registration) => { const tournament = tournaments.find((item) => item.id === registration.tournament_id); return tournament ? <div className={home.registrationRow} key={registration.id}><div><strong>{tournament.name}</strong><span>{registration.is_reserve ? "Lista riserve" : "Iscrizione confermata"}</span></div><PublicButton variant="danger" onClick={() => void cancelRegistrationByTournament(tournament.id)}>Cancella</PublicButton></div> : null; })}</div> : null}</section>
+      <section className={home.section}><SectionHeader title="Tornei in evidenza" copy="Questa settimana e la prossima." href="/tornei" linkLabel="Vedi tutti" />{upcomingTournaments.length ? ownershipPending ? <PublicState kind={myRegsLoadError ? "error" : "loading"} title="Verifica iscrizioni" message="Controlliamo le tue iscrizioni prima di mostrare le azioni." action={myRegsLoadError ? <PublicButton onClick={() => void loadMyRegistrations()}>Riprova</PublicButton> : undefined} /> : <div className={home.tournamentList}>{upcomingTournaments.map((tournament) => <HomeTournamentCard tournament={tournament} circuit={circuits.find((circuit) => circuit.id === tournament.circuit_id)} status={statusForTournament(tournament.id)} onRegister={() => openTournamentRegistration(tournament)} key={tournament.id} />)}</div> : <PublicState kind="empty" title="Nessun torneo nelle prossime due settimane" message="Consulta il calendario completo per tutte le prossime date." action={<Link className={`${publicStyles.button} ${publicStyles.tertiary}`} href="/tornei">Vai ai tornei</Link>} />}{user && myRegs.length && !ownershipPending ? <div className={home.registrationList} aria-label="Le tue iscrizioni">{myRegs.map((registration) => { const tournament = tournaments.find((item) => item.id === registration.tournament_id); return tournament ? <div className={home.registrationRow} key={registration.id}><div><strong>{tournament.name}</strong><span>{registration.is_reserve ? "Lista riserve" : "Iscrizione confermata"}</span></div><PublicButton variant="danger" onClick={() => void cancelRegistrationByTournament(tournament.id)}>Cancella</PublicButton></div> : null; })}</div> : null}</section>
       {succede.length ? <EditorialCarousel title="Succede in Padelleria" label="Succede in Padelleria" items={succede} href="/padelleria" /> : sectionErrors.succede ? <section className={home.section}><SectionHeader title="Succede in Padelleria" /><PublicState kind="error" title="Contenuti non disponibili" message={sectionErrors.succede} action={<PublicButton variant="secondary" onClick={() => void loadAll()}>Riprova</PublicButton>} /></section> : null}
       {mondayLeagueHero.visible ? <section className={home.section} aria-label="Monday League"><Link className={`${home.leagueBanner} ${home.leagueBannerLink}`} href="/monday-league" aria-label="Apri Monday League" /></section> : null}
       {circuits.length || sectionErrors.circuits ? <section id="circuiti" className={home.section}><SectionHeader title="I tuoi circuiti" />{circuits.length ? <PublicCarousel label="I tuoi circuiti">{circuits.map((circuit) => <Link className={`${home.carouselItem} ${home.circuitCardLink}`} href={`/circuiti/${circuit.slug}`} aria-label={`Apri circuito ${circuit.name}`} key={circuit.id}><PublicCard family="compact" className={`${home.circuitCard} ${circuit.home_image_url ? home.circuitImageCard : ""}`}>{circuit.home_image_url ? <Image className={home.circuitImage} src={circuit.home_image_url} alt={`Circuito ${circuit.name}`} fill sizes="(min-width: 1024px) 324px, (min-width: 768px) 317px, 84vw" unoptimized /> : <><span className={home.circuitAccent} aria-hidden /><span className={home.circuitStatus}><span aria-hidden />{circuit.status === "active" ? "In corso" : "Concluso"}</span><h3>{circuit.name}</h3><div className={home.circuitStats}><span><strong>{circuit.ranking_groups_count}</strong> classifiche</span><span><strong>{circuit.played_stages_count}</strong> tappe giocate</span></div></>}</PublicCard></Link>)}</PublicCarousel> : <PublicState kind="error" title="Circuiti non disponibili" message={sectionErrors.circuits} action={<PublicButton variant="secondary" onClick={() => void loadAll()}>Riprova</PublicButton>} />}</section> : null}
@@ -305,7 +316,7 @@ export default function HomePage() {
       <footer className={home.brandFooter}><div className={home.socials} aria-label="Collegamenti esterni MOVI">{publicSocialLinks.map((link) => <a className={home.socialLink} href={link.href} target="_blank" rel="noopener noreferrer" aria-label={`${link.label}, si apre in una nuova scheda`} title={link.label} key={link.href}>{link.kind === "facebook" ? <FaFacebookF aria-hidden /> : link.kind === "instagram" ? <FaInstagram aria-hidden /> : link.kind === "youtube" ? <FaYoutube aria-hidden /> : <Globe2 size={20} aria-hidden />}</a>)}</div><nav className={home.footer} aria-label="Link legali">{publicLegalLinks.map((link) => <Link href={link.href} key={link.href}>{link.label}</Link>)}</nav></footer>
     </div></main>
     <PublicModal open={notificationsOpen} onOpenChange={changeNotifications} title="Notifiche" description={unreadNotifications ? `${unreadNotifications} non lette` : "Tutto letto"}>{communications.length ? <><div className={home.notificationTools}><PublicButton variant="tertiary" disabled={!unreadNotifications} onClick={() => void markAllNotificationsRead()}>Segna tutte come lette</PublicButton></div><div className={home.notificationList}>{communications.map((notification) => <article className={`${home.notification} ${!notification.read_at ? home.notificationUnread : ""}`} key={notification.id}><h3>{notification.title}</h3><p>{notification.body}</p><div className={home.notificationActions}>{notification.cta_url ? <a className={`${publicStyles.button} ${publicStyles.secondary}`} href={notification.cta_url} onClick={() => { if (!notification.read_at) void updateNotificationState(notification.id, "read"); }}>{notification.cta_label || "Apri"}</a> : null}{!notification.read_at ? <PublicButton variant="tertiary" onClick={() => void updateNotificationState(notification.id, "read")}>Segna come letta</PublicButton> : null}<PublicButton variant="tertiary" onClick={() => void updateNotificationState(notification.id, "dismiss")}>Elimina</PublicButton></div></article>)}</div></> : <PublicState kind="empty" title="Nessuna notifica" message="Le nuove comunicazioni compariranno qui." />}</PublicModal>
-    <RegistrationDialog tournament={selectedTournament} open={Boolean(selectedTournament)} onClose={() => setSelectedTournament(null)} user={user} onSuccess={async () => { setSelectedTournament(null); window.scrollTo({ top: 0, behavior: "smooth" }); await loadAll(); if (isValidPhone(effectivePhone)) await searchMy(effectivePhone); }} />
-    <UserLoginDialog open={userDialogOpen} existingUser={user} onClose={() => { if (missingRequiredConsents) { toast.error("Devi confermare Privacy, Termini e maggiore età per continuare"); return; } setUserDialogOpen(false); setPendingTournament(null); }} onSaved={async (savedUser) => { setUser(savedUser); toast.success("Dati salvati"); const tournament = pendingTournament; setUserDialogOpen(false); setPendingTournament(null); if (tournament) { await searchMy(normalizePhone(savedUser.phone)); const blocked = (tournament.category === "Femminile" && savedUser.gender === "M") || (tournament.category === "Maschile" && savedUser.gender === "F"); if (blocked) { toast.error("Non puoi iscriverti a questo torneo"); return; } setSelectedTournament(tournament); } }} />
+    <RegistrationDialog tournament={selectedTournament} open={Boolean(selectedTournament)} onClose={() => setSelectedTournament(null)} user={user} onSuccess={async (registration) => { const tournamentId = selectedTournament?.id; setSelectedTournament(null); ++myRegsRequestRef.current; if (tournamentId) setMyRegs((current) => upsertOwnedTournamentRegistration(current, { ...registration, tournament_id: tournamentId })); window.scrollTo({ top: 0, behavior: "smooth" }); await loadAll(); await loadMyRegistrations(); }} />
+    <UserLoginDialog open={userDialogOpen} existingUser={user} onClose={() => { if (missingRequiredConsents) { toast.error("Devi confermare Privacy, Termini e maggiore età per continuare"); return; } setUserDialogOpen(false); setPendingTournament(null); }} onSaved={async (savedUser) => { setUser(savedUser); toast.success("Dati salvati"); const tournament = pendingTournament; setUserDialogOpen(false); setPendingTournament(null); if (tournament) { await loadMyRegistrations(); const blocked = (tournament.category === "Femminile" && savedUser.gender === "M") || (tournament.category === "Maschile" && savedUser.gender === "F"); if (blocked) { toast.error("Non puoi iscriverti a questo torneo"); return; } setSelectedTournament(tournament); } }} />
   </>;
 }

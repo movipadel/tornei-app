@@ -10,7 +10,7 @@ const cardCss = read("src/components/tournaments/TournamentCard.module.css");
 
 test("catalogue preserves its established data, registration and deep-link flows", () => {
   assert.match(page, /fetch\("\/api\/tournaments"/);
-  assert.match(page, /fetch\("\/api\/registrations\/search"/);
+  assert.match(page, /fetch\("\/api\/registrations\/mine", \{ cache: "no-store" \}\)/);
   assert.match(page, /method: "DELETE"/);
   assert.match(page, /get\('tournament'\)/);
   assert.match(page, /scrollIntoView\(\{ block: 'center' \}\)/);

@@ -9,6 +9,7 @@ import TournamentCard, {
 } from "@/components/tournaments/TournamentCard";
 import RegistrationDialog from "@/components/tournaments/RegistrationDialog";
 import UserLoginDialog from "@/components/UserLoginDialog";
+import { ownedTournamentStatus, removeOwnedTournamentRegistration, upsertOwnedTournamentRegistration, type OwnedTournamentRegistration } from "@/lib/tournamentRegistrationOwnership";
 import styles from "./TorneiPage.module.css";
 
 type User = {
@@ -19,19 +20,12 @@ type User = {
   gender: "M" | "F";
 };
 
-type MyReg = {
-  id: string;
-  tournament_id: string;
-  is_reserve: boolean;
-  p1_phone: string;
-  p2_phone?: string | null;
-};
+type MyReg = OwnedTournamentRegistration;
 type PublicCircuit = { id: string; name: string };
 
 const normalizePhone = (s: string) => String(s ?? "").replace(/\s+/g, "").trim();
 const isValidPhone = (p: string) => normalizePhone(p).length >= 8;
 const errorMessage = (error: unknown) => error instanceof Error ? error.message : "Errore";
-type RegistrationSearchRow = MyReg;
 
 export default function TorneiPage() {
   const [loading, setLoading] = useState(true);
@@ -41,8 +35,10 @@ export default function TorneiPage() {
   const [circuits, setCircuits] = useState<PublicCircuit[]>([]);
   const [user, setUser] = useState<User | null>(null);
 
-  const [phone] = useState("");
   const [myRegs, setMyRegs] = useState<MyReg[]>([]);
+  const [myRegsReadyForUserId, setMyRegsReadyForUserId] = useState<string | null>(null);
+  const [myRegsLoadError, setMyRegsLoadError] = useState(false);
+  const myRegsRequestRef = useRef(0);
 
   const [selectedTournament, setSelectedTournament] =
     useState<PublicTournament | null>(null);
@@ -50,7 +46,7 @@ export default function TorneiPage() {
     useState<PublicTournament | null>(null);
   const [userDialogOpen, setUserDialogOpen] = useState(false);
 
-  const effectivePhone = user?.phone ? normalizePhone(user.phone) : normalizePhone(phone);
+  const effectivePhone = normalizePhone(user?.phone ?? "");
 
   const listTimerRef = useRef<number | null>(null);
   const listAbortRef = useRef<AbortController | null>(null);
@@ -101,47 +97,23 @@ export default function TorneiPage() {
     }
   }
 
-  async function searchMy(phoneValue: string) {
-    const p = normalizePhone(phoneValue);
-
-    if (!isValidPhone(p)) {
-      setMyRegs([]);
-      return;
-    }
-
+  async function loadMyRegistrations() {
+    const requestId = ++myRegsRequestRef.current;
+    const requestedUserId = user?.id ?? null;
+    setMyRegsLoadError(false);
     setLoadingMy(true);
-
     try {
-      const res = await fetch("/api/registrations/search", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: p }),
-      });
-
+      const res = await fetch("/api/registrations/mine", { cache: "no-store" });
       const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json.error || "Errore ricerca");
-
-      const rows = (json.data ?? []) as RegistrationSearchRow[];
-
-      const exact = rows.filter((r) => {
-        const p1 = normalizePhone(r.p1_phone ?? "");
-        const p2 = normalizePhone(r.p2_phone ?? "");
-        return p === p1 || (p2 && p === p2);
-      });
-
-      setMyRegs(
-        exact.map((r) => ({
-          id: r.id,
-          tournament_id: r.tournament_id,
-          is_reserve: Boolean(r.is_reserve),
-          p1_phone: r.p1_phone,
-          p2_phone: r.p2_phone ?? null,
-        }))
-      );
+      if (!res.ok) throw new Error(json.error || "Errore caricamento iscrizioni");
+      if (requestId === myRegsRequestRef.current) {
+        setMyRegs((json.data ?? []) as MyReg[]);
+        setMyRegsReadyForUserId(requestedUserId);
+      }
     } catch (e: unknown) {
-      toast.error(errorMessage(e));
+      if (requestId === myRegsRequestRef.current) { setMyRegsLoadError(true); toast.error(errorMessage(e)); }
     } finally {
-      setLoadingMy(false);
+      if (requestId === myRegsRequestRef.current) setLoadingMy(false);
     }
   }
 
@@ -166,8 +138,9 @@ export default function TorneiPage() {
       if (!res.ok) throw new Error(json.error || "Errore cancellazione");
 
       toast.success("Iscrizione cancellata");
-
-      await searchMy(p);
+      ++myRegsRequestRef.current;
+      setMyRegs((current) => removeOwnedTournamentRegistration(current, reg.id));
+      await loadMyRegistrations();
       await loadAll();
     } catch (e: unknown) {
       toast.error(errorMessage(e));
@@ -175,13 +148,8 @@ export default function TorneiPage() {
   }
 
   function statusForTournament(tournamentId: string): "none" | "main" | "reserve" {
-    const p = effectivePhone;
-    if (!isValidPhone(p)) return "none";
-
-    const r = myRegs.find((x) => x.tournament_id === tournamentId);
-    if (!r) return "none";
-
-    return r.is_reserve ? "reserve" : "main";
+    if (!user) return "none";
+    return ownedTournamentStatus(myRegs, tournamentId);
   }
 
   function canUserJoinTournament(t: PublicTournament): boolean {
@@ -216,11 +184,12 @@ export default function TorneiPage() {
   }, []);
 
   useEffect(() => {
-    const p = effectivePhone;
-    const t = setTimeout(() => searchMy(p), 300);
-    return () => clearTimeout(t);
+    void loadMyRegistrations();
+    // Reload ownership when the signed-in customer changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.phone, phone]);
+  }, [user?.id]);
+
+  const ownershipPending = Boolean(user && myRegsReadyForUserId !== user.id);
 
   if (loading) {
   return (
@@ -259,7 +228,11 @@ export default function TorneiPage() {
       Controlla più tardi
     </span></div>
   </div>
-) : (
+) : ownershipPending ? (
+          <div className={styles.loading} role="status">
+            {myRegsLoadError ? <button type="button" onClick={() => void loadMyRegistrations()}>Verifica iscrizioni non disponibile. Riprova</button> : "Verifica iscrizioni in corso..."}
+          </div>
+        ) : (
           <div className={styles.grid}>
             {tournaments.map((t) => {
               const status = statusForTournament(t.id);
@@ -299,14 +272,14 @@ export default function TorneiPage() {
           open={!!selectedTournament}
           onClose={() => setSelectedTournament(null)}
           user={user}
-          onSuccess={async () => {
+          onSuccess={async (registration) => {
+            const tournamentId = selectedTournament?.id;
             setSelectedTournament(null);
+            ++myRegsRequestRef.current;
+            if (tournamentId) setMyRegs((current) => upsertOwnedTournamentRegistration(current, { ...registration, tournament_id: tournamentId }));
             window.scrollTo({ top: 0, behavior: "smooth" });
             await loadAll();
-
-            if (isValidPhone(effectivePhone)) {
-              await searchMy(effectivePhone);
-            }
+            await loadMyRegistrations();
           }}
         />
 
@@ -326,7 +299,7 @@ export default function TorneiPage() {
   setPendingTournament(null);
 
   if (tournamentToOpen) {
-    await searchMy(normalizePhone(u.phone));
+    await loadMyRegistrations();
 
     const genderBlocked =
       (tournamentToOpen.category === "Femminile" && u.gender === "M") ||
