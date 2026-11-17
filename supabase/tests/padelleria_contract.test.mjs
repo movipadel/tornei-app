@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseContent, safeCta, videoUrl, romeToUtc, romeInput, visible, pageBounds, ownedPath, imageExtension } from '../../src/lib/padelleria.ts';
+import { parseContent, safeCta, videoUrl, romeToUtc, romeInput, visible, pageBounds, ownedPath, ownedVariantPath, validPrivateVariants, imageExtension } from '../../src/lib/padelleria.ts';
 const base={kind:'succede',status:'draft',title:'Test',excerpt:'',body:'<script>alert(1)</script>',featured:false,delete_on_expiry:false,sort_order:0,cta_label:null,cta_url:null,occurred_at:null,visible_from:null,visible_until:null};
 test('lifecycle, fields and archive constraints',()=>{
   assert.equal(parseContent(base).body,base.body);
@@ -35,10 +35,25 @@ test('bounds and owned paths',()=>{
   const id='11111111-1111-4111-8111-111111111111';
   assert.equal(ownedPath(id,`${id}/22222222-2222-4222-8222-222222222222.png`),true);
   assert.equal(ownedPath(id,'../other.png'),false);assert.equal(ownedPath(id,`other/${id}.png`),false);
+  const mediaId='22222222-2222-4222-8222-222222222222';
+  assert.equal(ownedVariantPath(id,mediaId,`${id}/${mediaId}/w480.webp`),true);
+  assert.equal(ownedVariantPath(id,mediaId,`${id}/other/w480.webp`),false);
+  assert.equal(ownedVariantPath(id,mediaId,`${id}/${mediaId}/../w480.webp`),false);
 });
 test('MIME agrees with signature and max size',()=>{
   assert.equal(imageExtension(new Uint8Array([137,80,78,71,13,10,26,10]),'image/png'),'png');
   assert.throws(()=>imageExtension(new TextEncoder().encode('<svg/>'),'image/png'));
   assert.throws(()=>imageExtension(new Uint8Array([255,216,255]),'image/svg+xml'));
   assert.throws(()=>imageExtension(new Uint8Array(5*1024*1024+1),'image/png'));
+});
+test('responsive variants require the expected private owner and WebP format',()=>{
+  const contentId='11111111-1111-4111-8111-111111111111';
+  const mediaId='22222222-2222-4222-8222-222222222222';
+  const variant=(width,path=`${contentId}/${mediaId}/w${width}.webp`,format='webp')=>({width,path,format});
+  assert.deepEqual(validPrivateVariants(contentId,mediaId,[
+    variant(1600),variant(480),variant(960),variant(480),
+    variant(320,`${contentId}/other/w320.webp`),variant(720,undefined,'png'),
+    variant(2000),variant(0),{width:'960',path:`${contentId}/${mediaId}/w960.webp`,format:'webp'},
+  ]),[variant(480),variant(960),variant(1600)].map(({width,path})=>({width,path})));
+  assert.deepEqual(validPrivateVariants(contentId,mediaId,null),[]);
 });

@@ -20,7 +20,7 @@ function formatDate(item: ContentItem) {
 }
 
 function cover(item: ContentItem) {
-  return item.media.find((media) => media.media_type === "image" && media.role === "cover" && media.url)?.url ?? undefined;
+  return item.media.find((media) => media.media_type === "image" && media.role === "cover" && media.url);
 }
 
 function PadelleriaHubContent() {
@@ -70,7 +70,7 @@ function PadelleriaHubContent() {
             const image = cover(item); const date = formatDate(item);
             return <Link className={styles.cardLink} href={`/padelleria/${item.id}`} aria-label={`Apri ${item.title}`} key={item.id}>
               <article className={styles.card}>
-                <MediaFrame src={image} alt={image ? item.title : ""} />
+                <MediaFrame src={image?.url??undefined} srcSet={image?.srcSet??undefined} sizes="(min-width: 700px) 470px, calc(100vw - 32px)" alt={image ? item.title : ""} />
                 <div className={styles.cardBody}>
                   <div className={styles.meta}><span>{item.kind === "e_successo" ? "È successo" : view === "archivio" ? "Succede · Archivio" : "Succede"}</span>{date ? <span><CalendarDays size={14} aria-hidden />{date}</span> : null}</div>
                   <h3>{item.title}</h3>{item.excerpt ? <p>{item.excerpt}</p> : null}

@@ -1,13 +1,13 @@
 import { timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
-import { CONTENT_BUCKET, ownedPath } from "@/lib/padelleria";
+import { CONTENT_BUCKET, PRIVATE_VARIANT_BUCKET, ownedPath, ownedVariantPath } from "@/lib/padelleria";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 type ClaimedContent = { content_id: string };
-type StoredMedia = { content_id: string; storage_path: string | null };
+type StoredMedia = { id: string; content_id: string; storage_path: string | null; variants: unknown };
 
 function authorized(req: Request) {
   const secret = process.env.CRON_SECRET;
@@ -30,14 +30,14 @@ export async function POST(req: Request) {
 
   const { data: media, error: mediaError } = await sb
     .from("padelleria_content_media")
-    .select("content_id,storage_path")
+    .select("id,content_id,storage_path,variants")
     .in("content_id", ids);
   if (mediaError) return NextResponse.json({ error: mediaError.message }, { status: 500 });
 
-  const pathsByContent = new Map<string, Array<string | null>>();
+  const pathsByContent = new Map<string, StoredMedia[]>();
   for (const item of (media ?? []) as StoredMedia[]) {
     const paths = pathsByContent.get(item.content_id) ?? [];
-    paths.push(item.storage_path);
+    paths.push(item);
     pathsByContent.set(item.content_id, paths);
   }
 
@@ -46,14 +46,29 @@ export async function POST(req: Request) {
   const failures: Array<{ content_id: string; error: string }> = [];
 
   for (const contentId of ids) {
-    const storedPaths = pathsByContent.get(contentId) ?? [];
-    const unsafePath = storedPaths.find((path) => path !== null && !ownedPath(contentId, path));
+    const storedMedia = pathsByContent.get(contentId) ?? [];
+    const unsafePath = storedMedia.find((item) =>
+      (item.storage_path !== null && !ownedPath(contentId, item.storage_path)) ||
+      !Array.isArray(item.variants) || item.variants.some((variant) =>
+        !variant || typeof variant !== "object" ||
+        typeof variant.path !== "string" || !ownedVariantPath(contentId, item.id, variant.path)),
+    );
     if (unsafePath) {
       failures.push({ content_id: contentId, error: "Percorso media non appartenente al contenuto" });
       continue;
     }
 
-    const ownedPaths = [...new Set(storedPaths.filter((path): path is string => Boolean(path)))];
+    const variantPaths = [...new Set(storedMedia.flatMap((item) =>
+      (item.variants as Array<{ path: string }>).map((variant) => variant.path),
+    ))];
+    if (variantPaths.length) {
+      const cleanup = await sb.storage.from(PRIVATE_VARIANT_BUCKET).remove(variantPaths);
+      if (cleanup.error) {
+        failures.push({ content_id: contentId, error: cleanup.error.message });
+        continue;
+      }
+    }
+    const ownedPaths = [...new Set(storedMedia.flatMap((item) => item.storage_path ? [item.storage_path] : []))];
     if (ownedPaths.length) {
       const cleanup = await sb.storage.from(CONTENT_BUCKET).remove(ownedPaths);
       if (cleanup.error) {

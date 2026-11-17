@@ -50,7 +50,7 @@ function formatDate(iso: string | null | undefined, options?: Intl.DateTimeForma
 
 function contentImage(item: ContentItem) {
   const images = item.media.filter((media) => media.media_type === "image" && media.url);
-  return images.find((media) => media.role === "cover")?.url ?? images[0]?.url ?? undefined;
+  return images.find((media) => media.role === "cover") ?? images[0];
 }
 
 function SectionHeader({ title, copy, href, linkLabel }: { title: string; copy?: string; href?: string; linkLabel?: string }) {
@@ -60,7 +60,7 @@ function SectionHeader({ title, copy, href, linkLabel }: { title: string; copy?:
 function EditorialCarousel({ title, label, items, href }: { title: string; label: string; items: ContentItem[]; href: string }) {
   return <section className={home.section}><SectionHeader title={title} href={href} linkLabel="Vedi tutti" /><PublicCarousel label={label}>{items.map((item) => {
     const image = contentImage(item);
-    return <Link className={`${home.carouselItem} ${home.editorialCardLink}`} href={`/padelleria/${item.id}`} aria-label={`Apri ${item.title}`} key={item.id}><PublicCard family="editorial" className={home.editorialCard}><MediaFrame src={image} alt={image ? item.title : ""} /><div className={home.editorialBody}><span className={home.editorialDate}>{formatDate(item.occurred_at ?? item.visible_from ?? item.published_at)}</span><h3>{item.title}</h3>{item.excerpt ? <p>{item.excerpt}</p> : null}</div></PublicCard></Link>;
+    return <Link className={`${home.carouselItem} ${home.editorialCardLink}`} href={`/padelleria/${item.id}`} aria-label={`Apri ${item.title}`} key={item.id}><PublicCard family="editorial" className={home.editorialCard}><MediaFrame src={image?.url??undefined} srcSet={image?.srcSet??undefined} sizes="(min-width: 1024px) 324px, (min-width: 768px) 317px, 84vw" alt={image ? item.title : ""} /><div className={home.editorialBody}><span className={home.editorialDate}>{formatDate(item.occurred_at ?? item.visible_from ?? item.published_at)}</span><h3>{item.title}</h3>{item.excerpt ? <p>{item.excerpt}</p> : null}</div></PublicCard></Link>;
   })}</PublicCarousel></section>;
 }
 

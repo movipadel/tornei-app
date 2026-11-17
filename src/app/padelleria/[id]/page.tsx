@@ -34,14 +34,14 @@ export default async function PadelleriaDetailPage({params}:{params:Promise<{id:
 
   return <main className={styles.page}><article className={styles.article} aria-labelledby="padelleria-detail-title">
     <Link className={styles.back} href="/padelleria"><ArrowLeft size={18} aria-hidden />Torna alla Padelleria</Link>
-    {cover?.url?<div className={styles.cover}><MediaFrame src={cover.url} alt={cover.caption||item.title} /></div>:null}
+    {cover?.url?<div className={styles.cover}><MediaFrame src={cover.url} srcSet={cover.srcSet??undefined} sizes="(min-width: 1280px) 980px, (min-width: 900px) 900px, calc(100vw - 32px)" alt={cover.caption||item.title} /></div>:null}
     <header className={styles.header}>
       <div className={styles.meta}><span>{item.kind==='succede'?'Succede':'È successo'}</span>{date?<span><CalendarDays size={15} aria-hidden />{date}</span>:null}</div>
       <h1 id="padelleria-detail-title">{item.title}</h1>
       {item.excerpt?<p className={styles.excerpt}>{item.excerpt}</p>:null}
     </header>
     {item.body?<div className={styles.body}>{item.body}</div>:null}
-    {gallery.length?<section className={styles.section} aria-labelledby="padelleria-gallery-title"><h2 id="padelleria-gallery-title">Gallery</h2><div className={styles.gallery}>{gallery.map((media,index)=><figure key={media.id}><MediaFrame src={media.url??undefined} alt={media.caption||`Immagine ${index+1} di ${item.title}`} />{media.caption?<figcaption>{media.caption}</figcaption>:null}</figure>)}</div></section>:null}
+    {gallery.length?<section className={styles.section} aria-labelledby="padelleria-gallery-title"><h2 id="padelleria-gallery-title">Gallery</h2><div className={styles.gallery}>{gallery.map((media,index)=><figure key={media.id}><MediaFrame src={media.url??undefined} srcSet={media.srcSet??undefined} sizes="(min-width: 1280px) 310px, (min-width: 440px) 440px, calc(100vw - 32px)" alt={media.caption||`Immagine ${index+1} di ${item.title}`} />{media.caption?<figcaption>{media.caption}</figcaption>:null}</figure>)}</div></section>:null}
     {videos.length?<section className={styles.section} aria-labelledby="padelleria-video-title"><h2 id="padelleria-video-title">Video</h2><div className={styles.videos}>{videos.map((video,index)=><figure key={video.id}><div className={styles.videoFrame}><iframe src={video.embedUrl} title={video.caption||`Video ${index+1} di ${item.title}`} loading="lazy" referrerPolicy="strict-origin-when-cross-origin" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen /></div>{video.caption?<figcaption>{video.caption}</figcaption>:null}</figure>)}</div></section>:null}
     {cta?<div className={styles.cta}>{external?<a className={`${publicStyles.button} ${publicStyles.primary}`} href={cta.url} target="_blank" rel="noopener noreferrer">{cta.label}<ExternalLink size={17} aria-hidden /></a>:<Link className={`${publicStyles.button} ${publicStyles.primary}`} href={cta.url}>{cta.label}</Link>}</div>:null}
   </article></main>;

@@ -1,12 +1,13 @@
 // Shared pure contract: safe in browser, server and Node tests.
 export const CONTENT_BUCKET = 'padelleria-content-media';
+export const PRIVATE_VARIANT_BUCKET = 'padelleria-media-variants';
 export type ContentKind = 'succede' | 'e_successo';
 export type ContentInput = {
   kind: ContentKind; status: 'draft' | 'published'; title: string; excerpt: string; body: string;
   featured: boolean; delete_on_expiry: boolean; sort_order: number; cta_label: string | null; cta_url: string | null;
   occurred_at: string | null; visible_from: string | null; visible_until: string | null;
 };
-export type ContentMedia = { id: string; content_id: string; media_type: 'image' | 'video'; role: 'cover' | 'gallery' | 'video'; caption: string; sort_order: number; url: string | null; external_url: string | null };
+export type ContentMedia = { id: string; content_id: string; media_type: 'image' | 'video'; role: 'cover' | 'gallery' | 'video'; caption: string; sort_order: number; url: string | null; srcSet: string | null; external_url: string | null };
 export type ContentItem = ContentInput & { id: string; published_at: string | null; created_at: string; updated_at: string; media: ContentMedia[] };
 export type PublicContentDetail = Pick<ContentItem,'id'|'kind'|'title'|'excerpt'|'body'|'occurred_at'|'published_at'|'cta_label'|'cta_url'|'media'>;
 export const isUuid = (v: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
@@ -68,6 +69,25 @@ export function pageBounds(params: URLSearchParams) {
 }
 export function ownedPath(contentId:string,path:string) {
   return isUuid(contentId) && new RegExp(`^${contentId}/[0-9a-f-]{36}\\.(jpg|png|webp)$`,'i').test(path);
+}
+export function ownedVariantPath(contentId:string,mediaId:string,path:string) {
+  return isUuid(contentId) && isUuid(mediaId) &&
+    new RegExp(`^${contentId}/${mediaId}/w[1-9][0-9]{0,4}\\.webp$`,'i').test(path);
+}
+export function validPrivateVariants(contentId:string,mediaId:string,value:unknown):Array<{path:string;width:number}> {
+  if(!Array.isArray(value))return [];
+  const result:Array<{path:string;width:number}>=[];
+  const seen=new Set<number>();
+  for(const item of value){
+    if(!item||typeof item!=='object')continue;
+    const variant=item as Record<string,unknown>;
+    const width=variant.width,path=variant.path;
+    if(variant.format!=='webp'||!Number.isInteger(width)||typeof width!=='number'||width<1||width>1600||
+      typeof path!=='string'||path!==`${contentId}/${mediaId}/w${width}.webp`||
+      !ownedVariantPath(contentId,mediaId,path)||seen.has(width))continue;
+    seen.add(width);result.push({path,width});
+  }
+  return result.sort((a,b)=>a.width-b.width);
 }
 export function imageExtension(bytes:Uint8Array,mime:string) {
   if(bytes.length===0 || bytes.length>5*1024*1024) throw new Error('Immagine: massimo 5 MiB');

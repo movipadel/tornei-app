@@ -16,9 +16,9 @@ export function PublicCard({ family = "standard", children, className = "" }: { 
   return <article className={`${styles.card} ${familyClass} ${className}`}>{children}</article>;
 }
 
-export function MediaFrame({ src, alt, ratio = "landscape", position = "50% 50%", fit = "cover", overlay = false, loading = false }: { src?: string; alt: string; ratio?: "landscape" | "square"; position?: string; fit?: "cover" | "contain"; overlay?: boolean; loading?: boolean }) {
+export function MediaFrame({ src, srcSet, sizes, alt, ratio = "landscape", position = "50% 50%", fit = "cover", overlay = false, loading = false }: { src?: string; srcSet?: string; sizes?: string; alt: string; ratio?: "landscape" | "square"; position?: string; fit?: "cover" | "contain"; overlay?: boolean; loading?: boolean }) {
   return <div className={`${styles.mediaFrame} ${styles[ratio]} ${fit === "contain" ? styles.mediaContain : ""} ${overlay ? styles.mediaOverlay : ""} ${loading ? styles.skeleton : ""}`} style={{ "--media-position": position, "--media-fit": fit } as React.CSSProperties} aria-busy={loading || undefined}>
-    {!loading && src ? <img src={src} alt={alt} loading="lazy" /> : !loading ? <div className={styles.mediaFallback}><ImageIcon aria-hidden /><span className={styles.micro}>Immagine non disponibile</span></div> : <span className="sr-only">Caricamento immagine</span>}
+    {!loading && src ? <img src={src} srcSet={srcSet} sizes={srcSet ? sizes : undefined} alt={alt} loading="lazy" onError={srcSet ? event => { event.currentTarget.removeAttribute('srcset'); } : undefined} /> : !loading ? <div className={styles.mediaFallback}><ImageIcon aria-hidden /><span className={styles.micro}>Immagine non disponibile</span></div> : <span className="sr-only">Caricamento immagine</span>}
   </div>;
 }
 

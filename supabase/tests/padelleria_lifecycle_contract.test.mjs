@@ -22,7 +22,9 @@ test("cleanup is POST-only, secret protected and removes only owned storage path
   assert.doesNotMatch(cron, /export async function GET/);
   assert.match(cron, /process\.env\.CRON_SECRET/);
   assert.match(cron, /timingSafeEqual/);
-  assert.match(cron, /ownedPath\(contentId, path\)/);
+  assert.match(cron, /ownedPath\(contentId, item\.storage_path\)/);
+  assert.match(cron, /ownedVariantPath\(contentId, item\.id, variant\.path\)/);
+  assert.match(cron, /storage\.from\(PRIVATE_VARIANT_BUCKET\)\.remove\(variantPaths\)/);
   assert.match(cron, /storage\.from\(CONTENT_BUCKET\)\.remove\(ownedPaths\)/);
   assert.match(cron, /padelleria_purge_expired_content/);
 });

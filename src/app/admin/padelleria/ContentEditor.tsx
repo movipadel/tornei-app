@@ -2,7 +2,7 @@
 /* eslint-disable @next/next/no-img-element -- Existing admin preview pattern. */
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { type ContentItem, type ContentInput, type ContentMedia, parseContent, romeInput, romeToUtc } from '@/lib/padelleria';
 import { assertNotPadelleriaSelfLink } from '@/lib/publicCtaDestinations';
 import CtaDestinationFields from './CtaDestinationFields';
@@ -12,6 +12,7 @@ const empty:ContentInput={kind:'succede',status:'draft',title:'',excerpt:'',body
 export default function ContentEditor({id,previewOnly=false}:{id?:string;previewOnly?:boolean}){
   const router=useRouter();
   const [input,setInput]=useState<ContentInput>(empty),[item,setItem]=useState<ContentItem|null>(null),[media,setMedia]=useState<ContentMedia[]>([]),[error,setError]=useState(''),[message,setMessage]=useState(''),[loading,setLoading]=useState(Boolean(id)),[busy,setBusy]=useState(false),[dirty,setDirty]=useState(false),[localPreview,setLocalPreview]=useState(false);
+  const pendingUploads=useRef(new Map<string,string>());
   const [from,setFrom]=useState(''),[until,setUntil]=useState(''),[occurred,setOccurred]=useState(''),[noExpiry,setNoExpiry]=useState(true),[video,setVideo]=useState(''),[caption,setCaption]=useState('');
   useEffect(()=>{
     if(!id)return;
@@ -33,7 +34,16 @@ export default function ContentEditor({id,previewOnly=false}:{id?:string;preview
     const r=await fetch(`/api/admin/padelleria/${id}/media`,{method,headers:body instanceof FormData?undefined:{'Content-Type':'application/json'},body:body instanceof FormData?body:JSON.stringify(body)});const j=await r.json();if(!r.ok)throw new Error(j.error);
     const res=await fetch(`/api/admin/padelleria/${id}`,{cache:'no-store'});const fresh=await res.json();if(!res.ok)throw new Error(fresh.error);setMedia(fresh.data.media);setMessage('Media aggiornati.');return true;
   }catch(e){setError((e as Error).message);return false;}finally{setBusy(false);}}
-  async function upload(file:File|undefined,role:string){if(!file)return;const f=new FormData();f.set('file',file);f.set('role',role);f.set('caption',caption);await mediaAction('POST',f);}
+  async function upload(file:File|undefined,role:string){
+    if(!file)return;
+    const key=`${role}:${file.name}:${file.size}:${file.lastModified}`;
+    const requestId=pendingUploads.current.get(key)??crypto.randomUUID();
+    pendingUploads.current.set(key,requestId);
+    const f=new FormData();f.set('file',file);f.set('role',role);f.set('caption',caption);f.set('request_id',requestId);
+    const cover=role==='cover'?media.find(m=>m.role==='cover'):null;
+    if(cover)f.set('replace_media_id',cover.id);
+    if(await mediaAction('POST',f))pendingUploads.current.delete(key);
+  }
   async function move(index:number,delta:number){const ids=media.map(m=>m.id);[ids[index],ids[index+delta]]=[ids[index+delta],ids[index]];await mediaAction('PATCH',{ids});}
   if(loading)return <main className={s.page}><p role="status">Caricamento…</p></main>;
   if(id&&!item)return <main className={s.page}><Link href="/admin/padelleria">← Contenuti</Link><p className={s.error} role="alert">{error||'Contenuto non trovato'}</p></main>;
@@ -58,9 +68,9 @@ export default function ContentEditor({id,previewOnly=false}:{id?:string;preview
       <h2 className={s.section}>Copertina, gallery e video</h2>
       {!id?<div className={s.card}>Salva prima il contenuto per allegare i media.</div>:<>
         <div className={`${s.card} ${s.form}`}><label className={`${s.field} ${s.wide}`}>Didascalia / descrizione del prossimo media<input maxLength={300} value={caption} onChange={e=>setCaption(e.target.value)}/></label>
-          <label className={`${s.field} ${s.upload}`}>Copertina<input type="file" accept="image/png,image/jpeg,image/webp" disabled={busy||media.some(m=>m.role==='cover')} onChange={e=>{void upload(e.target.files?.[0],'cover');e.target.value='';}}/><span className={s.muted}>Rimuovi la copertina attuale per sostituirla.</span></label>
+          <label className={`${s.field} ${s.upload}`}>Copertina<input type="file" accept="image/png,image/jpeg,image/webp" disabled={busy} onChange={e=>{void upload(e.target.files?.[0],'cover');e.target.value='';}}/><span className={s.muted}>La copertina attuale resta visibile fino al completamento della nuova immagine.</span></label>
           <label className={`${s.field} ${s.upload}`}>Immagine gallery<input type="file" accept="image/png,image/jpeg,image/webp" disabled={busy} onChange={e=>{void upload(e.target.files?.[0],'gallery');e.target.value='';}}/></label>
-          <p className={`${s.muted} ${s.wide}`}>PNG, JPEG, WebP · max 5 MiB. Consigliato 1600×900, minimo editoriale 960×540. Nessuna conversione automatica. Media salvati immediatamente; massimo 30.</p>
+          <p className={`${s.muted} ${s.wide}`}>PNG, JPEG, WebP · max 5 MiB. Le varianti private sono generate automaticamente, senza ingrandire l’originale. Media salvati al termine dell’elaborazione; massimo 30.</p>
           <label className={`${s.field} ${s.wide}`}>Video YouTube / Vimeo<input type="url" placeholder="https://www.youtube.com/watch?v=…" value={video} onChange={e=>setVideo(e.target.value)}/></label>
           <div><button type="button" disabled={busy||!video} className={s.secondary} onClick={async()=>{if(await mediaAction('POST',{external_url:video,caption}))setVideo('');}}>Aggiungi video</button></div>
         </div>
