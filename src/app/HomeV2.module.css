@@ -101,7 +101,7 @@
 .circuitStats span { display: inline-flex; align-items: baseline; gap: 4px; }
 .circuitStats strong { color: var(--public-text); font-size: 15px; }
 .circuitImageCard { display: block; padding: 0; }
-.circuitImage { object-fit: cover; }
+.circuitImage { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .editorialCard { height: var(--home-editorial-height); display: grid; grid-template-rows: var(--home-editorial-media-height) minmax(0, 1fr); gap: 0; padding: 0; overflow: hidden; border-radius: var(--home-card-radius); }
 .editorialCard > :first-child { height: var(--home-editorial-media-height); aspect-ratio: auto; border: 0; border-radius: var(--home-card-radius) var(--home-card-radius) 0 0; }
 .editorialCardLink { display: block; border-radius: var(--home-card-radius); color: inherit; text-decoration: none; }

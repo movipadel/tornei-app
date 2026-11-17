@@ -36,8 +36,8 @@ export default async function PartnerDetailPage({ params }: { params: Promise<{ 
       <Link className={styles.back} href="/partner"><ArrowLeft size={18} aria-hidden />Tutti i Partner</Link>
 
       <div className={`${styles.heroMedia} ${!partner.cover_url && partner.logo_url ? styles.logoHero : ""}`}>
-        {partner.cover_url ? <MediaFrame src={heroImage} alt={partner.name} fit="cover" />
-          : partner.logo_url ? <PartnerLogo src={partner.logo_url} alt={partner.name} variant="hero" />
+        {partner.cover_url ? <MediaFrame src={heroImage} srcSet={partner.cover_srcset ?? undefined} sizes="(min-width: 1000px) 940px, 94vw" alt={partner.name} fit="cover" />
+          : partner.logo_url ? <PartnerLogo src={partner.logo_url} srcSet={partner.logo_srcset} sizes="(min-width: 1000px) 940px, 94vw" alt={partner.name} variant="hero" />
             : <MediaFrame alt="" />}
       </div>
 
@@ -45,7 +45,7 @@ export default async function PartnerDetailPage({ params }: { params: Promise<{ 
         <span className={styles.category}><Tags size={14} aria-hidden />{partner.category}</span>
         <div className={styles.identity}>
           <div><h1 id="partner-detail-title">{partner.name}</h1>{partner.short_description ? <p className={styles.subtitle}>{partner.short_description}</p> : null}</div>
-          {partner.logo_url && partner.cover_url ? <PartnerLogo src={partner.logo_url} alt={`Logo ${partner.name}`} /> : null}
+          {partner.logo_url && partner.cover_url ? <PartnerLogo src={partner.logo_url} srcSet={partner.logo_srcset} sizes="92px" alt={`Logo ${partner.name}`} /> : null}
         </div>
       </header>
 

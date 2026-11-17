@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   Eye,
@@ -21,6 +21,7 @@ type Reward = {
   category: string | null;
   points_cost: number;
   image_path: string | null;
+  image_srcset?: string | null;
   is_active: boolean;
   stock_qty: number | null;
   reward_type: "club" | "partner";
@@ -95,6 +96,8 @@ export default function AdminMoviBackCatalogPage() {
   const [editingRange, setEditingRange] = useState<RewardPointRange | null>(null);
 
   const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imageProfile, setImageProfile] = useState<'photo' | 'poster' | 'logo'>('poster');
+  const uploadRequests = useRef(new Map<string, string>());
   const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   async function loadAll() {
@@ -180,6 +183,8 @@ export default function AdminMoviBackCatalogPage() {
     setEditing(null);
     setForm(emptyForm);
     setImageFile(null);
+    setImageProfile('poster');
+    uploadRequests.current.clear();
   }
 
   function startEdit(reward: Reward) {
@@ -199,6 +204,8 @@ export default function AdminMoviBackCatalogPage() {
       ),
     });
     setImageFile(null);
+    setImageProfile('poster');
+    uploadRequests.current.clear();
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -207,6 +214,11 @@ export default function AdminMoviBackCatalogPage() {
 
     const fd = new FormData();
     fd.append("file", imageFile);
+    const requestKey = `${imageProfile}:${imageFile.name}:${imageFile.size}:${imageFile.lastModified}`;
+    const requestId = uploadRequests.current.get(requestKey) ?? crypto.randomUUID();
+    uploadRequests.current.set(requestKey, requestId);
+    fd.set('request_id', requestId);
+    fd.set('image_profile', imageProfile);
 
     const res = await fetch("/api/admin/moviback/rewards/image", {
       method: "POST",
@@ -609,6 +621,15 @@ export default function AdminMoviBackCatalogPage() {
               />
             </label>
 
+            <label style={{ display: 'grid', gap: 6, color: 'rgba(255,255,255,0.72)', fontSize: 13 }}>
+              Tipo immagine
+              <select value={imageProfile} onChange={event => setImageProfile(event.target.value as 'photo' | 'poster' | 'logo')} style={inputStyle}>
+                <option value="poster">Locandina o grafica con testo</option>
+                <option value="photo">Fotografia</option>
+                <option value="logo">Logo o grafica dettagliata</option>
+              </select>
+            </label>
+
             {form.image_path ? (
               <button type="button" onClick={() => setPreviewImage(form.image_path)} style={secondaryBtn}>
                 Visualizza immagine caricata
@@ -800,7 +821,7 @@ export default function AdminMoviBackCatalogPage() {
                   style={thumbBtn}
                 >
                   {reward.image_path ? (
-                    <img src={reward.image_path} alt={reward.name} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                    <img src={reward.image_path} srcSet={reward.image_srcset ?? undefined} sizes="160px" alt={reward.name} onError={reward.image_srcset ? event => event.currentTarget.removeAttribute('srcset') : undefined} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
                   ) : (
                     <div style={thumbFallback}>
                       <Gift className="w-6 h-6" />
@@ -868,7 +889,7 @@ export default function AdminMoviBackCatalogPage() {
                 <X className="w-5 h-5" />
               </button>
 
-              <img src={previewImage} alt="Anteprima premio" style={{ width: "100%", maxHeight: "78dvh", objectFit: "contain", display: "block" }} />
+              <img src={previewImage} srcSet={items.find(reward => reward.image_path === previewImage)?.image_srcset ?? undefined} sizes="(min-width: 640px) 600px, 90vw" alt="Anteprima premio" onError={event => event.currentTarget.removeAttribute('srcset')} style={{ width: "100%", maxHeight: "78dvh", objectFit: "contain", display: "block" }} />
             </div>
           </div>
         ) : null}

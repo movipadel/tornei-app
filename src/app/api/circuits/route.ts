@@ -1,5 +1,6 @@
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { createRuntimePerf } from "@/lib/runtimePerf";
+import { circuitHomeSrcSets } from "@/lib/circuitHomeImageServer";
 
 export const runtime = "nodejs";
 
@@ -91,6 +92,7 @@ export async function GET() {
     stageKeysByCircuit.get(circuitId)!.add(key);
   }
 
+  const imageSrcSets = await circuitHomeSrcSets(sb, circuits ?? []);
   const payload = (circuits ?? []).map((c) => ({
     id: c.id,
     name: c.name,
@@ -98,6 +100,7 @@ export async function GET() {
     tournament_type: c.tournament_type,
     status: c.status,
     home_image_url: c.home_image_url ?? null,
+    home_image_srcset: c.home_image_url ? imageSrcSets.get(c.home_image_url) ?? null : null,
     rules_url: c.rules_url ?? null,
     ranking_groups_count: groupCountByCircuit.get(c.id) ?? 0,
     played_stages_count: stageKeysByCircuit.get(c.id)?.size ?? 0,

@@ -63,8 +63,8 @@ export default function PartnerDirectoryPage() {
             const image = partner.cover_url ?? partner.logo_url ?? undefined;
             return <Link className={styles.cardLink} href={`/partner/${partner.slug}`} aria-label={`Apri Partner ${partner.name}`} key={partner.id}>
               <article className={styles.card}>
-                {partner.cover_url ? <MediaFrame src={image} alt={partner.name} fit="cover" />
-                  : partner.logo_url ? <PartnerLogo src={partner.logo_url} alt={partner.name} variant="directory" />
+                {partner.cover_url ? <MediaFrame src={image} srcSet={partner.cover_srcset ?? undefined} sizes="(min-width: 1100px) 560px, (min-width: 768px) 46vw, 92vw" alt={partner.name} fit="cover" />
+                  : partner.logo_url ? <PartnerLogo src={partner.logo_url} srcSet={partner.logo_srcset} sizes="(min-width: 1100px) 560px, (min-width: 768px) 46vw, 92vw" alt={partner.name} variant="directory" />
                     : <MediaFrame alt="" />}
                 <div className={styles.cardBody}>
                   <span className={styles.category}><Tags size={13} aria-hidden />{partner.category}</span>

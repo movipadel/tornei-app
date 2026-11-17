@@ -36,12 +36,13 @@ function sampleLogoBackground(src: string): Promise<string | null> {
   return result;
 }
 
-export function PartnerLogo({ src, alt, variant = "badge", style }: { src: string; alt: string; variant?: "badge" | "hero" | "directory" | "editor"; style?: CSSProperties }) {
+export function PartnerLogo({ src, srcSet, sizes, alt, variant = "badge", style }: { src: string; srcSet?: string | null; sizes?: string; alt: string; variant?: "badge" | "hero" | "directory" | "editor"; style?: CSSProperties }) {
   const [sample, setSample] = useState<{ src: string; color: string | null } | null>(null);
   const imageRef = useRef<HTMLImageElement>(null);
   const color = sample?.src === src ? sample.color : null;
   const applyBackground = useCallback(() => {
-    void sampleLogoBackground(src).then((nextColor) => setSample({ src, color: nextColor }));
+    // Sampling the selected variant avoids downloading the full original again.
+    void sampleLogoBackground(imageRef.current?.currentSrc || src).then((nextColor) => setSample({ src, color: nextColor }));
   }, [src]);
 
   // Cached images may finish loading before React attaches the onLoad handler.
@@ -50,6 +51,6 @@ export function PartnerLogo({ src, alt, variant = "badge", style }: { src: strin
   }, [applyBackground]);
 
   return <div className={`${styles.frame} ${styles[variant]}`} style={{ ...style, backgroundColor: color ?? undefined }}>
-    <img ref={imageRef} src={src} alt={alt} loading="lazy" onLoad={applyBackground} />
+    <img ref={imageRef} src={src} srcSet={srcSet ?? undefined} sizes={srcSet ? sizes : undefined} alt={alt} loading="lazy" onLoad={applyBackground} onError={srcSet ? event => event.currentTarget.removeAttribute('srcset') : undefined} />
   </div>;
 }

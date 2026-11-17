@@ -26,6 +26,7 @@ type StoreColor = {
   color_name: string;
   color_hex: string | null;
   image_path: string | null;
+  image_srcset?: string | null;
 };
 
 type StoreSize = {
@@ -66,6 +67,7 @@ type CartItem = {
   unit_price_euro: number;
   unit_price_points: number;
   image_path: string | null;
+  image_srcset?: string | null;
 };
 
 const CLUBS = ["CENTALLO", "COSTIGLIOLE", "MANTA", "SALUZZO", "REVELLO"];
@@ -269,6 +271,7 @@ export default function StorePage() {
           unit_price_euro: Number(selectedProduct.base_price_euro || 0),
           unit_price_points: Number(selectedProduct.base_price_points || 0),
           image_path: color.image_path,
+          image_srcset: color.image_srcset ?? null,
         },
       ];
     });
@@ -545,7 +548,11 @@ boxShadow:
           {img ? (
             <img
               src={img}
+              srcSet={firstColor?.image_srcset ?? undefined}
+              sizes="(min-width: 1100px) 490px, (min-width: 768px) 46vw, 44vw"
               alt={product.name}
+              loading="lazy"
+              onError={firstColor?.image_srcset ? event => event.currentTarget.removeAttribute('srcset') : undefined}
               style={{
                 width: "100%",
                 height: "100%",
@@ -880,7 +887,10 @@ boxShadow:
   >
     <img
       src={img}
+      srcSet={color?.image_srcset ?? undefined}
+      sizes="(min-width: 640px) 520px, 90vw"
       alt={product.name}
+      onError={color?.image_srcset ? (event: React.SyntheticEvent<HTMLImageElement>) => event.currentTarget.removeAttribute('srcset') : undefined}
       style={{
         width: "100%",
         height: "100%",
@@ -1059,7 +1069,10 @@ function CartDrawer({
               {imageUrl(item.image_path) ? (
                 <img
                   src={imageUrl(item.image_path)}
+                  srcSet={item.image_srcset ?? undefined}
+                  sizes="58px"
                   alt={item.product_name}
+                  onError={item.image_srcset ? event => event.currentTarget.removeAttribute('srcset') : undefined}
                   style={{ width: 58, height: 58, objectFit: "cover", borderRadius: 15 }}
                 />
               ) : null}

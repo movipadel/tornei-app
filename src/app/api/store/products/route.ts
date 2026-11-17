@@ -1,5 +1,6 @@
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { createRuntimePerf } from "@/lib/runtimePerf";
+import { catalogImageSrcSets } from '@/lib/publicCatalogImageVariants';
 
 export const runtime = "nodejs";
 
@@ -104,6 +105,11 @@ export async function GET() {
   const cleanLines = (lines ?? []) as StoreLookupRow[];
   const categoryById = new Map(cleanCategories.map((category) => [category.id, category]));
   const lineById = new Map(cleanLines.map((line) => [line.id, line]));
+  const imageSrcSets = await catalogImageSrcSets(
+    sb, 'store-images', ((products ?? []) as StoreProductRow[]).flatMap(product =>
+      (product.colors ?? []).map(color => color.image_path)),
+    process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL ?? '',
+  );
 
   const cleanProducts = ((products ?? []) as StoreProductRow[])
     .filter(
@@ -131,6 +137,7 @@ export async function GET() {
           color_name: color.color_name,
           color_hex: color.color_hex,
           image_path: color.image_path,
+          image_srcset: color.image_path ? imageSrcSets.get(color.image_path) ?? null : null,
         })),
       sizes: (product.sizes ?? [])
         .filter((size) => size.is_active)

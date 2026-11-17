@@ -22,6 +22,7 @@ type Reward = {
   category: string | null;
   points_cost: number;
   image_path: string | null;
+  image_srcset?: string | null;
   stock_qty: number | null;
   reward_type: "club" | "partner";
   fulfillment_type: "service" | "store_product" | "custom_physical" | "partner";
@@ -662,7 +663,11 @@ async function redeemNormalReward(reward: Reward) {
   {reward.image_path ? (
     <img
       src={reward.image_path}
+      srcSet={reward.image_srcset ?? undefined}
+      sizes="104px"
       alt={reward.name}
+      loading="lazy"
+      onError={reward.image_srcset ? event => event.currentTarget.removeAttribute('srcset') : undefined}
       style={premiumProductImage}
     />
   ) : (
@@ -878,7 +883,10 @@ async function redeemNormalReward(reward: Reward) {
 
   <img
     src={previewImage}
+    srcSet={rewards.find(reward => reward.image_path === previewImage)?.image_srcset ?? undefined}
+    sizes="(min-width: 640px) 600px, 90vw"
     alt={previewTitle}
+    onError={event => event.currentTarget.removeAttribute('srcset')}
     style={{
       position: "relative",
       zIndex: 2,

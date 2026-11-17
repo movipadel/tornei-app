@@ -6,7 +6,7 @@ export const categories=['Ristorazione','Sport','Benessere','Abbigliamento','Gio
 export const membershipCopy='Mostra la tua tessera MOVI';
 export type PartnerLocation={slot:1|2;label:string;address:string;locality:string;landline_phone:string;mobile_phone:string;mobile_action:'call'|'whatsapp'};
 export type PartnerInput={status:'draft'|'active'|'inactive';name:string;slug:string;category:string;short_description:string;full_description:string;benefit_title:string;benefit_description:string;conditions:string;website_url:string|null;contact_url:string|null;instagram_url:string|null;facebook_url:string|null;contact_label:string|null;phone:string;address:string;locality:string;locations:PartnerLocation[];valid_from:string|null;valid_until:string|null;sort_order:number;featured:boolean};
-export type Partner=PartnerInput&{id:string;created_at:string;updated_at:string;logo_url:string|null;cover_url:string|null;membership_copy:string};
+export type Partner=PartnerInput&{id:string;created_at:string;updated_at:string;logo_url:string|null;cover_url:string|null;logo_srcset:string|null;cover_srcset:string|null;membership_copy:string};
 export const validSlug=(s:string)=>/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(s)&&s.length<=120;
 export const contactCtaLabel=(contactUrl:string|null,contactLabel:string|null)=>contactUrl?(contactLabel?.trim()||'Contatta'):null;
 export const emptyLocation=(slot:1|2):PartnerLocation=>({slot,label:'',address:'',locality:'',landline_phone:'',mobile_phone:'',mobile_action:'call'});

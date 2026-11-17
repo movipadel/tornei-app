@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -88,9 +88,9 @@ export default function CircuitDialog({
   const [type, setType] = useState<TournamentType>("Baraonda");
   const [status, setStatus] = useState<"draft" | "active" | "closed">("active");
   const [homeImageUrl, setHomeImageUrl] = useState("");
-  const [originalHomeImageUrl, setOriginalHomeImageUrl] = useState("");
-  const [pendingHomeImageUrl, setPendingHomeImageUrl] = useState("");
   const [uploadingHomeImage, setUploadingHomeImage] = useState(false);
+  const uploadRequests = useRef(new Map<string, string>());
+  const uploadInProgress = useRef(false);
 
   const [heroLogoUrl, setHeroLogoUrl] = useState("");
   const [heroLogo2Url, setHeroLogo2Url] = useState("");
@@ -137,8 +137,6 @@ export default function CircuitDialog({
           setType(c.tournament_type);
           setStatus(c.status);
           setHomeImageUrl(c.home_image_url ?? "");
-          setOriginalHomeImageUrl(c.home_image_url ?? "");
-          setPendingHomeImageUrl("");
           setHeroLogoUrl(c.hero_logo_url ?? "");
           setHeroLogo2Url(c.hero_logo_2_url ?? "");
           setHeroLogo3Url(c.hero_logo_3_url ?? "");
@@ -179,8 +177,6 @@ export default function CircuitDialog({
       setType("Baraonda");
       setStatus("active");
       setHomeImageUrl("");
-      setOriginalHomeImageUrl("");
-      setPendingHomeImageUrl("");
       setHeroLogoUrl("");
       setHeroLogo2Url("");
       setHeroLogo3Url("");
@@ -192,53 +188,36 @@ export default function CircuitDialog({
     }
   }, [open, circuit?.id]);
 
-  async function deleteHomeImage(url: string) {
-    if (!url) return;
-    const res = await fetch("/api/admin/circuits/home-image", {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url }),
-    });
-    if (!res.ok) {
-      const json = await res.json().catch(() => ({}));
-      throw new Error(json.error || "Errore rimozione immagine");
-    }
-  }
-
   async function uploadHomeImage(file: File) {
-    if (uploadingHomeImage) return;
+    if (uploadInProgress.current) return;
+    uploadInProgress.current = true;
+    const key = `${file.name}:${file.size}:${file.lastModified}`;
+    const requestId = uploadRequests.current.get(key) ?? crypto.randomUUID();
+    uploadRequests.current.set(key, requestId);
     try {
       setUploadingHomeImage(true);
       const form = new FormData();
       form.set("file", file);
+      form.set("request_id", requestId);
       const res = await fetch("/api/admin/circuits/home-image", { method: "POST", body: form });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json.error || "Errore upload immagine");
-
-      const previousPending = pendingHomeImageUrl;
       setHomeImageUrl(String(json.url));
-      setPendingHomeImageUrl(String(json.url));
-      if (previousPending && previousPending !== json.url) {
-        await deleteHomeImage(previousPending).catch(() => undefined);
-      }
+      uploadRequests.current.delete(key);
     } catch (error: unknown) {
       toast.error(error instanceof Error ? error.message : "Errore upload immagine");
     } finally {
       setUploadingHomeImage(false);
+      uploadInProgress.current = false;
     }
   }
 
-  async function removeHomeImage() {
-    if (pendingHomeImageUrl) {
-      await deleteHomeImage(pendingHomeImageUrl).catch(() => undefined);
-      setPendingHomeImageUrl("");
-    }
+  function removeHomeImage() {
     setHomeImageUrl("");
   }
 
   function closeDialog() {
-    if (pendingHomeImageUrl) void deleteHomeImage(pendingHomeImageUrl).catch(() => undefined);
-    setPendingHomeImageUrl("");
+    uploadRequests.current.clear();
     onClose();
   }
 
@@ -390,14 +369,9 @@ export default function CircuitDialog({
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json.error || "Errore salvataggio circuito");
 
-      const committedHomeImageUrl = homeImageUrl;
-      setPendingHomeImageUrl("");
-      if (originalHomeImageUrl && originalHomeImageUrl !== committedHomeImageUrl) {
-        await deleteHomeImage(originalHomeImageUrl).catch(() => undefined);
-      }
       toast.success(isEdit ? "Circuito aggiornato" : "Circuito creato");
       await onSaved();
-      onClose();
+      closeDialog();
     } catch (error: unknown) {
       toast.error(error instanceof Error ? error.message : "Errore salvataggio");
     } finally {
@@ -839,7 +813,7 @@ export default function CircuitDialog({
 
             {/* Footer */}
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-              <button type="button" className="base44-csv-btn" onClick={onClose}>
+              <button type="button" className="base44-csv-btn" onClick={closeDialog}>
                 Annulla
               </button>
 

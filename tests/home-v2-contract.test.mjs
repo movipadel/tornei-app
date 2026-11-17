@@ -280,7 +280,8 @@ test("circuit cards are full-card links with one default or custom-image mode", 
   assert.match(source, /home\.circuitStatus/);
   assert.match(source, /circuit\.ranking_groups_count/);
   assert.match(source, /circuit\.played_stages_count/);
-  assert.match(source, /circuit\.home_image_url \? <Image className=\{home\.circuitImage\} src=\{circuit\.home_image_url\} alt=\{`Circuito \$\{circuit\.name\}`\} fill/);
+  assert.match(source, /circuit\.home_image_url \? <img className=\{home\.circuitImage\} src=\{circuit\.home_image_url\} srcSet=\{circuit\.home_image_srcset \?\? undefined\} sizes=/);
+  assert.match(source, /loading="lazy" onError=/);
   assert.doesNotMatch(source, /Apri circuito<|home\.circuitLink/);
   assert.match(publicRoute, /home_image_url/);
   assert.match(css, /--home-circuit-height: 148px/);
@@ -321,8 +322,10 @@ test("Admin circuits provide the optional Home image upload, replace, remove, an
   assert.match(form, /Rimuovi immagine/);
   assert.match(form, /home_image_url: homeImageUrl \|\| null/);
   for (const route of [adminRoute, adminIdRoute]) assert.match(route, /home_image_url/);
-  assert.match(uploadRoute, /imageExtension\(bytes, file\.type\)/);
-  assert.match(uploadRoute, /const BUCKET = "circuit-home-images"/);
+  assert.match(uploadRoute, /processPadelleriaImage\(bytes, file\.type, \{ profile: 'poster'/);
+  assert.match(uploadRoute, /CIRCUIT_HOME_BUCKET/);
+  assert.match(uploadRoute, /movi_image_variants/);
+  assert.match(form, /form\.set\("request_id", requestId\)/);
   assert.match(uploadRoute, /export async function DELETE/);
   assert.match(migration, /add column if not exists home_image_url text/);
   assert.match(migration, /'circuit-home-images'/);

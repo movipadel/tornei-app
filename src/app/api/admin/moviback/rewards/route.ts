@@ -3,6 +3,7 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { guardOperatorPermission } from "@/lib/operatorAuthorization";
 import { isUuid, type MovibackFulfillmentType } from "@/lib/movibackContracts";
 import { validateRewardFulfillment } from "@/lib/movibackRewardAdmin";
+import { catalogImageSrcSets } from '@/lib/publicCatalogImageVariants';
 
 export const runtime = "nodejs";
 
@@ -24,7 +25,14 @@ export async function GET() {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ data });
+  const imageSrcSets = await catalogImageSrcSets(
+    sb, 'reward-images', (data ?? []).map(reward => reward.image_path),
+    process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL ?? '',
+  );
+  return NextResponse.json({ data: (data ?? []).map(reward => ({
+    ...reward,
+    image_srcset: reward.image_path ? imageSrcSets.get(reward.image_path) ?? null : null,
+  })) });
 }
 
 /**

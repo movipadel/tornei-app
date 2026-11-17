@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   ImageIcon,
@@ -44,6 +44,7 @@ type ColorRow = {
   color_hex: string;
   image_path: string;
   image_url?: string;
+  image_profile?: 'photo' | 'poster' | 'logo';
   is_active: boolean;
 };
 
@@ -119,6 +120,8 @@ export default function AdminStoreProductsPage() {
   const [lines, setLines] = useState<Line[]>([]);
   const [form, setForm] = useState<any>(emptyForm);
   const [colors, setColors] = useState<ColorRow[]>([]);
+  const uploadRequests = useRef(new Map<string, string>());
+  const uploadsInProgress = useRef(new Set<number>());
   const [sizes, setSizes] = useState<SizeRow[]>([]);
   const [stock, setStock] = useState<StockRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -271,6 +274,7 @@ const sortableProducts = useMemo(() => {
   function resetForm() {
   setForm(emptyForm);
   setColors([]);
+  uploadRequests.current.clear();
   setSizes([]);
   setStock([]);
   setFormOpen(false);
@@ -366,6 +370,7 @@ const sortableProducts = useMemo(() => {
         color_name: c.color_name,
         color_hex: c.color_hex ?? "#000000",
         image_path: c.image_path ?? "",
+        image_profile: 'photo',
         is_active: c.is_active,
       }))
     );
@@ -398,9 +403,17 @@ const sortableProducts = useMemo(() => {
   }
 
   async function uploadColorImage(index: number, file: File) {
+    if (uploadsInProgress.current.has(index)) return;
+    uploadsInProgress.current.add(index);
+    const profile = colors[index]?.image_profile ?? 'photo';
+    const key = `${form.id || 'new'}:${index}:${profile}:${file.name}:${file.size}:${file.lastModified}`;
+    const requestId = uploadRequests.current.get(key) ?? crypto.randomUUID();
+    uploadRequests.current.set(key, requestId);
     try {
       const fd = new FormData();
       fd.append("file", file);
+      fd.set('request_id', requestId);
+      fd.set('image_profile', profile);
 
       const res = await fetch("/api/admin/store/products/image", {
         method: "POST",
@@ -415,10 +428,13 @@ const sortableProducts = useMemo(() => {
           i === index ? { ...c, image_path: json.path, image_url: json.url } : c
         )
       );
+      uploadRequests.current.delete(key);
 
       toast.success("Immagine caricata");
     } catch (e: any) {
       toast.error(e?.message || "Errore upload");
+    } finally {
+      uploadsInProgress.current.delete(index);
     }
   }
 
@@ -859,7 +875,7 @@ function handleSortEnd(event: DragEndEvent) {
               action={() =>
                 setColors([
                   ...colors,
-                  { color_name: "", color_hex: "#000000", image_path: "", is_active: true },
+                  { color_name: "", color_hex: "#000000", image_path: "", image_profile: 'photo', is_active: true },
                 ])
               }
             />
@@ -913,6 +929,14 @@ function handleSortEnd(event: DragEndEvent) {
                   </button>
 
                   {c.image_path ? <div style={imagePathText}>Immagine: {c.image_path}</div> : null}
+                  <label style={{ gridColumn: '1 / -1', display: 'grid', gap: 5, fontSize: 12 }}>
+                    Tipo immagine per questo colore
+                    <select value={c.image_profile ?? 'photo'} onChange={event => setColors(prev => prev.map((item, idx) => idx === i ? { ...item, image_profile: event.target.value as 'photo' | 'poster' | 'logo' } : item))} style={inputStyle}>
+                      <option value="photo">Fotografia prodotto</option>
+                      <option value="poster">Grafica con testo</option>
+                      <option value="logo">Logo o grafica dettagliata</option>
+                    </select>
+                  </label>
                 </div>
               ))}
 

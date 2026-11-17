@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getUserIdFromCookie } from "@/lib/userAuth";
+import { catalogImageSrcSets } from '@/lib/publicCatalogImageVariants';
 
 export const runtime = "nodejs";
 
@@ -62,6 +63,11 @@ export async function GET() {
     return NextResponse.json({ error: rewardsErr.message }, { status: 500 });
   }
 
+  const rewardImageSrcSets = await catalogImageSrcSets(
+    sb, 'reward-images', (rewards ?? []).map(reward => reward.image_path),
+    process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL ?? '',
+  );
+
   const normalizedRewards = (rewards ?? []).map((reward: any) => {
   const product = reward.store_products ?? null;
 
@@ -70,6 +76,7 @@ export async function GET() {
 
 return {
   ...cleanReward,
+  image_srcset: cleanReward.image_path ? rewardImageSrcSets.get(cleanReward.image_path) ?? null : null,
   customer_input_required: false,
   store_product: null,
 };
@@ -111,6 +118,7 @@ return {
 
 return {
   ...cleanReward,
+  image_srcset: cleanReward.image_path ? rewardImageSrcSets.get(cleanReward.image_path) ?? null : null,
   customer_input_required: customerInputRequired,
   store_product: {
     id: product.id,

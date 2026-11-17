@@ -27,6 +27,11 @@ try{
  try{const client=createClient(process.env.SUPABASE_URL,process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,{auth:{persistSession:false}});assert.ifError((await client.auth.signInWithPassword({email:user.data.user.email,password:'Local-Partner-2026!'})).error);assert.ok((await client.from('movi_partners').insert({...sample,slug:'denied'})).error);ok();assert.ok((await client.storage.from('movi-partners-media').upload(`${item.id}/bad.png`,new Uint8Array([1]))).error);ok();}finally{await db.auth.admin.deleteUser(user.data.user.id);}
  for(const role of ['logo','cover']){const f=new FormData();f.set('role',role);f.set('file',new Blob([readFileSync('public/home/tournaments.jpg')],{type:'image/jpeg'}),'image.jpg');r=await request(`/api/admin/partners/${item.id}/media`,'POST',f);assert.equal(r.status,201);item=r.json.data;assert.ok(item[`${role}_url`]);ok();}
  const stored=(await db.from('movi_partners').select('logo_path,cover_path').eq('id',item.id).single()).data;paths.push(stored.logo_path,stored.cover_path);
+ const imageRows=(await db.from('movi_image_variants').select('original_path,profile,variants').eq('bucket_id','movi-partners-media').in('original_path',paths)).data??[];
+ assert.equal(imageRows.length,2);assert.equal(imageRows.find(row=>row.original_path===stored.logo_path)?.profile,'logo');assert.equal(imageRows.find(row=>row.original_path===stored.cover_path)?.profile,'poster');ok();
+ assert.ok(item.logo_srcset);assert.ok(item.cover_srcset);assert.ok(!item.logo_srcset.includes('/object/public/'));ok();
+ const repeated=(await request(`/api/admin/partners/${item.id}`)).json.data;
+ assert.equal(repeated.logo_url,item.logo_url);assert.equal(repeated.cover_url,item.cover_url);assert.equal(repeated.logo_srcset,item.logo_srcset);ok();
  assert.ok((await anon.storage.from('movi-partners-media').download(paths[0])).error);ok();
  const bad=new FormData();bad.set('role','logo');bad.set('file',new Blob(['<svg/>'],{type:'image/png'}),'bad.png');assert.equal((await request(`/api/admin/partners/${item.id}/media`,'POST',bad)).status,400);ok();
  assert.equal((await request(`/api/admin/partners/${item.id}/media`,'DELETE',{role:'logo',storage_path:'other/path'})).status,400);ok();
@@ -66,4 +71,12 @@ try{
  r=await request(`/api/admin/partners/${created[0].id}`,'PUT',{...created[0],locations:[one,two]});assert.equal(r.status,200);assert.equal(r.json.data.locations.length,2);ok();
  r=await request(`/api/admin/partners/${created[0].id}`,'PUT',{...r.json.data,locations:[one]});assert.equal(r.status,200);assert.equal(r.json.data.locations.length,1);ok();
  console.log(`Partner HTTP/security/CRUD/media PASS: ${checks} checks`);
-}finally{if(paths.length)await db.storage.from('movi-partners-media').remove(paths);if(ids.length)await db.from('movi_partners').delete().in('id',ids);}
+}finally{
+ const owned=ids.length?(await db.from('movi_partners').select('logo_path,cover_path').in('id',ids)).data??[]:[];
+ const originals=[...new Set([...paths,...owned.flatMap(row=>[row.logo_path,row.cover_path])].filter(Boolean))];
+ const manifests=originals.length?(await db.from('movi_image_variants').select('original_path,variants').eq('bucket_id','movi-partners-media').in('original_path',originals)).data??[]:[];
+ if(ids.length)await db.from('movi_partners').delete().in('id',ids);
+ if(originals.length)await db.from('movi_image_variants').delete().eq('bucket_id','movi-partners-media').in('original_path',originals);
+ const objects=[...new Set([...originals,...manifests.flatMap(row=>row.variants.map(variant=>variant.path))])];
+ if(objects.length)await db.storage.from('movi-partners-media').remove(objects);
+}
