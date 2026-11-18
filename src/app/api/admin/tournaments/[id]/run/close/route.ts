@@ -156,7 +156,10 @@ function getPlacementPoints(
       admissions <= Number(r.max_admissions)
   );
 
-  return rule ? Number(rule.points) : 0;
+  if (!rule || !Number.isInteger(Number(rule.points)) || Number(rule.points) < 0) {
+    throw new Error(`Regole punti del circuito incomplete per ${admissions} iscritti, posizione ${placement}`);
+  }
+  return Number(rule.points);
 }
 
 function getStagePoints(
@@ -174,7 +177,12 @@ function getStagePoints(
       admissions <= Number(r.max_admissions)
   );
 
-  if (exactRule) return Number(exactRule.points);
+  if (exactRule) {
+    if (!Number.isInteger(Number(exactRule.points)) || Number(exactRule.points) < 0) {
+      throw new Error(`Regola punti del circuito non valida per la fase ${normalizedStage}`);
+    }
+    return Number(exactRule.points);
+  }
 
   const othersRule = rules.find(
     (r) =>
@@ -184,7 +192,10 @@ function getStagePoints(
       admissions <= Number(r.max_admissions)
   );
 
-  return othersRule ? Number(othersRule.points) : 0;
+  if (!othersRule || !Number.isInteger(Number(othersRule.points)) || Number(othersRule.points) < 0) {
+    throw new Error(`Regole punti del circuito incomplete per ${admissions} iscritti, fase ${normalizedStage}`);
+  }
+  return Number(othersRule.points);
 }
 
 export async function POST(
@@ -447,6 +458,9 @@ export async function POST(
             },
           ];
         });
+        if (circuitRows.length !== admissions) {
+          throw new Error("Risultati circuito incompleti: identificativo giocatore mancante");
+        }
       }
 
       // ======================
@@ -647,6 +661,11 @@ if (finalMatch && finalMatch.completed_at) {
           return rows;
         });
       }
+    }
+
+    if (tournament.circuit_id && rankingGroupId &&
+        (circuitRows.length === 0 || circuitRows.every((row) => row.points === 0))) {
+      throw new Error("Regole punti del circuito non valide: la tappa non può assegnare zero punti a tutti");
     }
 
     // 5) scrittura circuito idempotente
